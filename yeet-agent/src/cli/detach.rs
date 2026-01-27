@@ -37,6 +37,8 @@ pub async fn detach(
         }
     };
 
+    info!("Build done. Connecting to yeet agent");
+
     // The rest is error handling
     match varlink::detach(revision, force).await {
         Ok(_) => {
