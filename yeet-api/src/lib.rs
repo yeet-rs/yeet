@@ -11,7 +11,6 @@ pub mod key;
 pub mod status;
 
 pub type StorePath = String;
-pub type NETRC = String;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// Represents a Host Update Request
@@ -27,8 +26,6 @@ pub struct HostUpdateRequest {
     pub public_key: String,
     /// The substitutor the agent should use to fetch the update
     pub substitutor: String,
-    /// netrc File to use when downloading from the cache. Useful when using private caches
-    pub netrc: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -58,8 +55,6 @@ pub struct RemoteStorePath {
     pub store_path: StorePath,
     /// The substitutor (nix cache) to fetch the store path from
     pub substitutor: String,
-    /// netrc File to use when downloading from the cache. Useful when using private caches
-    pub netrc: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq)]

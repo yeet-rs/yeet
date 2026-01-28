@@ -175,18 +175,18 @@ fn download(version: &api::RemoteStorePath) -> Result<(), Report> {
 
     // Even if we do not end up using the temp file we create it outside of the if scope.
     // Else it would get dropped before nix-store can use it
-    let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
-    if let Some(netrc) = &version.netrc {
-        netrc_file
-            .write_all(netrc.as_bytes())
-            .context("Could not write to the temp netrc file")?;
-        netrc_file.flush()?;
-        command.args([
-            "--option",
-            "netrc-file",
-            &netrc_file.path().to_string_lossy(),
-        ]);
-    }
+    // let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
+    // if let Some(netrc) = &version.netrc {
+    //     netrc_file
+    //         .write_all(netrc.as_bytes())
+    //         .context("Could not write to the temp netrc file")?;
+    //     netrc_file.flush()?;
+    //     command.args([
+    //         "--option",
+    //         "netrc-file",
+    //         &netrc_file.path().to_string_lossy(),
+    //     ]);
+    // }
 
     let download = command.output()?;
 

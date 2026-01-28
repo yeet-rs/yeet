@@ -8,7 +8,6 @@ use figment::{
     providers::{Env, Format as _, Serialized, Toml},
 };
 use rootcause::{Report, hooks::Hooks};
-use yeet::nix::{self};
 
 use crate::cli_args::{AgentConfig, Commands, Config, HostArgs, Yeet};
 
@@ -106,10 +105,9 @@ async fn main() -> Result<(), Report> {
             path,
             host,
             darwin,
-            netrc,
             variant,
         } => {
-            cli::publish::publish(&config, path, host, netrc, variant, darwin).await?;
+            cli::publish::publish(&config, path, host, variant, darwin).await?;
         }
         Commands::Server(args) => server_cli::handle_server_commands(args, &config).await?,
     }

@@ -1,5 +1,6 @@
-use crate::{nix, varlink::YeetDaemonError};
+use crate::varlink::YeetDaemonError;
 use std::path::PathBuf;
+use yeet::nix;
 
 use log::info;
 use rootcause::{Report, bail, report};

@@ -21,14 +21,13 @@ pub async fn update_hosts(
         hosts,
         public_key,
         substitutor,
-        netrc,
     }): VerifiedJson<api::HostUpdateRequest>,
 ) -> Result<StatusCode, StateError> {
     let mut state = state.write_arc();
 
     state.auth_build(&http_key)?;
 
-    state.update_hosts(hosts, public_key, substitutor, netrc);
+    state.update_hosts(hosts, public_key, substitutor);
 
     Ok(StatusCode::CREATED)
 }

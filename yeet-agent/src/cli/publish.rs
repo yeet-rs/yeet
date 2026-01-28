@@ -2,16 +2,14 @@ use std::path::PathBuf;
 
 use log::info;
 use rootcause::{Report, bail, prelude::ResultExt as _, report};
-use tokio::fs::read_to_string;
-use yeet::{cachix, server};
+use yeet::{cachix, nix, server};
 
-use crate::{cli_args::Config, nix, sig::ssh, varlink};
+use crate::{cli_args::Config, sig::ssh, varlink};
 
 pub async fn publish(
     config: &Config,
     path: PathBuf,
     host: Vec<String>,
-    netrc: Option<PathBuf>,
     variant: Option<String>,
     darwin: bool,
 ) -> Result<(), Report> {
@@ -38,16 +36,6 @@ pub async fn publish(
     let cachix = config.cachix.clone().ok_or(report!(
         "Cachix cache name required. Set it in config or via the --cachix flag"
     ))?;
-
-    let netrc = match netrc {
-        Some(netrc) => Some(
-            read_to_string(&netrc)
-                .await
-                .context("Could not read netrc file")
-                .attach(format!("File: {}", &netrc.to_string_lossy()))?,
-        ),
-        None => None,
-    };
 
     let public_key = if let Some(key) = &config.cachix_key {
         key.clone()
@@ -87,7 +75,6 @@ pub async fn publish(
             hosts,
             public_key,
             substitutor: format!("https://{cachix}.cachix.org"),
-            netrc,
         },
     )
     .await?;

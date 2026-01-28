@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs::read_to_string};
 
 use api::key::{get_secret_key, get_verify_key};
 use log::info;
-use rootcause::{Report, prelude::ResultExt as _};
+use rootcause::Report;
 use yeet::server;
 
 use crate::cli_args::{AuthLevel, Config, ServerArgs, ServerCommands};
@@ -22,16 +22,7 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
             store_path,
             public_key,
             substitutor,
-            netrc,
         } => {
-            let netrc = match netrc {
-                Some(netrc) => Some(
-                    read_to_string(&netrc)
-                        .context("Could not read netrc file")
-                        .attach(format!("File: {}", &netrc.to_string_lossy()))?,
-                ),
-                None => None,
-            };
             server::system::update(
                 &url,
                 &get_secret_key(&httpsig_key)?,
@@ -39,7 +30,6 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
                     hosts: HashMap::from([(host, store_path)]),
                     public_key,
                     substitutor,
-                    netrc,
                 },
             )
             .await?;
