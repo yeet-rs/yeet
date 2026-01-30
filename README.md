@@ -18,9 +18,13 @@ A better pull-based nix deployment tool.
 <br>
 
 [Features](#features)
+
 &nbsp;~&nbsp;
+
 [Installing](#installing)
+
 &nbsp;~&nbsp;
+
 [Documentation](#documentation)
 
 <br>
