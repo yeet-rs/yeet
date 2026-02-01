@@ -18,9 +18,9 @@ A better pull-based nix deployment tool.
 <br>
 
 <a title="Features" href="#features">Features</a>
-&nbsp;~&nbsp;
+&nbsp;&#126;&nbsp;
 <a title="Installing" href="#installing">Installing</a>
-&nbsp;~&nbsp;
+&nbsp;&#126;&nbsp;
 <a title="Documentation" href="#documentation">Documentation</a>
 
 <br>
