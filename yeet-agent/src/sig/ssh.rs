@@ -10,6 +10,7 @@ pub fn key_by_url(url: impl AsRef<str>) -> Result<SecretKey, Report> {
 }
 
 fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey, Report> {
+    // read the ~/.ssh/config
     let config = {
         let mut reader = BufReader::new(
             File::open(
@@ -26,6 +27,7 @@ fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey, Report> {
         config
     };
 
+    // Try to match the yeet server in the ssh config
     let host = {
         let mut hosts = config
             .intersecting_hosts(url.as_ref())
@@ -47,6 +49,7 @@ fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey, Report> {
         hosts.pop().unwrap().clone()
     };
 
+    // filter the indentity file attribute from the ssh host section
     let identity_file = {
         let mut identity_files = host
             .params

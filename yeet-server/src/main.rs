@@ -31,6 +31,7 @@ use crate::{
 
 mod error;
 mod httpsig;
+mod secret_store;
 mod state;
 mod routes {
     pub mod detach;

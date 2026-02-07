@@ -8,7 +8,7 @@ use axum_thiserror::ErrorStatus;
 use ed25519_dalek::{SecretKey, VerifyingKey};
 use httpsig_hyper::prelude::{AlgorithmName, PublicKey, VerifyingKey as _};
 use jiff::{ToSpan as _, Zoned};
-use rand::Rng;
+use rand::Rng as _;
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::any_key_map;
 use thiserror::Error;
@@ -69,6 +69,8 @@ pub struct AppState {
     verification_attempt: HashMap<u32, (api::VerificationAttempt, Zoned)>,
     // Should hosts be allowed to detach by themself in general
     detach_allowed: bool,
+    // Secrets encrypted with `server_key`
+    // secrets: HashMap<>
     // Server key used for response signatures (TODO), certificate pinning (TODO) and for secret decryption
     server_key: SecretKey,
 }

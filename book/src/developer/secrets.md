@@ -69,6 +69,10 @@ On the server the following happens:
    1. Check access for all request secrets
    2. Encrypt all secrets with pub key of `$HOST` and respond
 
+## Advantages
+
+A further advantage is that we can use ephemeral age keys used only for this single transaction.
+
 ## Alternatives considered
 
 ### Using agenix with yeet
