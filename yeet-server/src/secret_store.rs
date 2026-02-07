@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use axum::http::StatusCode;
+use serde::{Deserialize, Serialize};
 
 #[derive(thiserror::Error, Debug, axum_thiserror::ErrorStatus)]
 pub enum SecretStoreError {
@@ -20,6 +21,13 @@ type Result<T> = core::result::Result<T, SecretStoreError>;
 /// test if the host is allowed to access the secret and if true will decrypt the
 /// secret and re-encrypt it for the host. This ensures encryption at rest and
 /// handles ACLs
+///
+/// A possible hardening method would to instead use a single server key to encrypt the secrets
+/// encrypt them with all the hosts that have currently access. The contra is that
+/// the all the keys are non ephemeral but then secrets are truly encrypted at rest
+/// because an attack would need to also obtain the identity key of a hosts that
+/// has access to the secrets
+#[derive(Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct SecretStore {
     // secret_name -> secret
     secrets: HashMap<String, Vec<u8>>,
@@ -89,7 +97,7 @@ impl SecretStore {
     }
 
     /// Overvwrite the whole acl of a secret
-    pub fn set_access_for<S: Into<String>>(&mut self, secret: S, hosts: Vec<String>) {
+    fn set_access_for<S: Into<String>>(&mut self, secret: S, hosts: Vec<String>) {
         self.acl.insert(secret.into(), hosts);
     }
 
@@ -109,20 +117,27 @@ impl SecretStore {
     }
 
     /// renames the host in all acls
-    pub fn rename_host<S: Into<String>>(&mut self, old: S, new: S) {
-        let old = old.into();
+    pub fn rename_host<S: Into<String>>(&mut self, current: S, new: S) {
+        let old = current.into();
         let new = new.into();
         for host in self.acl.iter_mut().flat_map(|(_k, acl)| acl.iter_mut()) {
-            #[expect(clippy::assigning_clones)]
             if host == &old {
-                *host = new.clone();
+                host.clone_from(&new);
             }
         }
     }
 
+    /// renames the host in all acls
+    pub fn remove_host<S: Into<String>>(&mut self, host: S) {
+        let host = host.into();
+        self.acl
+            .iter_mut()
+            .for_each(|(_k, acl)| acl.retain(|h| h != &host));
+    }
+
     /// Rename a secret including its acl
-    pub fn rename_secret<S: Into<String>>(&mut self, old: S, new: S) {
-        let old = old.into();
+    pub fn rename_secret<S: Into<String>>(&mut self, current: S, new: S) {
+        let old = current.into();
         let new = new.into();
         if let Some(secret) = self.secrets.remove(&old) {
             self.secrets.insert(new.clone(), secret);
@@ -130,6 +145,13 @@ impl SecretStore {
         if let Some(acl) = self.acl.remove(&old) {
             self.acl.insert(new, acl);
         }
+    }
+
+    /// Delete a secret
+    pub fn remove_secret<S: Into<String>>(&mut self, secret: S) {
+        let secret = secret.into();
+        self.secrets.remove(&secret);
+        self.acl.remove(&secret);
     }
 }
 
@@ -311,10 +333,45 @@ mod test {
 
         store.rename_secret("my_secret", "newscret");
 
-        assert_eq!(store.get_acl_by_secret("my_secret"), Vec::<String>::new());
+        assert!(store.get_acl_by_secret("my_secret").is_empty());
         assert_eq!(
             store.get_acl_by_secret("newscret"),
             vec!["myhost".to_owned()]
         );
+    }
+
+    #[test]
+    fn remove_secret() {
+        let store_key = age::x25519::Identity::generate();
+        let mut store = SecretStore::new();
+
+        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
+
+        store
+            .add_secret("my_secret", encrypted, &store_key)
+            .unwrap();
+        store.set_access_for("my_secret", vec!["myhost".to_owned()]);
+
+        store.remove_secret("my_secret");
+
+        assert!(store.get_acl_by_secret("my_secret").is_empty());
+        assert!(store.list_secrets().is_empty());
+    }
+
+    #[test]
+    fn remove_host() {
+        let store_key = age::x25519::Identity::generate();
+        let mut store = SecretStore::new();
+
+        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
+
+        store
+            .add_secret("my_secret", encrypted, &store_key)
+            .unwrap();
+        store.set_access_for("my_secret", vec!["myhost".to_owned()]);
+
+        store.remove_host("myhost");
+
+        assert!(store.get_acl_by_secret("my_secret").is_empty());
     }
 }

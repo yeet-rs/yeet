@@ -12,6 +12,11 @@ pub mod status;
 
 pub type StorePath = String;
 
+mod routes {
+    pub mod secret;
+}
+pub use routes::secret::*;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// Represents a Host Update Request
 /// The Agent uses the substitutor to fetch the update via nix
