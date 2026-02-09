@@ -9,7 +9,7 @@ use log::info;
 use rootcause::Report;
 use yeet::server;
 
-use crate::{cli_args::Config, sig::ssh, varlink};
+use crate::{cli::common, cli_args::Config, sig::ssh};
 
 pub async fn approve(
     config: &Config,
@@ -17,26 +17,8 @@ pub async fn approve(
     code: Option<u32>,
     hostname: Option<String>,
 ) -> Result<(), Report> {
-    let agent_url = {
-        let agent_config = varlink::config().await;
-        if let Err(e) = &agent_config {
-            log::error!("Could not get agent config: {e}")
-        }
-        agent_config.ok().map(|config| config.server)
-    };
-
-    let url = &config
-        .url
-        .clone()
-        .or(agent_url)
-        .ok_or(rootcause::report!("`--url` required for publish"))?;
-
-    let secret_key = {
-        let domain = url
-            .domain()
-            .ok_or(rootcause::report!("Provided URL has no domain part"))?;
-        &ssh::key_by_url(domain)?
-    };
+    let url = common::get_server_url(config).await?;
+    let secret_key = &ssh::key_by_url(&url)?;
 
     let hostname = if let Some(hostname) = hostname {
         hostname

@@ -20,10 +20,12 @@ mod sig {
 }
 mod cli {
     pub mod approve;
+    pub mod common;
     pub mod detach;
     pub mod host;
     pub mod hosts;
     pub mod publish;
+    pub mod secret;
 }
 mod notification;
 mod polkit;

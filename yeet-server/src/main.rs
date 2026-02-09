@@ -106,7 +106,6 @@ fn routes(state: Arc<RwLock<AppState>>) -> Router {
         .route("/secret/remove", post(secret::remove_secret))
         .route("/secret/acl", post(secret::set_acl))
         .route("/secret/acl/all", get(secret::get_all_acl))
-        .route("/secret/acl", get(secret::get_acl_by_secret))
         .route("/secret/list", get(secret::list))
         .route("/secret/server_key", get(secret::get_server_recipient))
         .route("/secret", post(secret::get_secret))

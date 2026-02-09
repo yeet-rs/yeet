@@ -97,12 +97,14 @@ impl SecretStore {
     }
 
     /// Overvwrite the whole acl of a secret
+    #[cfg(test)]
     fn set_access_for<S: Into<String>>(&mut self, secret: S, hosts: Vec<String>) {
         self.acl.insert(secret.into(), hosts);
     }
 
     /// Get the acl of a secret
-    pub fn get_acl_by_secret<S: AsRef<str>>(&self, secret: S) -> Vec<String> {
+    #[cfg(test)]
+    fn get_acl_by_secret<S: AsRef<str>>(&self, secret: S) -> Vec<String> {
         self.acl.get(secret.as_ref()).cloned().unwrap_or(Vec::new())
     }
 

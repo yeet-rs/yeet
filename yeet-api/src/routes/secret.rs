@@ -24,11 +24,6 @@ pub enum AclSecretRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AclBySecretRequest {
-    pub secret: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GetSecretRequest {
     pub recipient: String,
     pub secret: String,

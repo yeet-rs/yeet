@@ -71,16 +71,6 @@ pub async fn get_all_acl(
     Ok(Json(state.get_all_acl()))
 }
 
-pub async fn get_acl_by_secret(
-    State(state): State<Arc<RwLock<AppState>>>,
-    HttpSig(key): HttpSig,
-    VerifiedJson(api::AclBySecretRequest { secret }): VerifiedJson<api::AclBySecretRequest>,
-) -> Result<Json<Vec<String>>, StateError> {
-    let state = state.read_arc();
-    state.auth_admin(&key)?;
-    Ok(Json(state.get_acl_by_secret(secret)))
-}
-
 pub async fn list(
     State(state): State<Arc<RwLock<AppState>>>,
     HttpSig(key): HttpSig,

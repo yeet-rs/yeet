@@ -42,6 +42,7 @@ inquire = "0.9.1"
 ssh2-config = "0.6.5"
 zbus_polkit = "5.0.0"
 zbus = "5.13.2"
+age = "0.11.2"
 
 # TODO: ssh-agent-client-rs = "1.1.2"
 

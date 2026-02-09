@@ -5,7 +5,11 @@ use inquire::validator::Validation;
 use rootcause::{Report, bail, prelude::ResultExt};
 use ssh2_config::{ParseRule, SshConfig};
 
-pub fn key_by_url(url: impl AsRef<str>) -> Result<SecretKey, Report> {
+/// Get key from `~/.ssh/config` or ask the user which key should be used
+pub fn key_by_url(url: &url::Url) -> Result<SecretKey, Report> {
+    let url = url
+        .domain()
+        .ok_or(rootcause::report!("Provided URL has no domain part"))?;
     Ok(key_from_ssh_config(url).or_else(|err| get_key_manual().context(err))?)
 }
 

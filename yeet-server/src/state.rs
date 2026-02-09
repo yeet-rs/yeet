@@ -467,9 +467,6 @@ impl AppState {
     pub fn get_all_acl(&self) -> HashMap<String, Vec<String>> {
         self.secrets.get_all_acl()
     }
-    pub fn get_acl_by_secret<S: AsRef<str>>(&self, secret: S) -> Vec<String> {
-        self.secrets.get_acl_by_secret(secret)
-    }
     pub fn list_secrets(&self) -> Vec<String> {
         self.secrets.list_secrets()
     }
