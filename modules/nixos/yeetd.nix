@@ -72,9 +72,6 @@ in
       description = "Yeet Server";
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
-      StateDirectory = "yeet";
-      StateDirectoryMode = "0700";
-      RuntimeDirectory = "yeetd";
 
       environment.YEET_PORT = "${cfg.port}";
       environment.YEET_HOST = "${cfg.host}";
@@ -82,6 +79,9 @@ in
       environment.YEET_INIT_KEY = "${cfg.initKey}";
 
       serviceConfig = {
+        StateDirectoryMode = "0700";
+        StateDirectory = "yeet";
+        RuntimeDirectory = "yeetd";
         User = cfg.user;
         Group = cfg.group;
         ExecStart = "${lib.getExe cfg.package}";
