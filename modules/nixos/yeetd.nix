@@ -73,10 +73,10 @@ in
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
 
-      environment.YEET_PORT = "${cfg.port}";
+      environment.YEET_PORT = "${toString cfg.port}";
       environment.YEET_HOST = "${cfg.host}";
       environment.YEET_STATE = "${cfg.stateLocation}";
-      environment.YEET_INIT_KEY = "${cfg.initKey}";
+      environment.YEET_INIT_KEY = "${toString cfg.initKey}";
 
       serviceConfig = {
         StateDirectoryMode = "0700";
