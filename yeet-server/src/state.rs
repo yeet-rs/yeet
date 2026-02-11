@@ -6,7 +6,7 @@ use std::{
 
 use axum::http::StatusCode;
 use axum_thiserror::ErrorStatus;
-use ed25519_dalek::{SecretKey, VerifyingKey};
+use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::{AlgorithmName, PublicKey, VerifyingKey as _};
 use jiff::{ToSpan as _, Zoned};
 use rand::Rng as _;

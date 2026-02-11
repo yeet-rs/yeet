@@ -16,7 +16,7 @@ let
           default = config._module.args.name;
           defaultText = lib.literalExpression "config._module.args.name";
           description = ''
-            Name of the file used in {option}`age.secretsDir`
+            Name of the file used in `age.secretsDir`
           '';
         };
         path = lib.mkOption {

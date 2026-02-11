@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod httpsig;
 pub mod key;
+pub mod secret;
 pub mod status;
 
 pub type StorePath = String;
@@ -15,7 +16,9 @@ pub type StorePath = String;
 mod routes {
     pub mod secret;
 }
+
 pub use routes::secret::*;
+pub use secret::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// Represents a Host Update Request
