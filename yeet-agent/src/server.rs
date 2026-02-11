@@ -282,7 +282,7 @@ pub mod secret {
 
     use crate::server::{ErrorForJson as _, sig_param};
 
-    pub async fn get_secret<K: SigningKey + Sync>(
+    pub async fn api_get_secret<K: SigningKey + Sync>(
         url: &Url,
         key: &K,
         secret: &api::GetSecretRequest,
@@ -296,6 +296,33 @@ pub mod secret {
             .await?
             .error_for_json()
             .await
+    }
+
+    pub async fn get_secret<K: SigningKey + Sync, S: Into<String>>(
+        url: &Url,
+        key: &K,
+        secret: S,
+    ) -> Result<Option<Vec<u8>>, Report> {
+        let identity = age::x25519::Identity::generate();
+        let request = api::GetSecretRequest {
+            recipient: identity.to_public().to_string(),
+            secret: secret.into(),
+        };
+
+        let response = Client::new()
+            .post(url.join("/secret")?)
+            .json(&request)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_json::<Option<Vec<u8>>>()
+            .await?;
+        if let Some(ciphertext) = response {
+            return Ok(Some(age::decrypt(&identity, &ciphertext)?));
+        } else {
+            return Ok(None);
+        }
     }
 
     pub async fn add_secret<K: SigningKey + Sync>(

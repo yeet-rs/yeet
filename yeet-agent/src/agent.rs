@@ -15,6 +15,7 @@ use log::{error, info};
 use rootcause::{Report, bail, prelude::ResultExt as _, report};
 use tempfile::NamedTempFile;
 use tokio::time;
+use url::Url;
 use yeet::{nix, server};
 
 use crate::{cli_args::AgentConfig, notification, varlink, version::get_active_version};
@@ -108,16 +109,18 @@ async fn agent_loop(
 
         info!("{action:#?}");
 
-        agent_action(action)?;
+        agent_action(action, &config.server, key).await?;
         time::sleep(Duration::from_secs(sleep)).await;
     }
 }
 
-fn agent_action(action: api::AgentAction) -> Result<(), Report> {
+async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> Result<(), Report> {
     match action {
         api::AgentAction::Nothing => {}
         api::AgentAction::Detach => {}
-        api::AgentAction::SwitchTo(remote_store_path) => update(&remote_store_path)?,
+        api::AgentAction::SwitchTo(remote_store_path) => {
+            update(&remote_store_path, url, key).await?
+        }
     }
     Ok(())
 }
@@ -137,8 +140,8 @@ fn trusted_public_keys() -> Result<Vec<String>, Report> {
         .collect())
 }
 
-fn update(version: &api::RemoteStorePath) -> Result<(), Report> {
-    download(version)?;
+async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<(), Report> {
+    download(version, url, key).await?;
     activate(&version.store_path)?;
     notification::notify_all()?;
     Ok(())
@@ -150,7 +153,11 @@ pub fn switch_to(store_path: &api::StorePath) -> Result<(), Report> {
     Ok(())
 }
 
-fn download(version: &api::RemoteStorePath) -> Result<(), Report> {
+async fn download(
+    version: &api::RemoteStorePath,
+    url: &Url,
+    key: &SecretKey,
+) -> Result<(), Report> {
     info!("Downloading {}", version.store_path);
     let mut keys = trusted_public_keys()?;
     keys.push(version.public_key.clone());
@@ -175,18 +182,18 @@ fn download(version: &api::RemoteStorePath) -> Result<(), Report> {
 
     // Even if we do not end up using the temp file we create it outside of the if scope.
     // Else it would get dropped before nix-store can use it
-    // let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
-    // if let Some(netrc) = &version.netrc {
-    //     netrc_file
-    //         .write_all(netrc.as_bytes())
-    //         .context("Could not write to the temp netrc file")?;
-    //     netrc_file.flush()?;
-    //     command.args([
-    //         "--option",
-    //         "netrc-file",
-    //         &netrc_file.path().to_string_lossy(),
-    //     ]);
-    // }
+    let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
+    if let Some(netrc) = server::secret::get_secret(url, key, "netrc").await? {
+        netrc_file
+            .write_all(&netrc)
+            .context("Could not write to the temp netrc file")?;
+        netrc_file.flush()?;
+        command.args([
+            "--option",
+            "netrc-file",
+            &netrc_file.path().to_string_lossy(),
+        ]);
+    }
 
     let download = command.output()?;
 
