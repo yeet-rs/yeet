@@ -54,6 +54,7 @@ let
           '';
         };
         symlink = lib.mkEnableOption "symlinking secrets to their destination" // {
+          readOnly = true; # currently only symlinking is supported (TODO)
           default = true;
         };
       };
@@ -73,15 +74,18 @@ in
       '';
     };
 
+    # Currently these are readonly. If we want to include these options it would make sense to write them to `yeet-secrets.json`
     secretsDir = lib.mkOption {
       type = lib.types.path;
-      default = "/run/yeet";
+      default = "/run/yeet/secret";
+      readOnly = true;
+
       description = ''
         Folder where secrets are symlinked to
       '';
     };
-
     secretsMountPoint = lib.mkOption {
+      readOnly = true;
       type =
         lib.types.addCheck lib.types.str (
           s:
@@ -91,7 +95,7 @@ in
         // {
           description = "${lib.types.str.description} (with check: non-empty without trailing slash)";
         };
-      default = "/run/agenix.d";
+      default = "/run/yeet/secret.d";
       description = ''
         Where secrets are created before they are symlinked to {option}`age.secretsDir`
       '';

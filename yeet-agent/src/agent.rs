@@ -1,7 +1,8 @@
 use std::{
-    fs::File,
+    fs::{self, File, Permissions, read_link, read_to_string, remove_dir_all},
     io::{self, BufRead as _, BufReader, Write as _},
-    path::Path,
+    os::unix::fs::{PermissionsExt, chown, symlink},
+    path::{Path, PathBuf},
     process::Command,
     sync::OnceLock,
     time::Duration,
@@ -142,7 +143,23 @@ fn trusted_public_keys() -> Result<Vec<String>, Report> {
 
 async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<(), Report> {
     download(version, url, key).await?;
-    activate(&version.store_path)?;
+    let current_gen = read_link("/run/yeet/secret");
+    get_secrets(version, url, key).await?;
+    let next_gen = read_link("/run/yeet/secret");
+
+    let activation_err = activate(&version.store_path);
+    // switch did not go correct
+    if get_active_version()? != version.store_path {
+        // Restore last gen if there was one
+        if let Ok(current_gen) = current_gen {
+            symlink(current_gen, "/run/yeet/secret")?;
+        }
+        // Delete the generation that was just created
+        if let Ok(next_gen) = next_gen {
+            remove_dir_all(&next_gen)?;
+        }
+        activation_err?;
+    }
     notification::notify_all()?;
     Ok(())
 }
@@ -210,6 +227,88 @@ async fn download(
             ))
             .into_dynamic());
     }
+    Ok(())
+}
+
+async fn get_secrets(
+    version: &api::RemoteStorePath,
+    url: &Url,
+    key: &SecretKey,
+) -> Result<(), Report> {
+    // find out which secrets are required for this derivation
+    let nix_secrets: api::Secrets = {
+        let path = Path::new(&version.store_path).join("yeet-secrets.json");
+        if !path.exists() {
+            log::info!(
+                "No yeet-secrets.json file found at {}",
+                path.to_string_lossy()
+            );
+            return Ok(());
+        }
+        serde_json::from_str(&read_to_string(path)?)?
+    };
+
+    // try to fetch all secrets
+    let mut secrets = Vec::new();
+    for (secret, definition) in nix_secrets {
+        log::info!("Fetching secret {secret}");
+        let Some(secret) = server::secret::get_secret(url, key, &secret).await? else {
+            rootcause::bail!("Secret {secret} not found! Unable to switch to derivation");
+        };
+        secrets.push((definition, secret));
+    }
+
+    // get next generation number
+    // This basically reads `/run/yeet/secret` as u32 and if it fails it returns 0 (first gen)
+    let generation = {
+        let link = read_link("/run/yeet/secret"); // this will return a path like `/run/yeet/secret.d/1`
+        let gen_str = link
+            .ok()
+            .and_then(|p| p.file_name().map(|p| p.to_string_lossy().to_string()));
+        let gen_num = gen_str.and_then(|str| str.parse::<u32>().ok()).unwrap_or(0);
+        PathBuf::from(format!("/run/yeet/secret.d/{gen_num}"))
+    };
+
+    // create new generation
+    let genration_result = create_generation(&generation, secrets);
+    if genration_result.is_err() {
+        remove_dir_all(&generation)?;
+        genration_result?;
+    }
+
+    // switch to new generation
+    symlink(&generation, "/run/yeet/secret")?;
+
+    Ok(())
+}
+
+fn create_generation(
+    generation: &Path,
+    secrets: Vec<(api::Secret, Vec<u8>)>,
+) -> Result<(), rootcause::Report> {
+    fs::create_dir(&generation)?;
+    fs::set_permissions(&generation, fs::Permissions::from_mode(0o751));
+
+    for (secret, content) in secrets {
+        let file_name = Path::new(&secret.name)
+            .file_name()
+            .ok_or(rootcause::report!("Invalid secret name: {}", secret.name))?;
+        let mut secret_file = File::create_new(generation.join(file_name))?;
+
+        secret_file.set_permissions(Permissions::from_mode(u32::from_str_radix(
+            &secret.mode,
+            8,
+        )?));
+
+        secret_file.write_all(&content)?;
+
+        chown(
+            file_name,
+            Some(secret.owner.parse()?),
+            Some(secret.owner.parse()?),
+        )?;
+    }
+
     Ok(())
 }
 

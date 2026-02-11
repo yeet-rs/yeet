@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
 };
 
+use age::secrecy::ExposeSecret as _;
 use axum::http::StatusCode;
 use axum_thiserror::ErrorStatus;
 use ed25519_dalek::VerifyingKey;
@@ -85,9 +86,18 @@ pub struct AppState {
     // Should hosts be allowed to detach by themself in general
     detach_allowed: bool,
     // Secrets encrypted with `server_key`
+    #[serde(default)]
     secrets: SecretStore,
     // Server key used for response signatures (TODO), certificate pinning (TODO) and for secret decryption
-    store_key: String,
+    #[serde(default = "create_age_identity")]
+    age_identity: String,
+}
+
+fn create_age_identity() -> String {
+    age::x25519::Identity::generate()
+        .to_string()
+        .expose_secret()
+        .to_string()
 }
 
 impl AppState {
@@ -445,7 +455,7 @@ impl AppState {
         name: S,
         secret: V,
     ) -> Result<()> {
-        let store_key = age::x25519::Identity::from_str(&self.store_key)
+        let store_key = age::x25519::Identity::from_str(&self.age_identity)
             .map_err(StateError::StoreKeyDecryptionError)?;
         self.secrets.add_secret(name, secret, &store_key)?;
         Ok(())
@@ -471,7 +481,7 @@ impl AppState {
         self.secrets.list_secrets()
     }
     pub fn get_server_recipient(&self) -> Result<String> {
-        Ok(age::x25519::Identity::from_str(&self.store_key)
+        Ok(age::x25519::Identity::from_str(&self.age_identity)
             .map_err(StateError::StoreKeyDecryptionError)?
             .to_public()
             .to_string())
@@ -482,7 +492,7 @@ impl AppState {
         recipient: String,
         key: &VerifyingKey,
     ) -> Result<Option<Vec<u8>>> {
-        let store_key = age::x25519::Identity::from_str(&self.store_key)
+        let store_key = age::x25519::Identity::from_str(&self.age_identity)
             .map_err(StateError::StoreKeyDecryptionError)?;
 
         let recipient =
