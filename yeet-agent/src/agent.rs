@@ -226,7 +226,14 @@ async fn download(
     // Even if we do not end up using the temp file we create it outside of the if scope.
     // Else it would get dropped before nix-store can use it
     let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
-    if let Some(netrc) = server::secret::get_secret(url, key, "netrc").await? {
+    let netrc = match server::secret::get_secret(url, key, "netrc").await {
+        Ok(secret) => secret,
+        Err(err) => {
+            log::error!("could not get netrc secret: {err}");
+            None
+        }
+    };
+    if let Some(netrc) = netrc {
         netrc_file
             .write_all(&netrc)
             .context("Could not write to the temp netrc file")?;
