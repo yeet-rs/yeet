@@ -77,7 +77,7 @@ in
     # Currently these are readonly. If we want to include these options it would make sense to write them to `yeet-secrets.json`
     secretsDir = lib.mkOption {
       type = lib.types.path;
-      default = "/run/yeet/secret";
+      default = "/etc/yeet/secret"; # TODO: implemented encrypted storage for secrets
       readOnly = true;
 
       description = ''
@@ -95,7 +95,7 @@ in
         // {
           description = "${lib.types.str.description} (with check: non-empty without trailing slash)";
         };
-      default = "/run/yeet/secret.d";
+      default = "/etc/yeet/secret.d"; # TODO: implemented encrypted storage for secrets
       description = ''
         Where secrets are created before they are symlinked to {option}`age.secretsDir`
       '';
@@ -131,43 +131,38 @@ in
     package = lib.mkPackageOption pkgs "yeet" { };
   };
 
-  config = (
-    lib.mkMerge [
-      (lib.optionalAttrs cfg.enable {
+  config = lib.mkIf cfg.enable {
+    users.groups = {
+      yeet = { };
+    };
 
-        users.groups = {
-          yeet = { };
-        };
+    systemd.services.yeet = {
+      description = "Yeet Deploy Agent";
+      wants = [ "network-online.target" ];
+      after = [ "network-online.target" ];
+      path = [ config.nix.package ];
+      wantedBy = [ "multi-user.target" ];
 
-        systemd.services.yeet = {
-          description = "Yeet Deploy Agent";
-          wants = [ "network-online.target" ];
-          after = [ "network-online.target" ];
-          path = [ config.nix.package ];
-          wantedBy = [ "multi-user.target" ];
+      environment.USER = "root";
 
-          environment.USER = "root";
+      # don't stop the service if the unit disappears
+      unitConfig.X-StopOnRemoval = false;
 
-          # don't stop the service if the unit disappears
-          unitConfig.X-StopOnRemoval = false;
-
-          serviceConfig = {
-            # we don't want to kill children processes as those are deployments
-            KillMode = "process";
-            Restart = "always";
-            RestartSec = 5;
-            RuntimeDirectory = "yeet";
-            ExecStart = ''
-              ${lib.getExe cfg.package} agent --sleep ${toString cfg.sleep} --server ${cfg.server} --key ${cfg.key} ${lib.optionalString cfg.facter "--facter"}
-            '';
-          };
-        };
-      })
-      (lib.optionalAttrs (cfg_secret.secrets != { }) {
-        system.systemBuilderCommands = ''
-          ln -s ${secrets} $out/yeet-secrets.json
+      serviceConfig = {
+        # we don't want to kill children processes as those are deployments
+        KillMode = "process";
+        Restart = "always";
+        RestartSec = 5;
+        RuntimeDirectory = "yeet";
+        ExecStart = ''
+          ${lib.getExe cfg.package} agent --sleep ${toString cfg.sleep} --server ${cfg.server} --key ${cfg.key} ${lib.optionalString cfg.facter "--facter"}
         '';
-      })
-    ]
-  );
+      };
+    };
+
+    system.systemBuilderCommands = lib.mkIf (cfg_secret.secrets != { }) ''
+      ln -s ${secrets} $out/yeet-secrets.json
+    '';
+
+  };
 }

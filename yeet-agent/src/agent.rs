@@ -1,5 +1,8 @@
 use std::{
-    fs::{self, File, Permissions, read_link, read_to_string, remove_dir_all},
+    ffi::OsStr,
+    fs::{
+        self, File, Permissions, read_dir, read_link, read_to_string, remove_dir_all, remove_file,
+    },
     io::{self, BufRead as _, BufReader, Write as _},
     os::unix::fs::{PermissionsExt, chown, symlink},
     path::{Path, PathBuf},
@@ -143,24 +146,47 @@ fn trusted_public_keys() -> Result<Vec<String>, Report> {
 
 async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<(), Report> {
     download(version, url, key).await?;
-    let current_gen = read_link("/run/yeet/secret");
+    let current_gen = read_link("/etc/yeet/secret");
     get_secrets(version, url, key).await?;
-    let next_gen = read_link("/run/yeet/secret");
+    let next_gen = read_link("/etc/yeet/secret");
 
     let activation_err = activate(&version.store_path);
     // switch did not go correct
     if get_active_version()? != version.store_path {
         // Restore last gen if there was one
         if let Ok(current_gen) = current_gen {
-            symlink(current_gen, "/run/yeet/secret")?;
+            let _ = remove_file("/etc/yeet/secret");
+            symlink(current_gen, "/etc/yeet/secret")?;
         }
         // Delete the generation that was just created
         if let Ok(next_gen) = next_gen {
             remove_dir_all(&next_gen)?;
         }
         activation_err?;
+    } else {
+        if let Ok(next_gen) = next_gen {
+            let _ = remove_all_dirs_unless(
+                next_gen.parent().unwrap_or(Path::new("/etc/yeet/secret.d")),
+                next_gen.file_name().unwrap_or_default(),
+            );
+        }
     }
     notification::notify_all()?;
+    Ok(())
+}
+
+fn remove_all_dirs_unless<P: AsRef<Path>>(
+    base: P,
+    dirname: &OsStr,
+) -> Result<(), rootcause::Report> {
+    for dir in read_dir(base)? {
+        if let Ok(dir) = dir
+            && &dir.file_name() != dirname
+        {
+            let _ = remove_dir_all(dir.path());
+        }
+    }
+
     Ok(())
 }
 
@@ -259,25 +285,34 @@ async fn get_secrets(
     }
 
     // get next generation number
-    // This basically reads `/run/yeet/secret` as u32 and if it fails it returns 0 (first gen)
+    // This basically reads `/etc/yeet/secret` as u32 and if it fails it returns 0 (first gen)
     let generation = {
-        let link = read_link("/run/yeet/secret"); // this will return a path like `/run/yeet/secret.d/1`
+        let link = read_link("/etc/yeet/secret"); // this will return a path like `/etc/yeet/secret.d/1`
         let gen_str = link
             .ok()
             .and_then(|p| p.file_name().map(|p| p.to_string_lossy().to_string()));
-        let gen_num = gen_str.and_then(|str| str.parse::<u32>().ok()).unwrap_or(0);
-        PathBuf::from(format!("/run/yeet/secret.d/{gen_num}"))
+        log::info!("Current Generation: {:?}", gen_str);
+        let gen_num = gen_str
+            .and_then(|str| str.parse::<u32>().ok().map(|i| i + 1))
+            .unwrap_or(0);
+        log::info!("Creating new Generation {gen_num}");
+        PathBuf::from(format!("/etc/yeet/secret.d/{gen_num}"))
     };
 
     // create new generation
     let genration_result = create_generation(&generation, secrets);
     if genration_result.is_err() {
-        remove_dir_all(&generation)?;
+        if let Err(result) =
+            remove_dir_all(&generation).attach(generation.to_string_lossy().to_string())
+        {
+            log::error!("could not remove generation: {result:?}");
+        }
         genration_result?;
     }
 
     // switch to new generation
-    symlink(&generation, "/run/yeet/secret")?;
+    let _ = remove_file("/etc/yeet/secret");
+    symlink(&generation, "/etc/yeet/secret")?;
 
     Ok(())
 }
@@ -286,14 +321,17 @@ fn create_generation(
     generation: &Path,
     secrets: Vec<(api::Secret, Vec<u8>)>,
 ) -> Result<(), rootcause::Report> {
-    fs::create_dir(&generation)?;
+    fs::create_dir_all(&generation)?;
     fs::set_permissions(&generation, fs::Permissions::from_mode(0o751));
 
     for (secret, content) in secrets {
-        let file_name = Path::new(&secret.name)
-            .file_name()
-            .ok_or(rootcause::report!("Invalid secret name: {}", secret.name))?;
-        let mut secret_file = File::create_new(generation.join(file_name))?;
+        let file_name = {
+            let file_name = Path::new(&secret.name)
+                .file_name()
+                .ok_or(rootcause::report!("Invalid secret name: {}", secret.name))?;
+            generation.join(file_name)
+        };
+        let mut secret_file = File::create_new(&file_name)?;
 
         secret_file.set_permissions(Permissions::from_mode(u32::from_str_radix(
             &secret.mode,
@@ -301,12 +339,14 @@ fn create_generation(
         )?));
 
         secret_file.write_all(&content)?;
+        secret_file.flush()?;
 
         chown(
-            file_name,
+            &file_name,
             Some(secret.owner.parse()?),
             Some(secret.owner.parse()?),
-        )?;
+        )
+        .attach(format!("File to chown: {}", file_name.to_string_lossy()))?;
     }
 
     Ok(())
