@@ -70,6 +70,7 @@ async fn main() -> Result<(), Report> {
         .extract()?;
 
     match args.command {
+        Commands::Secret(args) => cli::secret::handle_secret_command(args, &config).await?,
         Commands::Detach {
             version,
             force,

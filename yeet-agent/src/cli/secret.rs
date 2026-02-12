@@ -73,11 +73,22 @@ pub enum SecretCommands {
     },
 }
 
-pub async fn add(
+pub async fn handle_secret_command(
+    args: SecretArgs,
     config: &Config,
-    name: Option<String>,
-    file: Option<PathBuf>,
-) -> Result<(), Report> {
+) -> Result<(), rootcause::Report> {
+    match args.command {
+        SecretCommands::Add { name, file } => add(config, name, file).await?,
+        SecretCommands::Rename { name, new } => rename(config, name, new).await?,
+        SecretCommands::Remove { name } => remove(config, name).await?,
+        SecretCommands::Allow { host, secret } => allow(config, secret, host).await?,
+        SecretCommands::Deny { host, secret } => deny(config, secret, host).await?,
+        SecretCommands::Show { secret, host } => show(config, secret, host).await?,
+    }
+    Ok(())
+}
+
+async fn add(config: &Config, name: Option<String>, file: Option<PathBuf>) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -124,11 +135,7 @@ pub async fn add(
     Ok(())
 }
 
-pub async fn rename(
-    config: &Config,
-    name: Option<String>,
-    new: Option<String>,
-) -> Result<(), Report> {
+async fn rename(config: &Config, name: Option<String>, new: Option<String>) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -165,7 +172,7 @@ pub async fn rename(
     Ok(())
 }
 
-pub async fn remove(config: &Config, secret: Option<String>) -> Result<(), Report> {
+async fn remove(config: &Config, secret: Option<String>) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -211,7 +218,7 @@ pub async fn remove(config: &Config, secret: Option<String>) -> Result<(), Repor
     Ok(())
 }
 
-pub async fn allow(
+async fn allow(
     config: &Config,
     secret: Option<String>,
     host: Option<String>,
@@ -262,11 +269,7 @@ pub async fn allow(
     Ok(())
 }
 
-pub async fn deny(
-    config: &Config,
-    secret: Option<String>,
-    host: Option<String>,
-) -> Result<(), Report> {
+async fn deny(config: &Config, secret: Option<String>, host: Option<String>) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -309,7 +312,7 @@ pub async fn deny(
     Ok(())
 }
 
-pub async fn show(config: &Config, secret: Vec<String>, host: Vec<String>) -> Result<(), Report> {
+async fn show(config: &Config, secret: Vec<String>, host: Vec<String>) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
