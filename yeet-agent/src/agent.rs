@@ -233,7 +233,7 @@ async fn download(
             None
         }
     };
-    if let Some(netrc) = netrc {
+    if let Some(netrc) = netrc.or(version.netrc.clone().map(|s| s.as_bytes().to_vec())) {
         netrc_file
             .write_all(&netrc)
             .context("Could not write to the temp netrc file")?;

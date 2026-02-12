@@ -97,6 +97,10 @@ pub enum Commands {
         #[arg(long)]
         host: Vec<String>,
 
+        /// netrc File to use when downloading from the cache. Useful when using private caches
+        #[arg(long)]
+        netrc: Option<PathBuf>,
+
         /// Sets the `NIXOS_VARIANT` variable when building NixOS. You have to set `system.nixos.variantName = lib.maybeEnv "NIXOS_VARIANT" "No VARIANT"`
         #[arg(long)]
         variant: Option<String>,
@@ -208,6 +212,10 @@ pub enum ServerCommands {
         /// The substitutor the agent should use to fetch the update
         #[arg(long)]
         substitutor: String,
+
+        /// netrc File to use when downloading from the cache. Useful when using private caches
+        #[arg(long)]
+        netrc: Option<PathBuf>,
     },
     /// Check if a key is verified
     VerifyStatus,

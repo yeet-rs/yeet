@@ -107,10 +107,11 @@ async fn main() -> Result<(), Report> {
         Commands::Publish {
             path,
             host,
+            netrc,
             darwin,
             variant,
         } => {
-            cli::publish::publish(&config, path, host, variant, darwin).await?;
+            cli::publish::publish(&config, path, host, netrc, variant, darwin).await?;
         }
         Commands::Server(args) => server_cli::handle_server_commands(args, &config).await?,
     }
