@@ -1265,7 +1265,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2194,7 +2194,7 @@ dependencies = [
  "portable-atomic",
  "portable-atomic-util",
  "serde_core",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3143,7 +3143,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.60.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3521,7 +3521,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3578,7 +3578,7 @@ dependencies = [
  "security-framework 3.5.1",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4118,7 +4118,7 @@ dependencies = [
  "getrandom 0.3.4",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4841,7 +4841,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5562,7 +5562,7 @@ dependencies = [
 [[package]]
 name = "zlink"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#fba7308486d2e1be0b5ed776aab6a14bf04d3ac9"
+source = "git+https://github.com/z-galaxy/zlink.git#f35ed2a434f07246921d94ff0446aa1959f7608c"
 dependencies = [
  "zlink-smol",
  "zlink-tokio",
@@ -5571,7 +5571,7 @@ dependencies = [
 [[package]]
 name = "zlink-core"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#fba7308486d2e1be0b5ed776aab6a14bf04d3ac9"
+source = "git+https://github.com/z-galaxy/zlink.git#f35ed2a434f07246921d94ff0446aa1959f7608c"
 dependencies = [
  "futures-util",
  "itoa",
@@ -5588,7 +5588,7 @@ dependencies = [
 [[package]]
 name = "zlink-macros"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#fba7308486d2e1be0b5ed776aab6a14bf04d3ac9"
+source = "git+https://github.com/z-galaxy/zlink.git#f35ed2a434f07246921d94ff0446aa1959f7608c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5598,7 +5598,7 @@ dependencies = [
 [[package]]
 name = "zlink-smol"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#fba7308486d2e1be0b5ed776aab6a14bf04d3ac9"
+source = "git+https://github.com/z-galaxy/zlink.git#f35ed2a434f07246921d94ff0446aa1959f7608c"
 dependencies = [
  "async-broadcast",
  "async-channel",
@@ -5612,7 +5612,7 @@ dependencies = [
 [[package]]
 name = "zlink-tokio"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#fba7308486d2e1be0b5ed776aab6a14bf04d3ac9"
+source = "git+https://github.com/z-galaxy/zlink.git#f35ed2a434f07246921d94ff0446aa1959f7608c"
 dependencies = [
  "futures-util",
  "pin-project-lite",

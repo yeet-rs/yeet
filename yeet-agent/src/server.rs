@@ -394,7 +394,7 @@ pub mod secret {
         key: &K,
     ) -> Result<HashMap<String, Vec<String>>, Report> {
         Client::new()
-            .post(url.join("/secret/acl/all")?)
+            .get(url.join("/secret/acl/all")?)
             .sign(&sig_param(key)?, key)
             .await?
             .send()

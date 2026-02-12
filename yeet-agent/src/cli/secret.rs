@@ -243,27 +243,32 @@ async fn allow(
         hostnames.sort();
         hostnames
     };
-    let host = if let Some(host) = host {
+    let hosts = if let Some(host) = host {
         if !hostnames.contains(&host) {
             bail!("Host {host} does not exist!")
         }
-        host
+        vec![host]
     } else {
-        inquire::Select::new(
-            "Which Host should be able to access this secret?",
+        inquire::MultiSelect::new(
+            "Which Hosts should be able to access this secret>",
             hostnames,
         )
         .prompt()?
     };
 
-    log::info!("Allowing {host} to access {secret}...");
+    log::info!("Allowing {hosts:?} to access {secret}...");
 
-    server::secret::acl(
-        &url,
-        secret_key,
-        &api::AclSecretRequest::AllowHost { secret, host },
-    )
-    .await?;
+    for host in hosts {
+        server::secret::acl(
+            &url,
+            secret_key,
+            &api::AclSecretRequest::AllowHost {
+                secret: secret.clone(),
+                host,
+            },
+        )
+        .await?;
+    }
     log::info!("Done!");
 
     Ok(())
@@ -285,28 +290,36 @@ async fn deny(config: &Config, secret: Option<String>, host: Option<String>) -> 
     };
 
     let hostnames = {
-        let hosts = server::status(&url, secret_key).await?;
-        let mut hostnames: Vec<_> = hosts.iter().map(|h| h.name.clone()).collect();
+        let acl = server::secret::get_all_acl(&url, secret_key).await?;
+        let Some(mut hostnames) = acl.get(&secret).cloned() else {
+            rootcause::bail!("No host has access to this secret!")
+        };
         hostnames.sort();
         hostnames
     };
-    let host = if let Some(host) = host {
+
+    let hosts = if let Some(host) = host {
         if !hostnames.contains(&host) {
             bail!("Host {host} does not exist!")
         }
-        host
+        vec![host]
     } else {
-        inquire::Select::new("Which Host should be removed?", hostnames).prompt()?
+        inquire::MultiSelect::new("Which Hosts should be removed>", hostnames).prompt()?
     };
 
-    log::info!("Denying {host} to access {secret}...");
+    log::info!("Denying {hosts:?} to access {secret}...");
 
-    server::secret::acl(
-        &url,
-        secret_key,
-        &api::AclSecretRequest::RemoveHost { secret, host },
-    )
-    .await?;
+    for host in hosts {
+        server::secret::acl(
+            &url,
+            secret_key,
+            &api::AclSecretRequest::RemoveHost {
+                secret: secret.clone(),
+                host,
+            },
+        )
+        .await?;
+    }
     log::info!("Done!");
 
     Ok(())
@@ -317,6 +330,18 @@ async fn show(config: &Config, secret: Vec<String>, host: Vec<String>) -> Result
     let secret_key = &ssh::key_by_url(&url)?;
 
     let mut acl = server::secret::get_all_acl(&url, secret_key).await?;
+
+    let secret_list = {
+        let mut secret_list = server::secret::list(&url, secret_key).await?;
+        secret_list.retain(|s| !acl.contains_key(s));
+        secret_list.into_iter().map(|s| (s, Vec::<String>::new()))
+    };
+    acl.extend(secret_list);
+
+    if acl.is_empty() {
+        log::info!("No secrets yet!");
+        return Ok(());
+    }
 
     // Only show the specified secrets if some are set
     if !secret.is_empty() {
@@ -332,7 +357,7 @@ async fn show(config: &Config, secret: Vec<String>, host: Vec<String>) -> Result
     let mut sections = Vec::new();
     for (secret, hosts) in acl {
         sections.push((
-            style(secret).underlined().to_string(),
+            style(format!("{secret}:")).bold().underlined().to_string(),
             vec![("Hosts".to_owned(), hosts.join("\n"))],
         ));
     }
