@@ -9,7 +9,11 @@ use log::info;
 use rootcause::Report;
 use yeet::server;
 
-use crate::{cli::common, cli_args::Config, sig::ssh};
+use crate::{
+    cli::{self, common},
+    cli_args::Config,
+    sig::ssh,
+};
 
 pub async fn approve(
     config: &Config,
@@ -77,5 +81,7 @@ pub async fn approve(
 
     File::create_new(&facter_output)?.write_all(nixos_facter.as_bytes())?;
     info!("File {} written", facter_output.as_os_str().display());
+
+    cli::secret::allow(config, None, None).await?;
     Ok(())
 }

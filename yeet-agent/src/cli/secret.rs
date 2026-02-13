@@ -23,7 +23,7 @@ pub enum SecretCommands {
     /// Add or Update a secret
     Add {
         /// The name of the secret
-        #[arg(long)]
+        #[arg(index = 1)]
         name: Option<String>,
         /// The content
         #[arg(long)]
@@ -31,36 +31,36 @@ pub enum SecretCommands {
     },
     /// Rename an existing secret
     Rename {
-        /// The current name of the host
-        #[arg(long)]
+        /// The current name of the secret
+        #[arg(index = 1)]
         name: Option<String>,
-        /// The new name for the host
+        /// The new name for the secret
         #[arg(long)]
         new: Option<String>,
     },
     /// Delete a secret
     Remove {
         /// The name of the secret
-        #[arg(long)]
+        #[arg(index = 1)]
         name: Option<String>,
     },
     /// Allow a `host` to access a `secret`
     Allow {
+        /// The name of the secret
+        #[arg(index = 1)]
+        secret: Option<String>,
         /// The name of the host
         #[arg(long)]
         host: Option<String>,
-        /// The name of the secret
-        #[arg(long)]
-        secret: Option<String>,
     },
     /// Deny a `host` to access a `secret`
     Deny {
+        /// The name of the secret
+        #[arg(index = 1)]
+        secret: Option<String>,
         /// The name of the host
         #[arg(long)]
         host: Option<String>,
-        /// The name of the secret
-        #[arg(long)]
-        secret: Option<String>,
     },
     /// Show secrets and the associated hosts
     Show {
@@ -131,6 +131,8 @@ async fn add(config: &Config, name: Option<String>, file: Option<PathBuf>) -> Re
     )
     .await?;
     log::info!("Secret {name} created!");
+
+    allow(config, Some(name), None).await?;
 
     Ok(())
 }
@@ -218,7 +220,7 @@ async fn remove(config: &Config, secret: Option<String>) -> Result<(), Report> {
     Ok(())
 }
 
-async fn allow(
+pub async fn allow(
     config: &Config,
     secret: Option<String>,
     host: Option<String>,
