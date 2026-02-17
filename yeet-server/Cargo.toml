@@ -17,7 +17,7 @@ workspace = true
 axum = {version = "0.8", features = ["macros"]}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.39", features = ["full"] }
+tokio = { version = "1.49", features = ["full"] }
 api = { path = "../yeet-api", package = "yeet-api"}
 parking_lot = { version = "0.12", features = ["arc_lock"] }
 memmap2 = "0.9"

@@ -22,7 +22,7 @@ ed25519-dalek = { version = "2.1", features = ["serde", "pem", "pkcs8"] }
 env_logger = "0.11"
 log = "0.4"
 httpsig-hyper = "0.0.19"
-tokio = { version = "1.49", features = ["full", "full"] } # TODO: maybe switch to smoll?
+tokio = { version = "1.49", features = ["full"] } # TODO: maybe switch to smoll?
 
 http = "1.3.1"
 figment = { version = "0.10", features = ["toml", "env"] }

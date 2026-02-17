@@ -1,0 +1,7 @@
+{
+  "git+https://github.com/z-galaxy/zlink.git#zlink-core@0.4.0": "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n",
+  "git+https://github.com/z-galaxy/zlink.git#zlink-macros@0.4.0": "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n",
+  "git+https://github.com/z-galaxy/zlink.git#zlink-smol@0.4.0": "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n",
+  "git+https://github.com/z-galaxy/zlink.git#zlink-tokio@0.4.0": "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n",
+  "git+https://github.com/z-galaxy/zlink.git#zlink@0.4.0": "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n"
+}

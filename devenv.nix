@@ -22,4 +22,5 @@ in
     pkgs-unstable.mdbook
     # mdbook-mermaid
   ];
+  env.RUSTFLAGS = "--cfg tokio_unstable";
 }
