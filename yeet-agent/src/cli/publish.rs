@@ -2,52 +2,35 @@ use std::path::PathBuf;
 
 use log::info;
 use rootcause::{Report, bail, prelude::ResultExt as _, report};
-use tokio::fs::read_to_string;
-use yeet::{cachix, server};
+use yeet::{cachix, nix, server};
 
-use crate::{cli_args::Config, nix, sig::ssh, varlink};
+use crate::{cli::common, cli_args::Config, sig::ssh};
 
 pub async fn publish(
     config: &Config,
     path: PathBuf,
     host: Vec<String>,
-    netrc: Option<PathBuf>,
+    netrc: Option<PathBuf>, // Backwards compat
     variant: Option<String>,
     darwin: bool,
 ) -> Result<(), Report> {
-    let agent_url = {
-        let agent_config = varlink::config().await;
-        if let Err(e) = &agent_config {
-            log::error!("Could not get agent config: {e}")
-        }
-        agent_config.ok().map(|config| config.server)
-    };
-
-    let url = &config
-        .url
-        .clone()
-        .or(agent_url)
-        .ok_or(rootcause::report!("`--url` required for publish"))?;
-    let secret_key = {
-        let domain = url
-            .domain()
-            .ok_or(rootcause::report!("Provided URL has no domain part"))?;
-        &ssh::key_by_url(domain)?
-    };
+    let url = common::get_server_url(config).await?;
+    let secret_key = &ssh::key_by_url(&url)?;
 
     let cachix = config.cachix.clone().ok_or(report!(
         "Cachix cache name required. Set it in config or via the --cachix flag"
     ))?;
 
+    // Backwards compat
     let netrc = match netrc {
         Some(netrc) => Some(
-            read_to_string(&netrc)
-                .await
+            std::fs::read_to_string(&netrc)
                 .context("Could not read netrc file")
                 .attach(format!("File: {}", &netrc.to_string_lossy()))?,
         ),
         None => None,
     };
+    // Backwards compat
 
     let public_key = if let Some(key) = &config.cachix_key {
         key.clone()
@@ -87,7 +70,7 @@ pub async fn publish(
             hosts,
             public_key,
             substitutor: format!("https://{cachix}.cachix.org"),
-            netrc,
+            netrc: netrc,
         },
     )
     .await?;

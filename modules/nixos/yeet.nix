@@ -4,44 +4,134 @@
   lib,
   ...
 }:
-with lib;
 let
   cfg = config.services.yeet;
+  cfg_secret = config.yeet;
+  secretType = lib.types.submodule (
+    { config, ... }:
+    {
+      options = {
+        name = lib.mkOption {
+          type = lib.types.str;
+          default = config._module.args.name;
+          defaultText = lib.literalExpression "config._module.args.name";
+          description = ''
+            Name of the file used in `age.secretsDir`
+          '';
+        };
+        path = lib.mkOption {
+          type = lib.types.str;
+          default = "${cfg_secret.secretsDir}/${config.name}";
+          defaultText = lib.literalExpression ''
+            "''${cfg_secret.secretsDir}/''${config.name}"
+          '';
+          description = ''
+            Path where the decrypted secret is installed.
+          '';
+        };
+        mode = lib.mkOption {
+          type = lib.types.str;
+          default = "0400";
+          description = ''
+            Permissions mode of the decrypted secret in a format understood by chmod.
+          '';
+        };
+        owner = lib.mkOption {
+          type = lib.types.str;
+          default = "0";
+          description = ''
+            User of the decrypted secret.
+          '';
+        };
+        group = lib.mkOption {
+          type = lib.types.str;
+          default = lib.users.${config.owner}.group or "0";
+          defaultText = lib.literalExpression ''
+            users.''${config.owner}.group or "0"
+          '';
+          description = ''
+            Group of the decrypted secret.
+          '';
+        };
+        symlink = lib.mkEnableOption "symlinking secrets to their destination" // {
+          readOnly = true; # currently only symlinking is supported (TODO)
+          default = true;
+        };
+      };
+    }
+  );
+
+  secrets = pkgs.writeText "yeet-secrets.json" (builtins.toJSON cfg_secret.secrets);
 in
 {
   meta.maintainers = [ lib.maintainers.Srylax ];
+  options.yeet = {
+    secrets = lib.mkOption {
+      type = lib.types.attrsOf secretType;
+      default = { };
+      description = ''
+        Attrset of secrets.
+      '';
+    };
+
+    # Currently these are readonly. If we want to include these options it would make sense to write them to `yeet-secrets.json`
+    secretsDir = lib.mkOption {
+      type = lib.types.path;
+      default = "/etc/yeet/secret"; # TODO: implemented encrypted storage for secrets
+      readOnly = true;
+
+      description = ''
+        Folder where secrets are symlinked to
+      '';
+    };
+    secretsMountPoint = lib.mkOption {
+      readOnly = true;
+      type =
+        lib.types.addCheck lib.types.str (
+          s:
+          (builtins.match "[ \t\n]*" s) == null # non-empty
+          && (builtins.match ".+/" s) == null
+        ) # without trailing slash
+        // {
+          description = "${lib.types.str.description} (with check: non-empty without trailing slash)";
+        };
+      default = "/etc/yeet/secret.d"; # TODO: implemented encrypted storage for secrets
+      description = ''
+        Where secrets are created before they are symlinked to {option}`age.secretsDir`
+      '';
+    };
+  };
 
   options.services.yeet = {
-    enable = mkEnableOption "Yeet Deploy Agent: https://github.com/Srylax/yeet";
+    enable = lib.mkEnableOption "Yeet Deploy Agent: https://github.com/Srylax/yeet";
 
-    server = mkOption {
-      type = types.str;
+    server = lib.mkOption {
+      type = lib.types.str;
       description = "Yeet server url to use.";
     };
 
-    sleep = mkOption {
-      type = types.int;
+    sleep = lib.mkOption {
+      type = lib.types.int;
       default = 30;
       description = "Seconds to wait between updates";
     };
 
-    facter = mkOption {
-      type = types.bool;
+    facter = lib.mkOption {
+      type = lib.types.bool;
       default = false;
       description = "Collect information about the system with `nixos-facter`";
     };
 
-    key = mkOption {
-      type = types.str;
+    key = lib.mkOption {
+      type = lib.types.str;
       default = "/etc/ssh/ssh_host_ed25519_key";
       description = "ED25519 key used as the hosts identity";
     };
 
-    package = mkPackageOption pkgs "yeet" { };
+    package = lib.mkPackageOption pkgs "yeet" { };
   };
 
-  config = mkIf cfg.enable {
-
+  config = lib.mkIf cfg.enable {
     users.groups = {
       yeet = { };
     };
@@ -69,5 +159,10 @@ in
         '';
       };
     };
+
+    system.systemBuilderCommands = lib.mkIf (cfg_secret.secrets != { }) ''
+      ln -s ${secrets} $out/yeet-secrets.json
+    '';
+
   };
 }

@@ -157,6 +157,7 @@ pub enum Commands {
     /// These are the raw subcommands to execute functions on the server
     Server(ServerArgs),
     Host(HostArgs),
+    Secret(crate::cli::secret::SecretArgs),
 }
 #[derive(Args)]
 pub struct HostArgs {

@@ -270,6 +270,165 @@ pub mod detach {
     }
 }
 
+pub mod secret {
+    use std::collections::HashMap;
+
+    use api::httpsig::ReqwestSig as _;
+    use http::StatusCode;
+    use httpsig_hyper::prelude::*;
+    use reqwest::Client;
+    use rootcause::Report;
+    use url::Url;
+
+    use crate::server::{ErrorForJson as _, sig_param};
+
+    pub async fn api_get_secret<K: SigningKey + Sync>(
+        url: &Url,
+        key: &K,
+        secret: &api::GetSecretRequest,
+    ) -> Result<Option<Vec<u8>>, Report> {
+        Client::new()
+            .post(url.join("/secret")?)
+            .json(secret)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_json()
+            .await
+    }
+
+    pub async fn get_secret<K: SigningKey + Sync, S: Into<String>>(
+        url: &Url,
+        key: &K,
+        secret: S,
+    ) -> Result<Option<Vec<u8>>, Report> {
+        let identity = age::x25519::Identity::generate();
+        let request = api::GetSecretRequest {
+            recipient: identity.to_public().to_string(),
+            secret: secret.into(),
+        };
+
+        let response = Client::new()
+            .post(url.join("/secret")?)
+            .json(&request)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_json::<Option<Vec<u8>>>()
+            .await?;
+        if let Some(ciphertext) = response {
+            return Ok(Some(age::decrypt(&identity, &ciphertext)?));
+        } else {
+            return Ok(None);
+        }
+    }
+
+    pub async fn add_secret<K: SigningKey + Sync>(
+        url: &Url,
+        key: &K,
+        secret: &api::AddSecretRequest,
+    ) -> Result<StatusCode, Report> {
+        Client::new()
+            .post(url.join("/secret/add")?)
+            .json(secret)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_code()
+            .await
+    }
+
+    pub async fn rename_secret<K: SigningKey + Sync>(
+        url: &Url,
+        key: &K,
+        secret: &api::RenameSecretRequest,
+    ) -> Result<StatusCode, Report> {
+        Client::new()
+            .post(url.join("/secret/rename")?)
+            .json(secret)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_code()
+            .await
+    }
+
+    pub async fn remove_secret<K: SigningKey + Sync>(
+        url: &Url,
+        key: &K,
+        secret: &api::RemoveSecretRequest,
+    ) -> Result<StatusCode, Report> {
+        Client::new()
+            .post(url.join("/secret/remove")?)
+            .json(secret)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_code()
+            .await
+    }
+
+    pub async fn acl<K: SigningKey + Sync>(
+        url: &Url,
+        key: &K,
+        acl: &api::AclSecretRequest,
+    ) -> Result<StatusCode, Report> {
+        Client::new()
+            .post(url.join("/secret/acl")?)
+            .json(acl)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_code()
+            .await
+    }
+
+    pub async fn get_all_acl<K: SigningKey + Sync>(
+        url: &Url,
+        key: &K,
+    ) -> Result<HashMap<String, Vec<String>>, Report> {
+        Client::new()
+            .get(url.join("/secret/acl/all")?)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_json()
+            .await
+    }
+
+    pub async fn list<K: SigningKey + Sync>(url: &Url, key: &K) -> Result<Vec<String>, Report> {
+        Client::new()
+            .get(url.join("/secret/list")?)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_json()
+            .await
+    }
+
+    pub async fn get_server_recipient<K: SigningKey + Sync>(
+        url: &Url,
+        key: &K,
+    ) -> Result<String, Report> {
+        Client::new()
+            .get(url.join("/secret/server_key")?)
+            .sign(&sig_param(key)?, key)
+            .await?
+            .send()
+            .await?
+            .error_for_json()
+            .await
+    }
+}
+
 fn sig_param<K: SigningKey + Sync>(key: &K) -> Result<HttpSignatureParams, Report> {
     let mut signature_params = HttpSignatureParams::try_new(&COMPONENTS)?;
     signature_params.set_key_info(key);

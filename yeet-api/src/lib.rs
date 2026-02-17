@@ -8,10 +8,17 @@ use serde::{Deserialize, Serialize};
 
 pub mod httpsig;
 pub mod key;
+pub mod secret;
 pub mod status;
 
 pub type StorePath = String;
-pub type NETRC = String;
+
+mod routes {
+    pub mod secret;
+}
+
+pub use routes::secret::*;
+pub use secret::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// Represents a Host Update Request
@@ -27,7 +34,8 @@ pub struct HostUpdateRequest {
     pub public_key: String,
     /// The substitutor the agent should use to fetch the update
     pub substitutor: String,
-    /// netrc File to use when downloading from the cache. Useful when using private caches
+
+    /// Backwards compat
     pub netrc: Option<String>,
 }
 
@@ -58,7 +66,7 @@ pub struct RemoteStorePath {
     pub store_path: StorePath,
     /// The substitutor (nix cache) to fetch the store path from
     pub substitutor: String,
-    /// netrc File to use when downloading from the cache. Useful when using private caches
+    /// Backwards compat
     pub netrc: Option<String>,
 }
 

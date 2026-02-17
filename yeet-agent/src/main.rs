@@ -8,7 +8,6 @@ use figment::{
     providers::{Env, Format as _, Serialized, Toml},
 };
 use rootcause::{Report, hooks::Hooks};
-use yeet::nix::{self};
 
 use crate::cli_args::{AgentConfig, Commands, Config, HostArgs, Yeet};
 
@@ -21,10 +20,12 @@ mod sig {
 }
 mod cli {
     pub mod approve;
+    pub mod common;
     pub mod detach;
     pub mod host;
     pub mod hosts;
     pub mod publish;
+    pub mod secret;
 }
 mod notification;
 mod polkit;
@@ -69,6 +70,7 @@ async fn main() -> Result<(), Report> {
         .extract()?;
 
     match args.command {
+        Commands::Secret(args) => cli::secret::handle_secret_command(args, &config).await?,
         Commands::Detach {
             version,
             force,
@@ -105,8 +107,8 @@ async fn main() -> Result<(), Report> {
         Commands::Publish {
             path,
             host,
-            darwin,
             netrc,
+            darwin,
             variant,
         } => {
             cli::publish::publish(&config, path, host, netrc, variant, darwin).await?;

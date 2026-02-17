@@ -22,6 +22,7 @@ use crate::{
     routes::{
         detach, host,
         key::{add_key, remove_key},
+        secret,
         system_check::system_check,
         update::update_hosts,
         verify::{add_verification_attempt, is_host_verified, verify_attempt},
@@ -31,11 +32,13 @@ use crate::{
 
 mod error;
 mod httpsig;
+mod secret_store;
 mod state;
 mod routes {
     pub mod detach;
     pub mod host;
     pub mod key;
+    pub mod secret;
     pub mod status;
     pub mod system_check;
     pub mod update;
@@ -98,6 +101,14 @@ fn routes(state: Arc<RwLock<AppState>>) -> Router {
         .route("/system/detach/permission", get(detach::is_detach_allowed))
         .route("/detach/permission", post(detach::set_detach_permission))
         .route("/detach/permission", get(detach::is_detach_global_allowed))
+        .route("/secret/add", post(secret::add_secret))
+        .route("/secret/rename", post(secret::rename_secret))
+        .route("/secret/remove", post(secret::remove_secret))
+        .route("/secret/acl", post(secret::set_acl))
+        .route("/secret/acl/all", get(secret::get_all_acl))
+        .route("/secret/list", get(secret::list))
+        .route("/secret/server_key", get(secret::get_server_recipient))
+        .route("/secret", post(secret::get_secret))
         .with_state(state)
 }
 

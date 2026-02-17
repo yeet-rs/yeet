@@ -93,7 +93,7 @@ pub enum Error {
     DaemonError(YeetDaemonError),
 }
 
-#[derive(Debug, ReplyError)]
+#[derive(Debug, ReplyError, zlink::introspect::ReplyError)]
 #[zlink(interface = "ch.yeetme.yeet")]
 pub enum YeetDaemonError {
     NoCurrentSystem,
