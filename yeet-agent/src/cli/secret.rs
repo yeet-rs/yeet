@@ -230,13 +230,25 @@ pub async fn allow(
 
     let secret_list = server::secret::list(&url, secret_key).await?;
 
-    let secret = if let Some(secret) = secret {
+    let secrets = if let Some(secret) = secret {
         if !secret_list.contains(&secret) {
             bail!("Secret {secret} does not exist!")
         }
-        secret
+        vec![secret]
+    } else if host.is_some() {
+        inquire::MultiSelect::new(
+            &format!(
+                "Select which secrets should {} be able to access>",
+                host.as_ref().unwrap()
+            ),
+            secret_list.clone(),
+        )
+        .prompt()?
     } else {
-        inquire::Select::new("Which secret do you want to modify?", secret_list.clone()).prompt()?
+        let secret =
+            inquire::Select::new("Which secret do you want to modify?", secret_list.clone())
+                .prompt()?;
+        vec![secret]
     };
 
     let hostnames = {
@@ -258,18 +270,23 @@ pub async fn allow(
         .prompt()?
     };
 
-    log::info!("Allowing {hosts:?} to access {secret}...");
+    log::info!("Allowing {hosts:?} to access {secrets:?}...");
 
     for host in hosts {
-        server::secret::acl(
-            &url,
-            secret_key,
-            &api::AclSecretRequest::AllowHost {
-                secret: secret.clone(),
-                host,
-            },
-        )
-        .await?;
+        for secret in &secrets {
+            let response = server::secret::acl(
+                &url,
+                secret_key,
+                &api::AclSecretRequest::AllowHost {
+                    secret: secret.clone(),
+                    host: host.clone(),
+                },
+            )
+            .await;
+            if let Err(err) = response {
+                log::error!("Error adding access for {host} from {secret}:\n{err}")
+            }
+        }
     }
     log::info!("Done!");
 
@@ -282,45 +299,58 @@ async fn deny(config: &Config, secret: Option<String>, host: Option<String>) -> 
 
     let secret_list = server::secret::list(&url, secret_key).await?;
 
-    let secret = if let Some(secret) = secret {
+    let secrets = if let Some(secret) = secret {
         if !secret_list.contains(&secret) {
             bail!("Secret {secret} does not exist!")
         }
-        secret
+        vec![secret]
+    } else if host.is_some() {
+        inquire::MultiSelect::new(
+            &format!(
+                "Select which secrets should {} be removed>",
+                host.as_ref().unwrap()
+            ),
+            secret_list.clone(),
+        )
+        .prompt()?
     } else {
-        inquire::Select::new("Which secret do you want to modify?", secret_list.clone()).prompt()?
-    };
-
-    let hostnames = {
-        let acl = server::secret::get_all_acl(&url, secret_key).await?;
-        let Some(mut hostnames) = acl.get(&secret).cloned() else {
-            rootcause::bail!("No host has access to this secret!")
-        };
-        hostnames.sort();
-        hostnames
+        let secret =
+            inquire::Select::new("Which secret do you want to modify?", secret_list.clone())
+                .prompt()?;
+        vec![secret]
     };
 
     let hosts = if let Some(host) = host {
-        if !hostnames.contains(&host) {
-            bail!("Host {host} does not exist!")
-        }
         vec![host]
     } else {
+        let hostnames = {
+            let acl = server::secret::get_all_acl(&url, secret_key).await?;
+            let Some(mut hostnames) = acl.get(&secrets[0]).cloned() else {
+                rootcause::bail!("No host has access to this secret!")
+            };
+            hostnames.sort();
+            hostnames
+        };
         inquire::MultiSelect::new("Which Hosts should be removed>", hostnames).prompt()?
     };
 
-    log::info!("Denying {hosts:?} to access {secret}...");
+    log::info!("Denying {hosts:?} to access {secrets:?}...");
 
     for host in hosts {
-        server::secret::acl(
-            &url,
-            secret_key,
-            &api::AclSecretRequest::RemoveHost {
-                secret: secret.clone(),
-                host,
-            },
-        )
-        .await?;
+        for secret in &secrets {
+            let response = server::secret::acl(
+                &url,
+                secret_key,
+                &api::AclSecretRequest::RemoveHost {
+                    secret: secret.clone(),
+                    host: host.clone(),
+                },
+            )
+            .await;
+            if let Err(err) = response {
+                log::error!("Error removing access for {host} from {secret}:\n{err}")
+            }
+        }
     }
     log::info!("Done!");
 

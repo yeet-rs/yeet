@@ -42,7 +42,10 @@ pub async fn approve(
     let artifacts = server::system::verify_attempt(
         &url,
         secret_key,
-        &api::VerificationAcceptance { code, hostname },
+        &api::VerificationAcceptance {
+            code,
+            hostname: hostname.clone(),
+        },
     )
     .await?;
 
@@ -82,6 +85,6 @@ pub async fn approve(
     File::create_new(&facter_output)?.write_all(nixos_facter.as_bytes())?;
     info!("File {} written", facter_output.as_os_str().display());
 
-    cli::secret::allow(config, None, None).await?;
+    cli::secret::allow(config, None, Some(hostname)).await?;
     Ok(())
 }
