@@ -10,7 +10,6 @@ pub async fn publish(
     config: &Config,
     path: PathBuf,
     host: Vec<String>,
-    netrc: Option<PathBuf>, // Backwards compat
     variant: Option<String>,
     darwin: bool,
 ) -> Result<(), Report> {
@@ -20,17 +19,6 @@ pub async fn publish(
     let cachix = config.cachix.clone().ok_or(report!(
         "Cachix cache name required. Set it in config or via the --cachix flag"
     ))?;
-
-    // Backwards compat
-    let netrc = match netrc {
-        Some(netrc) => Some(
-            std::fs::read_to_string(&netrc)
-                .context("Could not read netrc file")
-                .attach(format!("File: {}", &netrc.to_string_lossy()))?,
-        ),
-        None => None,
-    };
-    // Backwards compat
 
     let public_key = if let Some(key) = &config.cachix_key {
         key.clone()
@@ -70,7 +58,6 @@ pub async fn publish(
             hosts,
             public_key,
             substitutor: format!("https://{cachix}.cachix.org"),
-            netrc: netrc,
         },
     )
     .await?;

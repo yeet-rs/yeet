@@ -34,9 +34,6 @@ pub struct HostUpdateRequest {
     pub public_key: String,
     /// The substitutor the agent should use to fetch the update
     pub substitutor: String,
-
-    /// Backwards compat
-    pub netrc: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -66,8 +63,6 @@ pub struct RemoteStorePath {
     pub store_path: StorePath,
     /// The substitutor (nix cache) to fetch the store path from
     pub substitutor: String,
-    /// Backwards compat
-    pub netrc: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq)]

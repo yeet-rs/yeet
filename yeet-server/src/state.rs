@@ -258,7 +258,6 @@ impl AppState {
         mut hosts: HashMap<String, api::StorePath>,
         public_key: String,
         substitutor: String,
-        netrc: Option<String>,
     ) {
         let _unknown_hosts = hosts
             .extract_if(|name, _store| !self.hosts.contains_key(name))
@@ -273,7 +272,6 @@ impl AppState {
                 store_path: store_path.clone(),
                 substitutor: substitutor.clone(),
                 public_key: public_key.clone(),
-                netrc: netrc.clone(),
             };
 
             host.push_update(version);
