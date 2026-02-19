@@ -60,9 +60,19 @@ let
   };
 
 in
-{
+rec {
   packages = {
     yeet = cargo_nix.workspaceMembers."yeet".build;
     yeetd = cargo_nix.workspaceMembers."yeetd".build;
+  };
+  nixosModules = {
+    yeet = {
+      imports = [ ./modules/nixos/yeet.nix ];
+      services.yeet.package = lib.mkDefault packages.yeet;
+    };
+    yeetd = {
+      imports = [ ./modules/nixos/yeetd.nix ];
+      services.yeetd.package = lib.mkDefault packages.yeet;
+    };
   };
 }
