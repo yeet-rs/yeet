@@ -410,15 +410,15 @@ impl AppState {
     }
 
     // Warning: This should only ever be called by admins because it will bypass detach permissions
-    pub fn detach_host(&mut self, hostname: &Hostname) -> Result<()> {
-        let host = self
-            .hosts
-            .get_mut(hostname)
-            .ok_or(StateError::HostNotFound)?;
+    // pub fn detach_host(&mut self, hostname: &Hostname) -> Result<()> {
+    //     let host = self
+    //         .hosts
+    //         .get_mut(hostname)
+    //         .ok_or(StateError::HostNotFound)?;
 
-        host.detach();
-        Ok(())
-    }
+    //     host.detach();
+    //     Ok(())
+    // }
 
     pub fn attach_self(&mut self, key: &VerifyingKey) -> Result<()> {
         let host = {

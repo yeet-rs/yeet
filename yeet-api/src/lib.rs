@@ -17,6 +17,9 @@ mod routes {
     pub mod secret;
 }
 
+mod auth {
+    pub mod action;
+}
 pub use routes::secret::*;
 pub use secret::*;
 
@@ -281,7 +284,7 @@ pub enum SetDetachPermission {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum DetachAction {
     DetachSelf,
-    DetachHost(String),
+    // DetachHost(String),
     AttachSelf,
     AttachHost(String),
 }

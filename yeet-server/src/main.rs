@@ -86,28 +86,52 @@ async fn main() {
 
 fn routes(state: Arc<RwLock<AppState>>) -> Router {
     Router::new()
+        // Is only used by agents to check itself -> no credentials / credentials scoped on single key
         .route("/system/check", post(system_check))
+        // `action::Host::Update`
         .route("/system/update", post(update_hosts))
+        // `action::Host::Accept`
         .route("/system/verify/accept", post(verify_attempt))
+        // agent selfcheck
         .route("/system/verify", get(is_host_verified))
+        // agent self-enrollment
         .route("/system/verify", post(add_verification_attempt))
+        // TODO
         .route("/key/add", post(add_key))
+        // TODO
         .route("/key/remove", post(remove_key))
+        // `action::Status::ListHosts`
         .route("/status", get(status::status))
+        // `action::Status::ListHostByKey`
         .route("/status/host_by_key", get(status::hosts_by_key))
+        // `action::Host::Remove`
         .route("/host/remove", post(host::remove_host))
+        // `action::Host::Rename`
         .route("/host/rename", post(host::rename_host))
+        // All *self are per host and managed not via permission but via the detach_allowed
+        // for non self `action::Host::Attach`
         .route("/system/detach", post(detach::detach_host))
+        // Only on self if allowed
         .route("/system/detach/permission", get(detach::is_detach_allowed))
+        // `action::Host::DetachPermission` for per Host and `action::Settings::DetachGlobal` for global
         .route("/detach/permission", post(detach::set_detach_permission))
+        // `action::Settings::DetachGlobal` -> host should only be allowed to see the permission for self
         .route("/detach/permission", get(detach::is_detach_global_allowed))
+        // `action::Secret::CreateOrUpdate`
         .route("/secret/add", post(secret::add_secret))
+        // `action::Secret::Rename`
         .route("/secret/rename", post(secret::rename_secret))
+        // `action::Secret::Remove`
         .route("/secret/remove", post(secret::remove_secret))
+        // `action::Secret::ACL`
         .route("/secret/acl", post(secret::set_acl))
+        // `action::Secret::ACL` -> no one should be able to view
         .route("/secret/acl/all", get(secret::get_all_acl))
+        // `action::Secret::ListSecrets`
         .route("/secret/list", get(secret::list))
+        // required by agent
         .route("/secret/server_key", get(secret::get_server_recipient))
+        // required by agent
         .route("/secret", post(secret::get_secret))
         .with_state(state)
 }

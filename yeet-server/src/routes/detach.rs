@@ -54,7 +54,7 @@ pub async fn detach_host(
 
     match detach {
         api::DetachAction::DetachSelf => state.detach_self(&key)?,
-        api::DetachAction::DetachHost(hostname) => state.detach_host(&hostname)?,
+        // api::DetachAction::DetachHost(hostname) => state.detach_host(&hostname)?,
         api::DetachAction::AttachSelf => state.attach_self(&key)?,
         api::DetachAction::AttachHost(hostname) => state.attach_host(&hostname)?,
     }
