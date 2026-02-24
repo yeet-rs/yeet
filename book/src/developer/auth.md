@@ -84,3 +84,5 @@ A possible storage solution would be `HashMap<(VerifyingKey,Action), TagList>`.
 
 Currently, tags are user-created strings. This does allow host-specific permission with the annoiance of creating a tag for each host.
 Possible alternative would be to create a special tag like `Tag::Specific("myhost")`.
+
+- Create Name policies that can be toggled for identites. Currently all policies are identity specific meaning things like groups are not possible

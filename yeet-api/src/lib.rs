@@ -17,9 +17,7 @@ mod routes {
     pub mod secret;
 }
 
-mod auth {
-    pub mod action;
-}
+pub mod auth;
 pub use routes::secret::*;
 pub use secret::*;
 
