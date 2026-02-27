@@ -4,10 +4,12 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use uuid::Uuid;
+use uuid::{Uuid, uuid};
 
 pub type Tag = uuid::Uuid;
 pub type TagSet = HashSet<Tag>;
+
+pub const ALL_TAGS: Tag = uuid!("00000000-0000-0000-0000-000000000000");
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Host {
@@ -59,6 +61,7 @@ pub enum Action {
     Settings(Settings),
     Secret(Secret),
     Status(Status),
+    ALL,
 }
 
 impl From<Host> for Action {
@@ -114,12 +117,12 @@ impl From<Status> for Action {
 /// assert!(!check); // No! Since there is no policy in place
 /// ```
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
-pub struct PolicyStore<Identity: Eq + Hash> {
+pub struct PolicyStore<Identity: Eq + Hash + Clone> {
     tags: TagSet,
     policies: HashMap<(Identity, Action), TagSet>,
 }
 
-impl<Identity: DeserializeOwned + Eq + Hash> PolicyStore<Identity> {
+impl<Identity: DeserializeOwned + Eq + Hash + Clone> PolicyStore<Identity> {
     /// Reserve a new tag
     pub fn create_tag(&mut self) -> Tag {
         let tag = Uuid::new_v4();
@@ -148,10 +151,28 @@ impl<Identity: DeserializeOwned + Eq + Hash> PolicyStore<Identity> {
 
     /// Returns all tags for a given owner and action. If there is no policy the TagSet will be empty
     pub fn get_tags(&self, owner: Identity, action: Action) -> TagSet {
-        self.policies
-            .get(&(owner, action))
+        let mut tags = self
+            .policies
+            .get(&(owner.clone(), action))
             .cloned()
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+        // check if `owner` has `ACTION::ALL`
+        // if so we need to add this tags too
+        tags.extend(
+            self.policies
+                .get(&(owner.clone(), Action::ALL))
+                .cloned()
+                .unwrap_or_default()
+                .iter(),
+        );
+
+        // If this user is allowed for ALL_TAG we want to return all existing tags
+        if tags.contains(&ALL_TAGS) {
+            self.tags.clone()
+        } else {
+            tags
+        }
     }
 
     /// Check if `owner` is allowed to execute `action` on any of `tags`
@@ -206,5 +227,89 @@ mod test {
         let check =
             store.check_permission("me".into(), auth::Host::Rename.into(), &[some_tag].into());
         assert!(!check);
+    }
+
+    #[test]
+    // e.g. $USER is allowed to execute $ACTION on all resources
+    fn all_tag() {
+        let mut store = PolicyStore::<String>::default();
+        let some_tag = store.create_tag();
+        let another_tag = store.create_tag();
+        store.set_policy(
+            "me".into(),
+            auth::Host::Rename.into(),
+            [auth::ALL_TAGS].into(),
+        );
+        let check =
+            store.check_permission("me".into(), auth::Host::Rename.into(), &[some_tag].into());
+        assert!(check);
+        let check = store.check_permission(
+            "me".into(),
+            auth::Host::Rename.into(),
+            &[another_tag].into(),
+        );
+        assert!(check);
+
+        let future_tag = store.create_tag();
+        let check =
+            store.check_permission("me".into(), auth::Host::Rename.into(), &[future_tag].into());
+        assert!(check);
+
+        // negative example
+        // This would only work if he has a second policy or ACTION::ALL
+        let check =
+            store.check_permission("me".into(), auth::Host::Remove.into(), &[future_tag].into());
+        assert!(!check);
+    }
+
+    #[test]
+    // e.g. $USER is allowed to execute ALL ACTIONS on SOME resources
+    fn action_all() {
+        let mut store = PolicyStore::<String>::default();
+        let some_tag = store.create_tag();
+        let another_tag = store.create_tag();
+        store.set_policy("me".into(), auth::Action::ALL, [some_tag].into());
+        let check =
+            store.check_permission("me".into(), auth::Host::Rename.into(), &[some_tag].into());
+        assert!(check);
+        let check =
+            store.check_permission("me".into(), auth::Host::Remove.into(), &[some_tag].into());
+        assert!(check);
+
+        // negative example
+        // ACTION::ALL should not have permission on other tags
+        let check = store.check_permission(
+            "me".into(),
+            auth::Host::Remove.into(),
+            &[another_tag].into(),
+        );
+        assert!(!check);
+    }
+
+    #[test]
+    // e.g. $USER is allowed to execute ALL ACTIONS on ALL resources (SUPER ADMIN)
+    fn action_all_tags_all() {
+        let mut store = PolicyStore::<String>::default();
+        let some_tag = store.create_tag();
+        let another_tag = store.create_tag();
+        store.set_policy("me".into(), auth::Action::ALL, [auth::ALL_TAGS].into());
+        let check =
+            store.check_permission("me".into(), auth::Host::Rename.into(), &[some_tag].into());
+        assert!(check);
+        let check = store.check_permission(
+            "me".into(),
+            auth::Host::Remove.into(),
+            &[another_tag].into(),
+        );
+        assert!(check);
+
+        let future_tag = store.create_tag();
+        let check =
+            store.check_permission("me".into(), auth::Host::Rename.into(), &[future_tag].into());
+        assert!(check);
+
+        let check =
+            store.check_permission("me".into(), auth::Host::Remove.into(), &[future_tag].into());
+        assert!(check);
     }
 }
