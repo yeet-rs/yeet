@@ -332,15 +332,20 @@ impl AppState {
             .remove(hostname)
             .ok_or(StateError::HostNotFound)?;
 
-        let keys = self.host_by_key.extract_if(|_key, name| name == hostname);
+        let _ = self.host_by_key.extract_if(|_key, name| name == hostname);
 
-        for (key, _hostname) in keys {
-            let _ = self.keyids.extract_if(|_id, k| k == &key);
-        }
+        self.purge_keyids();
 
         self.secrets.remove_host(hostname);
 
         Ok(host)
+    }
+
+    pub fn purge_keyids(&mut self) {
+        let keys = self
+            .keyids
+            .extract_if(|_id, k| !self.host_by_key.contains_key(k));
+        println!("removed: {:?}", keys.collect::<Vec<_>>())
     }
 
     pub fn rename_host(&mut self, old_name: &Hostname, new_name: Hostname) -> Result<()> {

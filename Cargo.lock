@@ -5342,7 +5342,7 @@ dependencies = [
 
 [[package]]
 name = "yeetd"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "age",
  "axum 0.8.8",

@@ -66,6 +66,7 @@ async fn main() {
         let key = get_verify_key(key_location).expect("Not a valid key {key_location}");
         state.add_key(key, api::AuthLevel::Admin);
     }
+    state.purge_keyids();
 
     let state = Arc::new(RwLock::new(state));
     {
