@@ -342,9 +342,11 @@ impl AppState {
     }
 
     pub fn purge_keyids(&mut self) {
-        let keys = self
-            .keyids
-            .extract_if(|_id, k| !self.host_by_key.contains_key(k));
+        let keys = self.keyids.extract_if(|_id, k| {
+            !(self.host_by_key.contains_key(k)
+                || self.admin_credentials.contains(k)
+                || self.build_machines_credentials.contains(k))
+        });
         println!("removed: {:?}", keys.collect::<Vec<_>>())
     }
 
