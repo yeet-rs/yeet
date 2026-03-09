@@ -28,7 +28,8 @@ pub async fn add_verification_attempt(
     State(state): State<Arc<RwLock<AppState>>>,
     Json(attempt): Json<api::VerificationAttempt>,
 ) -> Result<Json<u32>, StateError> {
-    Ok(Json(state.write_arc().add_verification_attempt(attempt)?))
+    todo!()
+    // Ok(Json(state.write_arc().add_verification_attempt(attempt)?))
 }
 
 /// Accept an verification attempt
@@ -39,5 +40,6 @@ pub async fn verify_attempt(
 ) -> Result<Json<Option<String>>, StateError> {
     let mut state = state.write_arc();
     state.auth_admin(&key)?;
-    Ok(Json(state.verify_attempt(acceptance)?))
+    todo!()
+    // Ok(Json(state.verify_attempt(acceptance)?))
 }

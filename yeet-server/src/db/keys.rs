@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
 use ed25519_dalek::VerifyingKey;
+use jiff_sqlx::ToSqlx;
 
 #[derive(thiserror::Error, Debug, axum_thiserror::ErrorStatus)]
 pub enum KeyError {
@@ -14,11 +15,12 @@ pub async fn host_by_key(
     key: VerifyingKey,
 ) -> Result<Option<String>> {
     let key = &key.as_bytes()[..];
-    Ok(
-        sqlx::query_scalar!(r#"SELECT hostname from keys WHERE verifying_key = $1"#, key)
-            .fetch_optional(conn)
-            .await?,
+    Ok(sqlx::query_scalar!(
+        r#"SELECT hostname from hosts WHERE verifying_key = $1"#,
+        key
     )
+    .fetch_optional(conn)
+    .await?)
 }
 
 pub async fn add_host(
@@ -27,14 +29,16 @@ pub async fn add_host(
     key: VerifyingKey,
     hostname: String,
 ) -> Result<()> {
+    let now = jiff::Timestamp::now().to_sqlx();
     let key = &key.as_bytes()[..];
     sqlx::query!(
         r#"
-        INSERT INTO keys (keyid, verifying_key, hostname)
-        VALUES ( $1, $2, $3)"#,
+        INSERT INTO hosts (keyid, verifying_key, hostname, last_ping)
+        VALUES ($1, $2, $3, $4)"#,
         keyid,
         key,
-        hostname
+        hostname,
+        now
     )
     .execute(conn)
     .await?;

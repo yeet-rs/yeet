@@ -103,38 +103,6 @@ impl AppState {
         });
     }
 
-    /// Verify an existing verification attempt
-    /// Host needs to be pre-register
-    pub fn verify_attempt(
-        &mut self,
-        acceptance: api::VerificationAcceptance,
-    ) -> Result<Option<String>> {
-        self.drain_verification_attempts();
-
-        let (attempt, first_ping) = self
-            .verification_attempt
-            .remove(&acceptance.code)
-            .ok_or(StateError::AttemptNotFound(acceptance.code))?;
-
-        let signing_key = PublicKey::from_bytes(&AlgorithmName::Ed25519, attempt.key.as_bytes())
-            .expect("Verifying key already is validated");
-
-        self.host_by_key
-            .insert(attempt.key, acceptance.hostname.clone());
-        self.hosts.insert(
-            acceptance.hostname.clone(),
-            api::Host {
-                name: acceptance.hostname,
-                last_ping: first_ping.clone(),
-                provision_state: api::ProvisionState::NotSet,
-                version_history: vec![(attempt.store_path, first_ping)],
-                detach_allowed: None,
-            },
-        );
-        self.keyids.insert(signing_key.key_id(), attempt.key);
-        Ok(attempt.nixos_facter)
-    }
-
     /// This is the "ping" command every client should send in a specific interval.
     /// Based on the provision state and the last known version this function takes different parts
     ///
