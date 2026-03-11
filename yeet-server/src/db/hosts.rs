@@ -55,3 +55,10 @@ pub async fn remove_host(conn: &mut sqlx::SqliteConnection, host: HostID) -> Res
         .await?;
     Ok(())
 }
+
+// pub async fn add_version(conn: &mut sqlx::SqliteConnection, host: HostID,store_path) -> Result<()> {
+//     sqlx::query!(r#"DELETE FROM hosts WHERE id = $1"#, host)
+//         .execute(conn)
+//         .await?;
+//     Ok(())
+// }
