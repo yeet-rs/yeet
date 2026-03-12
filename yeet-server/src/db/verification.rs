@@ -32,7 +32,7 @@ pub async fn add_verification_attempt(
     }
 
     // check if key already is in registered keys
-    if db::hosts::host_by_key(conn, key).await?.is_some() {
+    if db::hosts::host_by_verify_key(conn, key).await?.is_some() {
         return Err(VerificationError::KeyAlreadyInUse);
     }
 
@@ -66,7 +66,7 @@ pub async fn add_verification_attempt(
 
 /// Approve an request
 /// If available returns the nixos-facter content
-pub async fn approve_attempt(
+pub async fn accept_attempt(
     conn: &mut sqlx::SqliteConnection,
     code: i64,
     hostname: String,
@@ -147,7 +147,7 @@ pub enum VerificationError {
 
     #[error(transparent)]
     #[status(StatusCode::INTERNAL_SERVER_ERROR)]
-    KeysError(#[from] db::hosts::KeyError),
+    HostError(#[from] db::hosts::HostError),
 
     #[error(transparent)]
     #[status(StatusCode::INTERNAL_SERVER_ERROR)]

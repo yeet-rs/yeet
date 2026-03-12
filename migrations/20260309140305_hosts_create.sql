@@ -2,8 +2,7 @@
 CREATE TABLE IF NOT EXISTS hosts
 (
     id              INTEGER PRIMARY KEY NOT NULL,
-    keyid           TEXT    NOT NULL UNIQUE,
-    verifying_key   BLOB    NOT NULL UNIQUE,
+    key_id          INTEGER NOT NULL REFERENCES keys(id) ON DELETE CASCADE,
     hostname        TEXT    NOT NULL UNIQUE,
     last_ping       TEXT    NOT NULL
 );

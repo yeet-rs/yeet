@@ -15,9 +15,11 @@ pub type StorePath = String;
 
 mod routes {
     pub mod secret;
+    pub mod verify;
 }
 
 pub use routes::secret::*;
+pub use routes::*;
 pub use secret::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -63,19 +65,6 @@ pub struct RemoteStorePath {
     pub store_path: StorePath,
     /// The substitutor (nix cache) to fetch the store path from
     pub substitutor: String,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
-pub struct VerificationAttempt {
-    pub key: VerifyingKey,
-    pub store_path: StorePath,
-    pub nixos_facter: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
-pub struct VerificationAcceptance {
-    pub code: u32,
-    pub hostname: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq)]

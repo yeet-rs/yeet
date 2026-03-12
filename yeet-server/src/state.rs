@@ -60,7 +60,7 @@ pub struct AppState {
     #[serde(with = "any_key_map")]
     host_by_key: HashMap<VerifyingKey, Hostname>,
     // 6 digit number -> unverified pub key
-    verification_attempt: HashMap<u32, (api::VerificationAttempt, Zoned)>,
+    verification_attempt: HashMap<u32, (api::verify::VerificationAttempt, Zoned)>,
     // Should hosts be allowed to detach by themself in general
     detach_allowed: bool,
     // Secrets encrypted with `server_key`
@@ -79,16 +79,6 @@ fn create_age_identity() -> String {
 }
 
 impl AppState {
-    #[expect(unused_must_use)]
-    fn drain_verification_attempts(&mut self) {
-        self.verification_attempt.extract_if(|_key, (_kv, time)| {
-            matches!(
-                (&Zoned::now() - &*time).abs().compare(15.minutes()),
-                Ok(Ordering::Greater)
-            )
-        });
-    }
-
     /// This is the "ping" command every client should send in a specific interval.
     /// Based on the provision state and the last known version this function takes different parts
     ///

@@ -40,3 +40,4 @@ futures = "0.3.32"
 
 [dev-dependencies]
 paste = "1.0"
+axum-test = "19.1"

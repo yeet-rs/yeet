@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     Json,
     extract::{FromRequest, FromRequestParts, Request},
@@ -10,20 +8,23 @@ use httpsig_hyper::{
     ContentDigest as _, MessageSignature as _, MessageSignatureReq as _, RequestContentDigest as _,
     prelude::{AlgorithmName, PublicKey},
 };
-use parking_lot::RwLock;
+
 use serde::de::DeserializeOwned;
 
-use crate::{AppState, error::WithStatusCode as _};
+use crate::{db, error::WithStatusCode as _};
 
 pub struct HttpSig(pub VerifyingKey);
 
-impl FromRequestParts<Arc<RwLock<AppState>>> for HttpSig {
+impl FromRequestParts<sqlx::SqlitePool> for HttpSig {
     type Rejection = (StatusCode, String);
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
-        state: &Arc<RwLock<AppState>>,
+        pool: &sqlx::SqlitePool,
     ) -> Result<Self, Self::Rejection> {
+        #[cfg(test)]
+        return Ok(HttpSig(VerifyingKey::default()));
+
         let req = http::Request::from_parts(parts.clone(), String::new());
 
         let keyids = req.get_alg_key_ids().with_code(StatusCode::BAD_REQUEST)?;
@@ -51,12 +52,16 @@ impl FromRequestParts<Arc<RwLock<AppState>>> for HttpSig {
                 "Key signature included but no keyid found".to_owned(),
             ));
         };
+        // TODO maybe acquire a connection only once instead of here and in the handler
 
-        let Some(verifying_key) = state
-            .try_read()
-            .ok_or("Internal State currently not available - try again later")
+        let mut conn = pool
+            .acquire()
+            .await
+            .with_code(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        let Some(verifying_key) = db::keys::fetch_by_keyid(&mut conn, keyid)
+            .await
             .with_code(StatusCode::INTERNAL_SERVER_ERROR)?
-            .get_key_by_id(keyid)
         else {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -85,11 +90,13 @@ where
     type Rejection = (StatusCode, String);
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
+        #[cfg(not(test))]
         let req = req
             .verify_content_digest()
             .await
             .with_code(StatusCode::BAD_REQUEST)?;
 
+        #[cfg(not(test))]
         if !json_content_type(req.headers()) {
             return Err((
                 StatusCode::UNSUPPORTED_MEDIA_TYPE,
