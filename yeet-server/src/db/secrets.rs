@@ -15,8 +15,6 @@ use std::collections::HashMap;
 
 use futures::TryStreamExt as _;
 
-use crate::db::{self};
-
 error_set::error_set! {
     AddSecretError := {
         #[display("Secret is not encrytped")]
@@ -152,16 +150,12 @@ pub async fn remove_secret(
     Ok(())
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Secret {
-    id: api::SecretID,
-    name: String,
-}
-
 /// list secrets
-pub async fn list_secrets(conn: &mut sqlx::SqliteConnection) -> Result<Vec<Secret>, sqlx::Error> {
+pub async fn list_secrets(
+    conn: &mut sqlx::SqliteConnection,
+) -> Result<Vec<api::SecretName>, sqlx::Error> {
     let secrets = sqlx::query!(r#"SELECT id, name FROM secrets"#)
-        .map(|r| Secret {
+        .map(|r| api::SecretName {
             id: api::SecretID::new(r.id),
             name: r.name,
         })
@@ -174,11 +168,17 @@ pub async fn list_secrets(conn: &mut sqlx::SqliteConnection) -> Result<Vec<Secre
 /// list acl
 pub async fn list_acl(
     conn: &mut sqlx::SqliteConnection,
-) -> Result<HashMap<api::SecretID, api::HostID>, sqlx::Error> {
+) -> Result<HashMap<api::SecretID, Vec<api::HostID>>, sqlx::Error> {
     let secrets = sqlx::query!(r#"SELECT secret_id, host_id FROM secrets_acl"#)
         .fetch(conn)
         .map_ok(|r| (api::SecretID::new(r.secret_id), api::HostID::new(r.host_id)))
-        .try_collect::<HashMap<_, _>>()
+        .try_fold(
+            HashMap::<_, Vec<_>>::new(),
+            |mut acc, (key, value)| async move {
+                acc.entry(key).or_default().push(value);
+                Ok(acc)
+            },
+        )
         .await?;
 
     Ok(secrets)
@@ -208,7 +208,7 @@ mod test {
 
     use ed25519_dalek::{SigningKey, VerifyingKey};
 
-    use crate::db::{self, secrets::Secret};
+    use crate::db::{self};
 
     #[sqlx::test]
     async fn create_and_retrieve_secret(pool: sqlx::SqlitePool) {
@@ -448,7 +448,7 @@ mod test {
             db::secrets::list_secrets(&mut conn)
                 .await
                 .unwrap()
-                .contains(&Secret {
+                .contains(&api::SecretName {
                     id: my_secret,
                     name: "newsecret".to_owned()
                 })

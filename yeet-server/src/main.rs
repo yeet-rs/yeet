@@ -4,7 +4,7 @@ use std::{env, fs::read_to_string, str::FromStr, sync::Arc};
 
 use axum::{
     Router,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
 };
 
 use ed25519_dalek::VerifyingKey;
@@ -23,11 +23,11 @@ mod routes {
     //     pub mod detach;
     //     pub mod host;
     //     pub mod key;
-    pub mod secret;
+    pub(crate) mod secret;
     //     pub mod status;
     //     pub mod system_check;
     //     pub mod update;
-    pub mod verify;
+    pub(crate) mod verify;
 }
 pub use routes::*;
 
@@ -98,16 +98,19 @@ fn routes(state: YeetState) -> Router {
         .route("/verification/{id}/accept", put(verify::accept_attempt))
         .route("/verification/check", get(verify::is_host_verified))
         // === Secrets
-        .route("/secret/add", post(secret::add_secret))
+        .route("/secret/add/{name}", post(secret::add_secret))
         .route(
             "/secret/{secret_id}/allow/{host_id}",
             put(secret::allow_host),
         )
-        // .route("/secret/{id}/rename", put(secret::rename_secret))
-        // .route("/secret/{id}/remove", delete(secret::remove_secret))
-        // .route("/secret/{secret_id}/block/{host_id}", put(secret::set_acl))
-        // .route("/secret/acl", get(secret::get_all_acl))
-        // .route("/secret/list", get(secret::list))
+        .route(
+            "/secret/{secret_id}/block/{host_id}",
+            put(secret::block_host),
+        )
+        .route("/secret/{id}/rename/{name}", put(secret::rename_secret))
+        .route("/secret/{id}/delete", delete(secret::delete_secret))
+        .route("/secret/list", get(secret::list))
+        .route("/secret/acl", get(secret::get_all_acl))
         .route("/secret/server_key", get(secret::get_server_age_key)) // locked
         .route("/secret", post(secret::get_secret)) // locked
         // ===

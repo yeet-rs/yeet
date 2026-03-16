@@ -18,21 +18,15 @@ impl SecretID {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecretName {
+    pub id: SecretID,
+    pub name: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AddSecretRequest {
-    pub name: String,
     pub secret: Vec<u8>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RenameSecretRequest {
-    pub current_name: String,
-    pub new_name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RemoveSecretRequest {
-    pub secret_name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
