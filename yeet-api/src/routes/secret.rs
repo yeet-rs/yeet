@@ -25,11 +25,6 @@ pub struct SecretName {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AddSecretRequest {
-    pub secret: Vec<u8>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GetSecretRequest {
     pub recipient: String,
     pub secret: String,

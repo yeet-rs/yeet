@@ -12,7 +12,7 @@ pub async fn fetch_provision_state(
 ) -> Result<api::ProvisionState, sqlx::Error> {
     Ok(sqlx::query_scalar!(
         r#"
-        SELECT state AS "state: api::ProvisionState" FROM state_history WHERE host_id = $1 ORDER BY changed_at DESC LIMIT 1"#,
+        SELECT state AS "state: api::ProvisionState" FROM state_history WHERE host_id = $1 ORDER BY update_time DESC LIMIT 1"#,
         host
     )
     .fetch_optional(conn)
@@ -34,7 +34,7 @@ pub async fn set_provision_state(
 
     sqlx::query!(
         r#"
-        INSERT INTO state_history (host_id, state, changed_at) VALUES ($1,$2,$3) "#,
+        INSERT INTO state_history (host_id, state, update_time) VALUES ($1,$2,$3) "#,
         host,
         state,
         now
@@ -186,9 +186,35 @@ pub async fn update(
 pub async fn list(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::host::Host>, sqlx::Error> {
     Ok(sqlx::query!(
         r#"
-        SELECT hosts.id, hostname, keys.verifying_key
-        FROM hosts
-        JOIN keys on hosts.key_id = keys.id"#
+        WITH current_state AS (
+            SELECT host_id, state, update_time,
+                   ROW_NUMBER() OVER(PARTITION BY host_id ORDER BY update_time DESC) as rn
+            FROM state_history
+        ),
+        current_version AS (
+            SELECT host_id, store_path, update_time,
+                   ROW_NUMBER() OVER(PARTITION BY host_id ORDER BY update_time DESC) as rn
+            FROM version_history
+        ),
+        latest_update_request AS (
+            SELECT host_id, store_path, update_time,
+                   ROW_NUMBER() OVER(PARTITION BY host_id ORDER BY update_time DESC) as rn
+            FROM update_request_history
+        )
+        SELECT
+            h.id AS "id!",
+            h.hostname AS "hostname!",
+            k.verifying_key AS "verifying_key!",
+            h.last_ping AS "last_ping!: jiff_sqlx::Timestamp",
+            ls.state AS "state: api::ProvisionState",
+            lv.store_path AS "current_version",
+            lur.store_path AS "latest_update"
+        FROM hosts h
+        JOIN keys k ON h.key_id = k.id
+        LEFT JOIN current_state ls ON ls.host_id = h.id AND ls.rn = 1
+        LEFT JOIN current_version lv ON lv.host_id = h.id AND lv.rn = 1
+        LEFT JOIN latest_update_request lur ON lur.host_id = h.id AND lur.rn = 1;
+        "#
     )
     .map(|r| api::host::Host {
         id: api::HostID::new(r.id),
@@ -199,6 +225,11 @@ pub async fn list(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::host::Ho
                 .expect("We only store valid keys"),
         )
         .expect("We only store valid keys"),
+
+        state: r.state.unwrap_or_default(),
+        last_ping: r.last_ping.to_jiff(),
+        version: r.current_version,
+        latest_update: r.latest_update,
     })
     .fetch_all(conn)
     .await?)

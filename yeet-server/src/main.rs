@@ -2,45 +2,12 @@
 
 use std::{env, fs::read_to_string, str::FromStr, sync::Arc};
 
-use axum::{
-    Router,
-    routing::{delete, get, post, put},
-};
-
-#[cfg(test)]
-use sqlx::SqliteConnection;
 // use routes::status;
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::net::TcpListener;
 
 // TODO: is this enough or do we need to use rand_chacha?
 
-mod error;
-mod httpsig;
-mod state;
-mod routes {
-    pub(crate) mod detach;
-    pub(crate) mod host;
-    pub(crate) mod key;
-    pub(crate) mod secret;
-    pub(crate) mod system_check;
-    pub(crate) mod update;
-    pub(crate) mod verify;
-}
-pub use routes::*;
-
-#[derive(Clone)]
-pub(crate) struct YeetState {
-    pool: sqlx::SqlitePool,
-    age_key: Arc<age::x25519::Identity>,
-}
-
-mod db {
-    pub mod hosts;
-    pub mod keys;
-    pub mod secrets;
-    pub mod verification;
-}
 #[tokio::main]
 #[expect(
     clippy::expect_used,
@@ -83,96 +50,9 @@ async fn main() {
         .await
         .expect("Can't connect to yeet.db");
 
-    let state = YeetState { pool, age_key };
+    let state = yeetd::YeetState { pool, age_key };
 
-    axum::serve(listener, routes(state))
+    axum::serve(listener, yeetd::routes(state))
         .await
         .expect("Could not start axum");
-}
-
-fn routes(state: YeetState) -> Router {
-    Router::new()
-        .route("/verification/add", post(verify::add_verification_attempt))
-        .route("/verification/{id}/accept", put(verify::accept_attempt))
-        .route("/verification/check", get(verify::is_host_verified))
-        // === Secrets
-        .route("/secret/add/{name}", post(secret::add_secret))
-        .route(
-            "/secret/{secret_id}/allow/{host_id}",
-            put(secret::allow_host),
-        )
-        .route(
-            "/secret/{secret_id}/block/{host_id}",
-            put(secret::block_host),
-        )
-        .route("/secret/{id}/rename/{name}", put(secret::rename_secret))
-        .route("/secret/{id}/delete", delete(secret::delete_secret))
-        .route("/secret/list", get(secret::list))
-        .route("/secret/acl", get(secret::get_all_acl))
-        .route("/secret/server_key", get(secret::get_server_age_key)) // locked
-        .route("/secret", post(secret::get_secret)) // locked
-        // === Keys
-        .route("/key/add", post(key::add_key))
-        .route("/key/delete", delete(key::delete_key))
-        // === Hosts
-        .route("/host/list", get(host::list))
-        .route("/host/{id}/rename/{name}", put(host::rename_host))
-        // === Detach
-        .route("/system/self/detach", put(detach::detach))
-        .route("/system/self/attach", put(detach::attach))
-        // === System
-        .route("/system/check", post(system_check::system_check)) // locked
-        .route("/system/update", post(update::update_hosts))
-        .with_state(state)
-}
-
-#[cfg(test)]
-use axum_test::TestServer;
-
-#[cfg(test)]
-async fn test_server(pool: sqlx::SqlitePool) -> TestServer {
-    let age_key = Arc::new(age::x25519::Identity::generate());
-    let state = YeetState { pool, age_key };
-    let mut conn = state.pool.acquire().await.unwrap();
-    sqlx::migrate!("../migrations")
-        .run(&mut conn)
-        .await
-        .unwrap();
-    let app = routes(state);
-    let server = TestServer::builder()
-        .expect_success_by_default()
-        .http_transport()
-        .build(app);
-
-    server
-}
-
-#[cfg(test)]
-async fn add_default_host(conn: &mut SqliteConnection) {
-    use httpsig_hyper::prelude::VerifyingKey as _;
-
-    let httpsig_key = httpsig_hyper::prelude::PublicKey::from_bytes(
-        &httpsig_hyper::prelude::AlgorithmName::Ed25519,
-        ed25519_dalek::VerifyingKey::default().as_bytes(),
-    )
-    .unwrap();
-
-    db::hosts::add_host(
-        conn,
-        httpsig_key.key_id(),
-        ed25519_dalek::VerifyingKey::default(),
-        "default_host".to_owned(),
-    )
-    .await
-    .unwrap();
-}
-
-#[cfg(test)]
-async fn sql_conn(pool: sqlx::SqlitePool) -> sqlx::pool::PoolConnection<sqlx::Sqlite> {
-    let mut conn = pool.acquire().await.unwrap();
-    sqlx::migrate!("../migrations")
-        .run(&mut conn)
-        .await
-        .unwrap();
-    conn
 }

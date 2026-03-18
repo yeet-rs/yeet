@@ -102,7 +102,7 @@ pub async fn auth_level(
     key: VerifyingKey,
     level: AuthLevel,
 ) -> Result<(), (StatusCode, String)> {
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-server"))]
     return Ok(());
 
     let key = &key.as_bytes()[..];

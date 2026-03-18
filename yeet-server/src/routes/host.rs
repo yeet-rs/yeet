@@ -4,7 +4,11 @@ use axum::{
     http::StatusCode,
 };
 
-use crate::{YeetState, db, error::InternalError as _, httpsig::HttpSig};
+use crate::{
+    YeetState, db,
+    error::{BadRequest as _, InternalError as _},
+    httpsig::{HttpSig, VerifiedJson},
+};
 
 pub async fn list(
     State(state): State<YeetState>,
@@ -26,6 +30,31 @@ pub async fn rename_host(
         .await
         .internal_server()?;
     Ok(StatusCode::OK)
+}
+
+/// Endpoint to set a new version for a host.
+/// The whole request needs to be signed by a build machine.
+/// The update consist of a simple `key` -> `version` and a `substitutor` which is where the agent should get its update
+/// This means that for each origin e.g. cachix, you need to call update seperately
+pub async fn update_hosts(
+    State(state): State<YeetState>,
+    HttpSig(key): HttpSig,
+
+    VerifiedJson(api::HostUpdateRequest {
+        hosts,
+        public_key,
+        substitutor,
+    }): VerifiedJson<api::HostUpdateRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let mut conn = state.pool.acquire().await.internal_server()?;
+
+    db::keys::auth_build(&mut conn, key).await?;
+
+    db::hosts::update(&mut conn, hosts.iter(), public_key, substitutor)
+        .await
+        .bad_request()?;
+
+    Ok(StatusCode::CREATED)
 }
 
 #[cfg(test)]
@@ -68,7 +97,11 @@ mod test_host {
             vec![api::host::Host {
                 id: api::HostID::new(1),
                 key: VerifyingKey::default(),
-                hostname: "myhost".to_owned()
+                hostname: "myhost".to_owned(),
+                state: api::ProvisionState::NotSet,
+                last_ping: jiff::Timestamp::now(),
+                version: None,
+                latest_update: None
             }]
         );
     }
@@ -88,7 +121,11 @@ mod test_host {
             vec![api::host::Host {
                 id: api::HostID::new(1),
                 key: VerifyingKey::default(),
-                hostname: "otherhost".to_owned()
+                hostname: "otherhost".to_owned(),
+                state: api::ProvisionState::NotSet,
+                last_ping: jiff::Timestamp::now(),
+                version: None,
+                latest_update: None
             }]
         );
     }

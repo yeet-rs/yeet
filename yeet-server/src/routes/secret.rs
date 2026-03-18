@@ -17,7 +17,7 @@ pub async fn add_secret(
     State(state): State<YeetState>,
     HttpSig(key): HttpSig,
     Path(name): Path<String>,
-    VerifiedJson(api::AddSecretRequest { secret }): VerifiedJson<api::AddSecretRequest>,
+    VerifiedJson(secret): VerifiedJson<Vec<u8>>,
 ) -> Result<Json<api::SecretID>, (StatusCode, String)> {
     let mut conn = state.pool.acquire().await.internal_server()?;
     db::keys::auth_admin(&mut conn, key).await?;
@@ -163,7 +163,7 @@ mod test_secret {
 
         let id: api::SecretID = server
             .post("/secret/add/secretstuff")
-            .json(&api::AddSecretRequest { secret })
+            .json(&secret)
             .await
             .json();
 
@@ -198,7 +198,7 @@ mod test_secret {
 
         let id: api::SecretID = server
             .post("/secret/add/secretstuff")
-            .json(&api::AddSecretRequest { secret })
+            .json(&secret)
             .await
             .json();
 
@@ -244,7 +244,7 @@ mod test_secret {
 
         let id: api::SecretID = server
             .post("/secret/add/secretstuff")
-            .json(&api::AddSecretRequest { secret })
+            .json(&secret)
             .await
             .json();
 
@@ -279,7 +279,7 @@ mod test_secret {
 
         let _id: api::SecretID = server
             .post("/secret/add/secretstuff")
-            .json(&api::AddSecretRequest { secret })
+            .json(&secret)
             .await
             .json();
 
@@ -311,7 +311,7 @@ mod test_secret {
 
         let id: api::SecretID = server
             .post("/secret/add/secretstuff")
-            .json(&api::AddSecretRequest { secret })
+            .json(&secret)
             .await
             .json();
 
@@ -341,7 +341,7 @@ mod test_secret {
 
         let id: api::SecretID = server
             .post("/secret/add/secretstuff")
-            .json(&api::AddSecretRequest { secret })
+            .json(&secret)
             .await
             .json();
 
