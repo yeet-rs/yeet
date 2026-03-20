@@ -17,8 +17,12 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
     reason = "allow in server main"
 )]
 async fn main() {
-    let port = env::var("YEET_PORT").unwrap_or("4337".to_owned());
-    let host = env::var("YEET_HOST").unwrap_or("localhost".to_owned());
+    let port = env::var("YEET_PORT")
+        .map(|port| port.parse().unwrap())
+        .unwrap_or(4337);
+    let host = env::var("YEET_HOST")
+        .map(|host| host.parse().unwrap())
+        .unwrap_or(std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST));
 
     let age_key = {
         if let Ok(content) = read_to_string("age.key") {
@@ -44,6 +48,6 @@ async fn main() {
         .await
         .expect("Can't connect to yeet.db");
 
-    let handle = yeetd::launch(&port, &host, pool, age_key).await;
+    let handle = yeetd::launch(port, host, pool, age_key).await;
     handle.await.expect("axum quit");
 }

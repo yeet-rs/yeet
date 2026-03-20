@@ -1,10 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use axum::routing::{delete, get, post, put};
 
 mod routes {
     pub mod host;
     pub mod key;
+    pub mod osquery;
     pub mod secret;
     pub mod system;
     pub mod verify;
@@ -12,12 +13,14 @@ mod routes {
 mod db {
     pub mod hosts;
     pub mod keys;
+    pub mod osquery;
     pub mod secrets;
     pub mod verification;
 }
 mod error;
 mod httpsig;
 
+use axum_server::tls_rustls::RustlsConfig;
 use ed25519_dalek::VerifyingKey;
 pub(crate) use routes::{host, key, secret, system, verify};
 
@@ -30,6 +33,8 @@ struct YeetState {
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::any_key_map;
 
+use crate::routes::osquery;
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct AppState {
     #[serde(with = "any_key_map")]
@@ -38,9 +43,9 @@ pub struct AppState {
 }
 
 #[expect(clippy::missing_panics_doc)]
-pub async fn launch(
-    port: &str,
-    host: &str,
+pub async fn launch<I: Into<std::net::IpAddr>>(
+    port: u16,
+    host: I,
     pool: sqlx::SqlitePool,
     age_key: age::x25519::Identity,
 ) -> tokio::task::JoinHandle<()> {
@@ -65,17 +70,19 @@ pub async fn launch(
             }
         }
     }
-
-    let listener = tokio::net::TcpListener::bind(format!("{host}:{port}"))
+    let config = RustlsConfig::from_pem_file("cert.pem", "key.pem")
         .await
-        .expect("Could not bind to port");
+        .unwrap();
+
+    let addr = SocketAddr::from((host, port));
 
     let age_key = Arc::new(age_key);
 
     let state = YeetState { pool, age_key };
 
     tokio::spawn(async move {
-        axum::serve(listener, routes(state))
+        axum_server::bind_rustls(addr, config)
+            .serve(routes(state).into_make_service())
             .await
             .expect("Could not start axum");
     })
@@ -114,6 +121,10 @@ fn routes(state: YeetState) -> axum::Router {
         .route("/system/self/detach", put(system::detach))
         .route("/system/self/attach", put(system::attach))
         .route("/system/check", post(system::system_check)) // locked
+        // === Osquery
+        .route("/osquery/enroll", post(osquery::enroll))
+        .route("/osquery/query/read", post(osquery::query_read))
+        .route("/osquery/query/write", post(osquery::query_write))
         .with_state(state)
 }
 

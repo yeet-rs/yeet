@@ -37,10 +37,12 @@ serde.workspace = true
 ed25519-dalek = { workspace = true, features = ["serde", "rand_core", "std", "pem"]}
 thiserror.workspace = true
 serde_json_any_key.workspace = true
+osquery-tls.workspace = true
 jiff-sqlx = { version = "0.1.1", features = ["sqlite"] }
-sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"] }
+sqlx = { version = "0.8.6", features = ["json", "runtime-tokio", "sqlite", "uuid"] }
 futures = "0.3.32"
 error_set.workspace = true
+axum-server = { version = "0.8.0", features = ["tls-rustls"] }
 
 [dev-dependencies]
 paste = "1.0"

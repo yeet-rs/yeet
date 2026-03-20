@@ -23,6 +23,8 @@ error_set::error_set! {
     }
 }
 
+/// The secrets needs to be encrypted with the servers identity key
+/// retrieve it with GET `/secret/server_key`
 /// Add a new secret - `store_key` required to test if it is an actual encrypted secret and not bogus
 pub async fn add_secret<I: age::Identity, S: Into<String>, V: Into<Vec<u8>>>(
     conn: &mut sqlx::SqliteConnection,

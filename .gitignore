@@ -23,3 +23,9 @@ devenv.local.yaml
 
 # sqlite
 yeet.db
+
+# crt
+*.key
+
+*-shm
+*-wal
