@@ -1,0 +1,61 @@
+name: Nix crate2nix & Build
+
+on:
+  pull_request:
+
+env:
+  DATABASE_URL: sqlite:yeet.db
+  RUSTFLAGS: --cfg tokio_unstable
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  crate2nix:
+    name: crate2nix update
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+
+      - name: Generate Cargo.nix
+        run: nix run nixpkgs#crate2nix -- generate
+
+      - name: Check for modifications
+        id: check
+        run: git diff --quiet Cargo.nix || echo "modified=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload updated Cargo.nix
+        if: steps.check.outputs.modified == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          path: Cargo.nix
+          archive: false
+
+      - name: Fail if modified
+        if: steps.check.outputs.modified == 'true'
+        run: |
+          echo "::error file=Cargo.nix::Cargo.nix is out of date. Please download the 'Cargo.nix' artifact from this run summary (or run 'crate2nix generate' locally) and commit the changes."
+          exit 1
+
+  build:
+    name: Run Nix Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: cachix/install-nix-action@v31
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
+      - uses: dtolnay/rust-toolchain@stable
+      # - run: nix-build -A packages.yeetd 2>&1 # -> currently not working because sqlx needs cargo and we build with crate2nix
+      - run: nix-build -A packages.yeet 2>&1

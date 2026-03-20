@@ -3,7 +3,6 @@ name: Rust Lint & Tests
 on:
   pull_request:
 
-
 env:
   DATABASE_URL: sqlite:yeet.db
   RUSTFLAGS: --cfg tokio_unstable
