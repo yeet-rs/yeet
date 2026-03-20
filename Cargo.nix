@@ -22216,12 +22216,7 @@ rec {
         crateName = "zlink";
         version = "0.4.0";
         edition = "2021";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/z-galaxy/zlink.git";
-          rev = "d2a3d64a9933e3991a56146e5c88066c0f25a652";
-          sha256 = "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n";
-        };
+        sha256 = "0aln01wc9d6zj8ayxl074xksl2pz0hwpjf179xv9hzk9w9jx0nnx";
         authors = [
           "Zeeshan Ali Khan<zeenix@gmail.com>"
         ];
@@ -22247,7 +22242,7 @@ rec {
           "introspection" = [ "zlink-tokio?/introspection" "zlink-smol?/introspection" ];
           "proxy" = [ "zlink-tokio?/proxy" "zlink-smol?/proxy" ];
           "server" = [ "zlink-tokio?/server" "zlink-smol?/server" ];
-          "service" = [ "server" "introspection" "zlink-tokio?/service" "zlink-smol?/service" ];
+          "service" = [ "server" "zlink-tokio?/service" "zlink-smol?/service" ];
           "smol" = [ "dep:zlink-smol" ];
           "tokio" = [ "dep:zlink-tokio" ];
           "tracing" = [ "zlink-tokio?/tracing" "zlink-smol?/tracing" ];
@@ -22258,12 +22253,7 @@ rec {
         crateName = "zlink-core";
         version = "0.4.0";
         edition = "2021";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/z-galaxy/zlink.git";
-          rev = "d2a3d64a9933e3991a56146e5c88066c0f25a652";
-          sha256 = "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n";
-        };
+        sha256 = "0b1z9fjbylmcykc6n9x3f7aw56bs2cxp475z4qn6r6g9fcamdrna";
         libName = "zlink_core";
         authors = [
           "Zeeshan Ali Khan<zeenix@gmail.com>"
@@ -22358,12 +22348,7 @@ rec {
         crateName = "zlink-macros";
         version = "0.4.0";
         edition = "2021";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/z-galaxy/zlink.git";
-          rev = "d2a3d64a9933e3991a56146e5c88066c0f25a652";
-          sha256 = "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n";
-        };
+        sha256 = "12hn10zkky2xmi8zw1xx5x33m4r84bapzqils5rl1164mmd9l8fl";
         procMacro = true;
         libName = "zlink_macros";
         authors = [
@@ -22396,12 +22381,7 @@ rec {
         crateName = "zlink-smol";
         version = "0.4.0";
         edition = "2021";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/z-galaxy/zlink.git";
-          rev = "d2a3d64a9933e3991a56146e5c88066c0f25a652";
-          sha256 = "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n";
-        };
+        sha256 = "0am8vjj0awpvfl0q3wf196868n9x8yvf3nhzfbv1bvh4b5805ymy";
         libName = "zlink_smol";
         authors = [
           "Zeeshan Ali Khan<zeenix@gmail.com>"
@@ -22448,7 +22428,7 @@ rec {
           "introspection" = [ "zlink-core/introspection" ];
           "proxy" = [ "zlink-core/proxy" ];
           "server" = [ "zlink-core/server" ];
-          "service" = [ "server" "introspection" "zlink-core/service" ];
+          "service" = [ "server" "zlink-core/service" ];
           "tracing" = [ "zlink-core/tracing" ];
         };
         resolvedDefaultFeatures = [ "idl" "introspection" "proxy" "server" "service" "tracing" ];
@@ -22457,12 +22437,7 @@ rec {
         crateName = "zlink-tokio";
         version = "0.4.0";
         edition = "2021";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/z-galaxy/zlink.git";
-          rev = "d2a3d64a9933e3991a56146e5c88066c0f25a652";
-          sha256 = "19xg2xv01frjjqbgr4xav8ng1claxyc5pva9kxdjfknj7a07dg0n";
-        };
+        sha256 = "0y4kch0n1wican556pr48k5gqglrhw6q7ssij8ssjpxd9zy1109p";
         libName = "zlink_tokio";
         authors = [
           "Zeeshan Ali Khan<zeenix@gmail.com>"
@@ -22511,7 +22486,7 @@ rec {
           "introspection" = [ "zlink-core/introspection" ];
           "proxy" = [ "zlink-core/proxy" ];
           "server" = [ "zlink-core/server" ];
-          "service" = [ "server" "introspection" "zlink-core/service" ];
+          "service" = [ "server" "zlink-core/service" ];
           "tracing" = [ "zlink-core/tracing" "tokio/tracing" ];
         };
         resolvedDefaultFeatures = [ "idl" "introspection" "proxy" "server" "service" "tracing" ];

@@ -6107,7 +6107,8 @@ dependencies = [
 [[package]]
 name = "zlink"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#d2a3d64a9933e3991a56146e5c88066c0f25a652"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd5ad065e2697e98764f2738793904ff0aaa672707d0ee1592dfb4c47800962a"
 dependencies = [
  "zlink-smol",
  "zlink-tokio",
@@ -6116,7 +6117,8 @@ dependencies = [
 [[package]]
 name = "zlink-core"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#d2a3d64a9933e3991a56146e5c88066c0f25a652"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cae6561573e9996c2c26bf1c723b137a99c2d571a3276bd8f4ac52bfa44b3f2c"
 dependencies = [
  "futures-util",
  "itoa",
@@ -6133,7 +6135,8 @@ dependencies = [
 [[package]]
 name = "zlink-macros"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#d2a3d64a9933e3991a56146e5c88066c0f25a652"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4219a5aadc4844073d134e27fd52228933a462fbd07fe51ac5df8393f08168a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6143,7 +6146,8 @@ dependencies = [
 [[package]]
 name = "zlink-smol"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#d2a3d64a9933e3991a56146e5c88066c0f25a652"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "befa02505904ee15f6721fdae1b6473d59649049c1f1810175fb7205a4dca82a"
 dependencies = [
  "async-broadcast",
  "async-channel",
@@ -6157,7 +6161,8 @@ dependencies = [
 [[package]]
 name = "zlink-tokio"
 version = "0.4.0"
-source = "git+https://github.com/z-galaxy/zlink.git#d2a3d64a9933e3991a56146e5c88066c0f25a652"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "378110fc4fad5fa9359251eb830d87993efcca44245f538a552cf26001649378"
 dependencies = [
  "futures-util",
  "pin-project-lite",
