@@ -49,9 +49,9 @@ pub fn run_vm(flake_path: &Path, system: &str) -> Result<(), Report> {
     let flake_path = flake_path.canonicalize()?; // Maybe check if its a dir and if it contains a flake.nix
     let flake_path = flake_path.to_string_lossy();
     #[cfg(target_arch = "x86_64")]
-    let flake_target = format!("nixosConfigurations.{system}.config.formats.vm",);
+    let flake_target = format!("nixosConfigurations.{system}.config.formats.vm");
     #[cfg(target_arch = "aarch64")]
-    let flake_target = format!("darwinConfigurations.{system}.config.formats.vm",);
+    let flake_target = format!("darwinConfigurations.{system}.config.formats.vm");
     let build_output = Command::new(nom_or_nix())
         .args(["build", "-f", &flake_path, &flake_target])
         .stderr(io::stderr())

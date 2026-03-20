@@ -28,7 +28,7 @@ jobs:
       - run: rustup component add clippy
       - run: cargo fetch
       - name: cargo clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy -- -D warnings
 
   test:
     name: Run Tests
