@@ -1,5 +1,5 @@
 [workspace]
-members = ["yeet-agent", "yeet-api", "yeet-server"]
+members = ["yeet-agent","yeet-api", "yeet-server"]
 resolver = "2"
 
 [profile.release]
@@ -11,6 +11,31 @@ panic = "abort"
 
 [profile.dev.package."*"]
 opt-level = 3
+
+[workspace.package]
+version = "0.8.0-beta.1"
+categories = ["Configuration"]
+edition = "2024"
+repository = "https://github.com/yeet-rs/yeet"
+keywords = ["nix", "deployment", "pull-based"]
+license = "AGPL-3.0-or-later"
+readme = "README"
+
+[workspace.dependencies]
+httpsig-hyper = "0.0.24"
+reqwest = { version = "0.13", features = ["json"] }
+jiff = {version = "0.2", features = ["serde"]}
+serde = { version = "1.0", features = ["derive"] }
+ed25519-dalek = { version = "2.1", features = ["serde", "pkcs8"] }
+http = "1.3.1"
+ssh-key = { version = "0.6", features = ["serde", "ed25519"] }
+thiserror = "2.0"
+error_set = "0.9.1"
+serde_json_any_key = {version = "2.0"}
+url = { version = "2.5", features = ["serde"] }
+age = "0.11.2"
+axum-test = "19.1"
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"]}
 
 
 [workspace.lints.rust]
@@ -53,3 +78,18 @@ iter_over_hash_type = "allow"
 missing-inline-in-public-items = "allow"
 arbitrary_source_item_ordering = "allow"
 allow_attributes_without_reason = "allow"
+pub_use = "allow"
+# TODO: remove this in future
+missing_errors_doc = "allow"
+exhaustive_structs = "allow"
+exhaustive_enums = "allow"
+impl_trait_in_params = "allow"
+cfg_not_test = "allow" # Auth gets excluded in tests - we test auth in the api tests
+expect_used = "allow" # as long as there is a reason -> also not that bad in axum
+default_numeric_fallback = "allow" # is just really verbose
+semicolon_inside_block = "allow"
+cast_possible_truncation = "allow" # it is still visible by `as`
+cast_sign_loss = "allow"
+as_conversions = "allow"
+pattern_type_mismatch = "allow" # I am too dumb for this
+verbose_file_reads = "allow"

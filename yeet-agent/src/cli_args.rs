@@ -51,7 +51,6 @@ pub struct AgentConfig {
     pub key: PathBuf,
 }
 
-#[expect(clippy::doc_markdown, reason = "No Markdown for clap")]
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(hide = true)]
@@ -76,17 +75,7 @@ pub enum Commands {
         facter: bool,
     },
     /// Approve a pending key verification with the corresponding code
-    Approve {
-        /// Hostname
-        #[arg(index = 1)]
-        name: Option<String>,
-        /// Verification code
-        #[arg(index = 2)]
-        code: Option<u32>,
-        /// Facter output file
-        #[arg(long)]
-        facter: Option<PathBuf>,
-    },
+    Approve,
     /// Build and then publish some or all hosts in a flake
     Publish {
         /// Path to flake
@@ -135,11 +124,6 @@ pub enum Commands {
         /// Path to flake
         #[arg(long, default_value = current_dir().unwrap().into_os_string())]
         path: PathBuf,
-        /// This will bypass signaling the detachement to the server. Bypassing the permission check.
-        /// Required if your host is offline. The consequence will be that once your client gains connectivity to the yeet server,
-        /// your client will siwtch to the server version meaning that you will lose the changes made by the detachement.
-        #[arg(long, default_value_t = false)]
-        force: bool,
     },
     /// Attach your system to the server
     Attach,
@@ -164,20 +148,9 @@ pub struct HostArgs {
 #[derive(Subcommand)]
 pub enum HostCommands {
     /// Rename an existing yeet host
-    Rename {
-        /// The current name of the host
-        #[arg(long)]
-        name: Option<String>,
-        /// The new name for the host
-        #[arg(long)]
-        new: Option<String>,
-    },
+    Rename,
     /// Delete an host including all authentication info
-    Remove {
-        /// The name of the host
-        #[arg(long)]
-        name: Option<String>,
-    },
+    Remove,
 }
 
 #[derive(Args)]
@@ -209,20 +182,7 @@ pub enum ServerCommands {
         #[arg(long)]
         substitutor: String,
     },
-    /// Check if a key is verified
-    VerifyStatus,
-    /// Adds a key to the server for verification
-    AddVerification {
-        /// Store path of the current running system
-        #[arg(long)]
-        store_path: String,
-        /// The public key the of the verification attempt
-        #[arg(long)]
-        public_key: PathBuf,
-        /// Facter input file
-        #[arg(long)]
-        facter: Option<PathBuf>,
-    },
+
     /// Add a new admin or build key to the server
     AddKey {
         /// Public key to add
@@ -233,7 +193,7 @@ pub enum ServerCommands {
         admin: AuthLevel,
     },
     /// Remove a key from the server (can also used to remove hosts)
-    RemoveKey {
+    DeleteKey {
         /// Public key to remove
         #[arg(index = 1)]
         key: PathBuf,

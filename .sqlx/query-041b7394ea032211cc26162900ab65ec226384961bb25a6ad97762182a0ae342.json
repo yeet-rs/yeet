@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT state AS \"state: api::ProvisionState\" FROM state_history WHERE host_id = $1 ORDER BY update_time DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "state: api::ProvisionState",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "041b7394ea032211cc26162900ab65ec226384961bb25a6ad97762182a0ae342"
+}

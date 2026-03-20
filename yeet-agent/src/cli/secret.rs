@@ -1,14 +1,9 @@
-use std::{
-    fs::File,
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, fs::File, io::Read as _, path::Path};
 
 use clap::{Args, Subcommand};
 use console::style;
 use inquire::validator::Validation;
-use rootcause::{Report, bail};
-use yeet::server;
+use rootcause::Report;
 
 use crate::{cli::common, cli_args::Config, section, sig::ssh};
 
@@ -21,56 +16,17 @@ pub struct SecretArgs {
 #[derive(Subcommand)]
 pub enum SecretCommands {
     /// Add or Update a secret
-    Add {
-        /// The name of the secret
-        #[arg(index = 1)]
-        name: Option<String>,
-        /// The content
-        #[arg(long)]
-        file: Option<PathBuf>,
-    },
+    Add,
     /// Rename an existing secret
-    Rename {
-        /// The current name of the secret
-        #[arg(index = 1)]
-        name: Option<String>,
-        /// The new name for the secret
-        #[arg(long)]
-        new: Option<String>,
-    },
+    Rename,
     /// Delete a secret
-    Remove {
-        /// The name of the secret
-        #[arg(index = 1)]
-        name: Option<String>,
-    },
+    Remove,
     /// Allow a `host` to access a `secret`
-    Allow {
-        /// The name of the secret
-        #[arg(index = 1)]
-        secret: Option<String>,
-        /// The name of the host
-        #[arg(long)]
-        host: Option<String>,
-    },
+    Allow,
     /// Deny a `host` to access a `secret`
-    Deny {
-        /// The name of the secret
-        #[arg(index = 1)]
-        secret: Option<String>,
-        /// The name of the host
-        #[arg(long)]
-        host: Option<String>,
-    },
+    Block,
     /// Show secrets and the associated hosts
-    Show {
-        /// Filter by secret
-        #[arg(long)]
-        secret: Vec<String>,
-        /// Filter by host
-        #[arg(long)]
-        host: Vec<String>,
-    },
+    Show,
 }
 
 pub async fn handle_secret_command(
@@ -78,37 +34,30 @@ pub async fn handle_secret_command(
     config: &Config,
 ) -> Result<(), rootcause::Report> {
     match args.command {
-        SecretCommands::Add { name, file } => add(config, name, file).await?,
-        SecretCommands::Rename { name, new } => rename(config, name, new).await?,
-        SecretCommands::Remove { name } => remove(config, name).await?,
-        SecretCommands::Allow { host, secret } => allow(config, secret, host).await?,
-        SecretCommands::Deny { host, secret } => deny(config, secret, host).await?,
-        SecretCommands::Show { secret, host } => show(config, secret, host).await?,
+        SecretCommands::Add => add(config).await?,
+        SecretCommands::Rename => rename(config).await?,
+        SecretCommands::Remove => remove(config).await?,
+        SecretCommands::Allow => allow(config).await?,
+        SecretCommands::Block => deny(config).await?,
+        SecretCommands::Show => show(config).await?,
     }
     Ok(())
 }
 
-async fn add(config: &Config, name: Option<String>, file: Option<PathBuf>) -> Result<(), Report> {
+async fn add(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
     let recipient: age::x25519::Recipient = {
-        let recipient = server::secret::get_server_recipient(&url, secret_key).await?;
+        let recipient = api::server_age_key(&url, secret_key).await?;
         recipient
             .parse()
             .map_err(|err| rootcause::report!("Could not parse the server recipient key: {err}"))?
     };
 
-    let name = if let Some(name) = name {
-        name
-    } else {
-        inquire::Text::new("What should the name of the secret be?").prompt()?
-    };
+    let name = inquire::Text::new("What should the name of the secret be?").prompt()?;
 
-    let secret = if let Some(file) = file {
-        let bytes = read_to_bytes(file)?;
-        age::encrypt(&recipient, &bytes)
-    } else {
+    let secret = {
         let path = inquire::Text::new("Secret File:")
             .with_validator(|path: &str| {
                 Ok(match File::open(path) {
@@ -121,73 +70,41 @@ async fn add(config: &Config, name: Option<String>, file: Option<PathBuf>) -> Re
         age::encrypt(&recipient, &bytes)
     }?;
 
-    server::secret::add_secret(
-        &url,
-        secret_key,
-        &api::AddSecretRequest {
-            name: name.clone(),
-            secret,
-        },
-    )
-    .await?;
+    api::add_secret(&url, secret_key, &name, &secret).await?;
     log::info!("Secret {name} created!");
 
-    allow(config, Some(name), None).await?;
+    allow(config).await?;
 
     Ok(())
 }
 
-async fn rename(config: &Config, name: Option<String>, new: Option<String>) -> Result<(), Report> {
+async fn rename(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
-    let secret_list = server::secret::list(&url, secret_key).await?;
+    let secret_list = api::list_secrets(&url, secret_key).await?;
 
-    let name = if let Some(name) = name {
-        if !secret_list.contains(&name) {
-            bail!("Secret {name} does not exist!")
-        }
-        name
-    } else {
-        inquire::Select::new("Which secret do you want to rename?", secret_list.clone()).prompt()?
-    };
+    let secret =
+        inquire::Select::new("Which secret do you want to rename?", secret_list).prompt()?;
 
-    let new = if let Some(new) = new {
-        new
-    } else {
-        inquire::Text::new("What should the new name be?").prompt()?
-    };
+    let new = inquire::Text::new("What should the new name be?").prompt()?;
 
-    log::info!("Renaming {name} to {new}...");
+    log::info!("Renaming {} to {new}...", secret.name);
 
-    server::secret::rename_secret(
-        &url,
-        secret_key,
-        &api::RenameSecretRequest {
-            current_name: name,
-            new_name: new,
-        },
-    )
-    .await?;
+    api::rename_secret(&url, secret_key, secret.id, &new).await?;
     log::info!("Done!");
 
     Ok(())
 }
 
-async fn remove(config: &Config, secret: Option<String>) -> Result<(), Report> {
+async fn remove(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
-    let secret_list = server::secret::list(&url, secret_key).await?;
+    let secret_list = api::list_secrets(&url, secret_key).await?;
 
-    let secret = if let Some(secret) = secret {
-        if !secret_list.contains(&secret) {
-            bail!("Secret {secret} does not exist!")
-        }
-        secret
-    } else {
-        inquire::Select::new("Which secret do you want to delete?", secret_list.clone()).prompt()?
-    };
+    let secret =
+        inquire::Select::new("Which secret do you want to delete?", secret_list).prompt()?;
 
     // The user has to confirm the action
     let confirm = inquire::Confirm::new(
@@ -207,84 +124,46 @@ async fn remove(config: &Config, secret: Option<String>) -> Result<(), Report> {
 
     log::info!("Deleting...");
 
-    server::secret::remove_secret(
-        &url,
-        secret_key,
-        &api::RemoveSecretRequest {
-            secret_name: secret,
-        },
-    )
-    .await?;
+    api::delete_secret(&url, secret_key, secret.id).await?;
     log::info!("Done!");
 
     Ok(())
 }
 
-pub async fn allow(
-    config: &Config,
-    secret: Option<String>,
-    host: Option<String>,
-) -> Result<(), Report> {
+pub async fn allow(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
-    let secret_list = server::secret::list(&url, secret_key).await?;
+    let secret_list = api::list_secrets(&url, secret_key).await?;
 
-    let secrets = if let Some(secret) = secret {
-        if !secret_list.contains(&secret) {
-            bail!("Secret {secret} does not exist!")
-        }
-        vec![secret]
-    } else if host.is_some() {
-        inquire::MultiSelect::new(
-            &format!(
-                "Select which secrets should {} be able to access>",
-                host.as_ref().unwrap()
-            ),
-            secret_list.clone(),
-        )
-        .prompt()?
-    } else {
-        let secret =
-            inquire::Select::new("Which secret do you want to modify?", secret_list.clone())
-                .prompt()?;
-        vec![secret]
-    };
+    let secrets =
+        inquire::MultiSelect::new("Which secret do you want to modify?", secret_list.clone())
+            .prompt()?;
 
+    let mut hosts = api::list_hosts(&url, secret_key).await?;
     let hostnames = {
-        let hosts = server::status(&url, secret_key).await?;
-        let mut hostnames: Vec<_> = hosts.iter().map(|h| h.name.clone()).collect();
+        let mut hostnames: Vec<_> = hosts.iter().map(|host| host.hostname.clone()).collect();
         hostnames.sort();
         hostnames
     };
-    let hosts = if let Some(host) = host {
-        if !hostnames.contains(&host) {
-            bail!("Host {host} does not exist!")
-        }
-        vec![host]
-    } else {
-        inquire::MultiSelect::new(
-            "Which Hosts should be able to access this secret>",
-            hostnames,
-        )
-        .prompt()?
-    };
+    let selected = inquire::MultiSelect::new(
+        "Which Hosts should be able to access this secret>",
+        hostnames,
+    )
+    .prompt()?;
+
+    hosts.retain(|host| selected.contains(&host.hostname));
 
     log::info!("Allowing {hosts:?} to access {secrets:?}...");
 
     for host in hosts {
         for secret in &secrets {
-            let response = server::secret::acl(
-                &url,
-                secret_key,
-                &api::AclSecretRequest::AllowHost {
-                    secret: secret.clone(),
-                    host: host.clone(),
-                },
-            )
-            .await;
+            let response = api::allow_host(&url, secret_key, secret.id, host.id).await;
             if let Err(err) = response {
-                log::error!("Error adding access for {host} from {secret}:\n{err}")
+                log::error!(
+                    "Error adding access for {} from {secret}:\n{err}",
+                    host.hostname
+                );
             }
         }
     }
@@ -293,62 +172,52 @@ pub async fn allow(
     Ok(())
 }
 
-async fn deny(config: &Config, secret: Option<String>, host: Option<String>) -> Result<(), Report> {
+async fn deny(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
-    let secret_list = server::secret::list(&url, secret_key).await?;
-
-    let secrets = if let Some(secret) = secret {
-        if !secret_list.contains(&secret) {
-            bail!("Secret {secret} does not exist!")
-        }
-        vec![secret]
-    } else if host.is_some() {
-        inquire::MultiSelect::new(
-            &format!(
-                "Select which secrets should {} be removed>",
-                host.as_ref().unwrap()
-            ),
-            secret_list.clone(),
-        )
-        .prompt()?
-    } else {
-        let secret =
-            inquire::Select::new("Which secret do you want to modify?", secret_list.clone())
-                .prompt()?;
-        vec![secret]
+    let selected_secrets = {
+        let secret_list = api::list_secrets(&url, secret_key).await?;
+        inquire::MultiSelect::new("Which secret do you want to modify?", secret_list).prompt()?
     };
 
-    let hosts = if let Some(host) = host {
-        vec![host]
-    } else {
+    // get acl of all the secrets and then collect all the hosts that are allowed
+
+    let mut hosts = {
+        // collect acl
+        let mut acl = api::list_secret_acl(&url, secret_key).await?;
+
+        // only want the acl that are selected
+        acl.retain(|(secret, _v)| selected_secrets.contains(secret));
+
+        let host_ids: Vec<api::HostID> = acl.into_iter().flat_map(|(_k, hosts)| hosts).collect();
+        let mut hosts = api::list_hosts(&url, secret_key).await?;
+        // only want hosts in the acl
+        hosts.retain(|host| host_ids.contains(&host.id));
+        hosts
+    };
+    let selected_hosts = {
         let hostnames = {
-            let acl = server::secret::get_all_acl(&url, secret_key).await?;
-            let Some(mut hostnames) = acl.get(&secrets[0]).cloned() else {
-                rootcause::bail!("No host has access to this secret!")
-            };
+            let mut hostnames: Vec<_> = hosts.iter().map(|host| host.hostname.clone()).collect();
             hostnames.sort();
             hostnames
         };
+
         inquire::MultiSelect::new("Which Hosts should be removed>", hostnames).prompt()?
     };
 
-    log::info!("Denying {hosts:?} to access {secrets:?}...");
+    hosts.retain(|host| selected_hosts.contains(&host.hostname));
+
+    log::info!("Denying {hosts:?} to access {selected_secrets:?}...");
 
     for host in hosts {
-        for secret in &secrets {
-            let response = server::secret::acl(
-                &url,
-                secret_key,
-                &api::AclSecretRequest::RemoveHost {
-                    secret: secret.clone(),
-                    host: host.clone(),
-                },
-            )
-            .await;
+        for secret in &selected_secrets {
+            let response = api::block_host(&url, secret_key, secret.id, host.id).await;
             if let Err(err) = response {
-                log::error!("Error removing access for {host} from {secret}:\n{err}")
+                log::error!(
+                    "Error removing access for {} from {secret}:\n{err}",
+                    host.id
+                );
             }
         }
     }
@@ -357,37 +226,39 @@ async fn deny(config: &Config, secret: Option<String>, host: Option<String>) -> 
     Ok(())
 }
 
-async fn show(config: &Config, secret: Vec<String>, host: Vec<String>) -> Result<(), Report> {
+async fn show(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
-    let mut acl = server::secret::get_all_acl(&url, secret_key).await?;
-
-    let secret_list = {
-        let mut secret_list = server::secret::list(&url, secret_key).await?;
-        secret_list.retain(|s| !acl.contains_key(s));
-        secret_list.into_iter().map(|s| (s, Vec::<String>::new()))
-    };
-    acl.extend(secret_list);
+    let acl = api::list_secret_acl(&url, secret_key).await?;
 
     if acl.is_empty() {
         log::info!("No secrets yet!");
         return Ok(());
     }
 
-    // Only show the specified secrets if some are set
-    if !secret.is_empty() {
-        acl.retain(|k, _v| secret.contains(k));
-    }
-
-    // Only show the specified hosts if some are set
-    if !host.is_empty() {
-        acl.values_mut()
-            .map(|hosts| hosts.retain(|h| host.contains(h)));
-    }
+    let all_hosts: HashMap<api::HostID, String> = {
+        let hosts = api::list_hosts(&url, secret_key).await?;
+        hosts
+            .into_iter()
+            .map(|host| (host.id, host.hostname))
+            .collect()
+    };
 
     let mut sections = Vec::new();
     for (secret, hosts) in acl {
+        // map the host ids to hostnames
+        let mut hosts: Vec<String> = hosts
+            .iter()
+            .map(|host| {
+                all_hosts
+                    .get(host)
+                    .cloned()
+                    .unwrap_or("Unknown Host".to_owned())
+            })
+            .collect();
+        hosts.sort();
+
         sections.push((
             style(format!("{secret}:")).bold().underlined().to_string(),
             vec![("Hosts".to_owned(), hosts.join("\n"))],
@@ -402,6 +273,6 @@ async fn show(config: &Config, secret: Vec<String>, host: Vec<String>) -> Result
 fn read_to_bytes<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<u8>> {
     let mut file = File::open(path)?;
     let mut buf = Vec::new();
-    file.read_to_end(&mut buf);
+    file.read_to_end(&mut buf)?;
     Ok(buf)
 }

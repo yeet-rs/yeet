@@ -1,9 +1,8 @@
-use std::{collections::HashMap, fs::read_to_string};
+use std::collections::HashMap;
 
-use api::key::{get_secret_key, get_verify_key};
+use api::{get_secret_key, get_verify_key};
 use log::info;
 use rootcause::Report;
-use yeet::server;
 
 use crate::cli_args::{AuthLevel, Config, ServerArgs, ServerCommands};
 
@@ -23,9 +22,9 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
             public_key,
             substitutor,
         } => {
-            server::system::update(
-                &url,
-                &get_secret_key(&httpsig_key)?,
+            api::update_hosts(
+                url,
+                &get_secret_key(httpsig_key)?,
                 &api::HostUpdateRequest {
                     hosts: HashMap::from([(host, store_path)]),
                     public_key,
@@ -34,42 +33,15 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
             )
             .await?;
         }
-        ServerCommands::VerifyStatus => {
-            let status =
-                server::system::is_host_verified(&url, &get_secret_key(&httpsig_key)?).await?;
-            info!("{status}");
-        }
-        ServerCommands::AddVerification {
-            store_path,
-            public_key,
-            facter,
-        } => {
-            let nixos_facter = if let Some(facter) = facter {
-                Some(read_to_string(facter)?)
-            } else {
-                None
-            };
-
-            let code = server::system::add_verification_attempt(
-                &url,
-                &api::VerificationAttempt {
-                    store_path,
-                    key: get_verify_key(&public_key)?,
-                    artifacts: api::VerificationArtifacts { nixos_facter },
-                },
-            )
-            .await?;
-            info!("{code}");
-        }
         ServerCommands::AddKey { key, admin } => {
             let level = if admin == AuthLevel::Admin {
                 api::AuthLevel::Admin
             } else {
                 api::AuthLevel::Build
             };
-            let status = server::key::add_key(
-                &url,
-                &get_secret_key(&httpsig_key)?,
+            let status = api::add_key(
+                url,
+                &get_secret_key(httpsig_key)?,
                 &api::AddKey {
                     key: get_verify_key(&key)?,
                     level,
@@ -78,13 +50,10 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
             .await?;
             info!("{status}");
         }
-        ServerCommands::RemoveKey { key } => {
-            let status = server::key::remove_key(
-                &url,
-                &get_secret_key(&httpsig_key)?,
-                &get_verify_key(&key)?,
-            )
-            .await?;
+        ServerCommands::DeleteKey { key } => {
+            let status =
+                api::delete_key(url, &get_secret_key(httpsig_key)?, &get_verify_key(&key)?)
+                    .await?;
             info!("{status}");
         }
     }

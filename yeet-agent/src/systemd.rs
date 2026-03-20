@@ -22,6 +22,6 @@ pub fn systemd_status_value(
     let line = output
         .lines()
         .map(str::trim)
-        .find_map(|l| l.strip_prefix(prefix.as_str()));
+        .find_map(|line| line.strip_prefix(prefix.as_str()));
     Ok(line.map(std::borrow::ToOwned::to_owned))
 }

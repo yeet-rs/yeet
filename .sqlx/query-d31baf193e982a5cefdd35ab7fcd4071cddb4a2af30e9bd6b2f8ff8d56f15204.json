@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT 1 AS \"col\" FROM users LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "col",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d31baf193e982a5cefdd35ab7fcd4071cddb4a2af30e9bd6b2f8ff8d56f15204"
+}

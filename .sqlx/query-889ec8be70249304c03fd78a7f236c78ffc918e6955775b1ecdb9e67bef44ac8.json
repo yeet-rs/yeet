@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT level AS \"level: api::AuthLevel\" FROM users\n        LEFT JOIN keys ON users.key_id = keys.id\n        WHERE verifying_key = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "level: api::AuthLevel",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "889ec8be70249304c03fd78a7f236c78ffc918e6955775b1ecdb9e67bef44ac8"
+}

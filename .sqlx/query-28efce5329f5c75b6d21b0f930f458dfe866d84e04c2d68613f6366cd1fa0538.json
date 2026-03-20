@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM verification_attempts WHERE id = $1 RETURNING nixos_facter,verifying_key",
+  "describe": {
+    "columns": [
+      {
+        "name": "nixos_facter",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "verifying_key",
+        "ordinal": 1,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "28efce5329f5c75b6d21b0f930f458dfe866d84e04c2d68613f6366cd1fa0538"
+}

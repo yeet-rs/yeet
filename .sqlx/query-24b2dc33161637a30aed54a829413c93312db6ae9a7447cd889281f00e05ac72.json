@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE hosts\n        SET hostname = $1\n        WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "24b2dc33161637a30aed54a829413c93312db6ae9a7447cd889281f00e05ac72"
+}

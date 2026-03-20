@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM keys WHERE verifying_key = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "709ef04d14251fd9135a70ad9b8e27847028843b2c1763c419bd2e1621a59de1"
+}

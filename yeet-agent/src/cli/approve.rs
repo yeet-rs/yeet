@@ -7,7 +7,6 @@ use std::{
 use inquire::validator::Validation;
 use log::info;
 use rootcause::Report;
-use yeet::server;
 
 use crate::{
     cli::{self, common},
@@ -15,51 +14,30 @@ use crate::{
     sig::ssh,
 };
 
-pub async fn approve(
-    config: &Config,
-    facter_output: Option<PathBuf>,
-    code: Option<u32>,
-    hostname: Option<String>,
-) -> Result<(), Report> {
+pub async fn approve(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
-    let hostname = if let Some(hostname) = hostname {
-        hostname
-    } else {
+    let hostname =
         // TODO nix select
-        inquire::Text::new("Hostname:").prompt()?
-    };
+        inquire::Text::new("Hostname:").prompt()?;
 
-    let code = if let Some(code) = code {
-        code
-    } else {
-        inquire::CustomType::<u32>::new("Approval code:").prompt()?
-    };
+    let code = inquire::CustomType::<u32>::new("Approval code:").prompt()?;
 
     info!("Approving {hostname} with code {code}...");
 
-    let artifacts = server::system::verify_attempt(
-        &url,
-        secret_key,
-        &api::VerificationAcceptance {
-            code,
-            hostname: hostname.clone(),
-        },
-    )
-    .await?;
+    let nixos_facter = api::accept_attempt(&url, secret_key, code, &hostname).await?;
 
     info!("Approved");
 
-    if artifacts.nixos_facter.is_none() {
+    if nixos_facter.is_none() {
         return Ok(());
     }
-    let nixos_facter = artifacts.nixos_facter.unwrap();
+    #[expect(clippy::unwrap_used)] // we checked
+    let nixos_facter = nixos_facter.unwrap();
 
     // Get file to write facter data
-    let facter_output = if let Some(facter_output) = facter_output {
-        facter_output
-    } else {
+    let facter_output = {
         let output = inquire::Text::new("Facter Output:")
             .with_validator(|path: &str| {
                 let Some(parent_dir) = Path::new(path).parent() else {
@@ -85,6 +63,7 @@ pub async fn approve(
     File::create_new(&facter_output)?.write_all(nixos_facter.as_bytes())?;
     info!("File {} written", facter_output.as_os_str().display());
 
-    cli::secret::allow(config, None, Some(hostname)).await?;
+    // TODO: allow to limit the host
+    cli::secret::allow(config).await?;
     Ok(())
 }

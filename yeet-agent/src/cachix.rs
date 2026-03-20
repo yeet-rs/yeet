@@ -1,16 +1,14 @@
 use std::ffi::OsStr;
 
+use api::ErrorForJson as _;
 use reqwest::Client;
 use rootcause::{Report, bail};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use url::Url;
 
-use crate::server::ErrorForJson as _;
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[expect(clippy::exhaustive_structs)]
 pub struct CachixInfo {
     pub github_username: String,
     pub is_public: bool,
@@ -22,12 +20,12 @@ pub struct CachixInfo {
 }
 
 pub async fn get_cachix_info<S: AsRef<str>>(cache: S) -> Result<CachixInfo, Report> {
-    Client::new()
+    Ok(Client::new()
         .get(Url::parse("https://app.cachix.org/api/v1/cache/")?.join(cache.as_ref())?)
         .send()
         .await?
         .error_for_json::<CachixInfo>()
-        .await
+        .await?)
 }
 
 pub async fn push_paths<I, S, C>(closures: I, cache: C) -> Result<(), Report>

@@ -4,14 +4,14 @@ use std::{
         self, File, Permissions, read_dir, read_link, read_to_string, remove_dir_all, remove_file,
     },
     io::{self, BufRead as _, BufReader, Write as _},
-    os::unix::fs::{PermissionsExt, chown, symlink},
+    os::unix::fs::{PermissionsExt as _, chown, symlink},
     path::{Path, PathBuf},
     process::Command,
     sync::OnceLock,
     time::Duration,
 };
 
-use api::key::{get_secret_key, get_verify_key};
+use api::{get_secret_key, get_verify_key};
 use backon::{ConstantBuilder, Retryable as _};
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::SecretKey;
@@ -20,7 +20,7 @@ use rootcause::{Report, bail, prelude::ResultExt as _, report};
 use tempfile::NamedTempFile;
 use tokio::time;
 use url::Url;
-use yeet::{nix, server};
+use yeet::nix;
 
 use crate::{cli_args::AgentConfig, notification, varlink, version::get_active_version};
 
@@ -28,9 +28,9 @@ static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 
 /// When running the agent should do these things in order:
 /// 1. Check if agent is active aka if the key is enrolled with `/system/verify`
-///     if not:
-///         create a new verification request
-///         pull the verify endpoint in a time intervall
+///    if not:
+///    create a new verification request
+///    pull the verify endpoint in a time intervall
 /// 2. Continuosly pull the system endpoint and execute based on the provided
 pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<(), Report> {
     let key = get_secret_key(&config.key)?;
@@ -44,8 +44,8 @@ pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<(),
             if let Err(err) = varlink::start_service(config, key).await {
                 log::error!("Varlink failure:\n{err}");
             }
-        });
-    }
+        })
+    };
 
     (|| async { agent_loop(config, &key, pub_key, sleep, facter).await })
         .retry(
@@ -68,7 +68,7 @@ async fn agent_loop(
     sleep: u64,
     facter: bool,
 ) -> Result<(), Report> {
-    let verified = server::system::is_host_verified(&config.server, key) //TODO unwrap
+    let verified = api::is_host_verified(&config.server, key) //TODO unwrap
         .await?
         .is_success();
 
@@ -86,23 +86,22 @@ async fn agent_loop(
             None
         };
 
-        let code = server::system::add_verification_attempt(
+        let code = api::add_verification_attempt(
             &config.server,
             &api::VerificationAttempt {
                 key: pub_key,
-                store_path: get_active_version()?,
-                artifacts: api::VerificationArtifacts { nixos_facter },
+                nixos_facter,
             },
         )
         .await?;
-        let _ = VERIFICATION_CODE.set(code);
+        let _code = VERIFICATION_CODE.set(code as u32); // Bad so sad if we can't set it
         info!("Your verification code is: {code}");
         bail!("Waiting for verification");
     }
     info!("Verified!");
 
     loop {
-        let action = server::system::check(
+        let action = api::check_system(
             &config.server,
             key,
             &api::VersionRequest {
@@ -120,10 +119,9 @@ async fn agent_loop(
 
 async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> Result<(), Report> {
     match action {
-        api::AgentAction::Nothing => {}
-        api::AgentAction::Detach => {}
+        api::AgentAction::Nothing | api::AgentAction::Detach => {}
         api::AgentAction::SwitchTo(remote_store_path) => {
-            update(&remote_store_path, url, key).await?
+            update(&remote_store_path, url, key).await?;
         }
     }
     Ok(())
@@ -152,10 +150,17 @@ async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> R
 
     let activation_err = activate(&version.store_path);
     // switch did not go correct
-    if get_active_version()? != version.store_path {
+    if get_active_version()? == version.store_path {
+        if let Ok(next_gen) = next_gen {
+            let _err = remove_all_dirs_unless(
+                next_gen.parent().unwrap_or(Path::new("/etc/yeet/secret.d")),
+                next_gen.file_name().unwrap_or_default(),
+            );
+        }
+    } else {
         // Restore last gen if there was one
         if let Ok(current_gen) = current_gen {
-            let _ = remove_file("/etc/yeet/secret");
+            let _err = remove_file("/etc/yeet/secret");
             symlink(current_gen, "/etc/yeet/secret")?;
         }
         // Delete the generation that was just created
@@ -163,13 +168,6 @@ async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> R
             remove_dir_all(&next_gen)?;
         }
         activation_err?;
-    } else {
-        if let Ok(next_gen) = next_gen {
-            let _ = remove_all_dirs_unless(
-                next_gen.parent().unwrap_or(Path::new("/etc/yeet/secret.d")),
-                next_gen.file_name().unwrap_or_default(),
-            );
-        }
     }
     notification::notify_all()?;
     Ok(())
@@ -181,9 +179,9 @@ fn remove_all_dirs_unless<P: AsRef<Path>>(
 ) -> Result<(), rootcause::Report> {
     for dir in read_dir(base)? {
         if let Ok(dir) = dir
-            && &dir.file_name() != dirname
+            && dir.file_name() != dirname
         {
-            let _ = remove_dir_all(dir.path());
+            let _err = remove_dir_all(dir.path());
         }
     }
 
@@ -226,7 +224,7 @@ async fn download(
     // Even if we do not end up using the temp file we create it outside of the if scope.
     // Else it would get dropped before nix-store can use it
     let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
-    let netrc = match server::secret::get_secret(url, key, "netrc").await {
+    let netrc = match api::get_secret(url, key, "netrc".into()).await {
         Ok(secret) => secret,
         Err(err) => {
             log::error!("could not get netrc secret: {err}");
@@ -285,7 +283,7 @@ async fn get_secrets(
     let mut secrets = Vec::new();
     for (secret, definition) in nix_secrets {
         log::info!("Fetching secret {secret}");
-        let Some(secret) = server::secret::get_secret(url, key, &secret).await? else {
+        let Some(secret) = api::get_secret(url, key, secret.clone()).await? else {
             rootcause::bail!("Secret {secret} not found! Unable to switch to derivation");
         };
         secrets.push((definition, secret));
@@ -295,12 +293,13 @@ async fn get_secrets(
     // This basically reads `/etc/yeet/secret` as u32 and if it fails it returns 0 (first gen)
     let generation = {
         let link = read_link("/etc/yeet/secret"); // this will return a path like `/etc/yeet/secret.d/1`
-        let gen_str = link
-            .ok()
-            .and_then(|p| p.file_name().map(|p| p.to_string_lossy().to_string()));
-        log::info!("Current Generation: {:?}", gen_str);
+        let gen_str = link.ok().and_then(|path| {
+            path.file_name()
+                .map(|path| path.to_string_lossy().to_string())
+        });
+        log::info!("Current Generation: {gen_str:?}");
         let gen_num = gen_str
-            .and_then(|str| str.parse::<u32>().ok().map(|i| i + 1))
+            .and_then(|str| str.parse::<u32>().ok().map(|i| i.wrapping_add(1)))
             .unwrap_or(0);
         log::info!("Creating new Generation {gen_num}");
         PathBuf::from(format!("/etc/yeet/secret.d/{gen_num}"))
@@ -318,7 +317,7 @@ async fn get_secrets(
     }
 
     // switch to new generation
-    let _ = remove_file("/etc/yeet/secret");
+    let _err = remove_file("/etc/yeet/secret");
     symlink(&generation, "/etc/yeet/secret")?;
 
     Ok(())
@@ -328,8 +327,8 @@ fn create_generation(
     generation: &Path,
     secrets: Vec<(api::Secret, Vec<u8>)>,
 ) -> Result<(), rootcause::Report> {
-    fs::create_dir_all(&generation)?;
-    fs::set_permissions(&generation, fs::Permissions::from_mode(0o751));
+    fs::create_dir_all(generation)?;
+    fs::set_permissions(generation, fs::Permissions::from_mode(0o751))?;
 
     for (secret, content) in secrets {
         let file_name = {
@@ -343,7 +342,7 @@ fn create_generation(
         secret_file.set_permissions(Permissions::from_mode(u32::from_str_radix(
             &secret.mode,
             8,
-        )?));
+        )?))?;
 
         secret_file.write_all(&content)?;
         secret_file.flush()?;
@@ -360,13 +359,13 @@ fn create_generation(
 }
 
 fn set_system_profile(store_path: &api::StorePath) -> Result<(), Report> {
-    info!("Setting system profile to {}", store_path);
+    info!("Setting system profile to {store_path}");
     let profile = Command::new("nix-env")
         .args([
             "--profile",
             "/nix/var/nix/profiles/system",
             "--set",
-            &store_path,
+            store_path,
         ])
         .output()?;
     if !profile.status.success() {
@@ -387,7 +386,7 @@ fn activate(store_path: &api::StorePath) -> Result<(), Report> {
 
 #[cfg(target_os = "linux")]
 fn activate(store_path: &api::StorePath) -> Result<(), Report> {
-    info!("Activating {}", store_path);
+    info!("Activating {store_path}");
     set_system_profile(store_path)?;
     Command::new(Path::new(&store_path).join("bin/switch-to-configuration"))
         .arg("switch")

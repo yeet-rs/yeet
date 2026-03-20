@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO hosts (hostname, last_ping, key_id)\n        VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "c014054deb1ef250424d011eb1216da4bb3bcfffb30a673b0fee9db3642cc001"
+}

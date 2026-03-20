@@ -100,6 +100,7 @@ pub fn build_hosts(
             .spawn()?
             .wait_with_output()?;
         let build = serde_json::from_slice::<Value>(&output.stdout)?;
+        #[expect(clippy::indexing_slicing)] // yeah ik
         let closure = build[0]["outputs"]["out"]
             .as_str()
             .ok_or(report!("Build output did not contain a valid closure"))?;
@@ -157,11 +158,10 @@ pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>, Report> 
     Ok(
         inquire::MultiSelect::new("Which host(s) would you like to publish>", detected_hosts)
             .with_validator(|list: &[ListOption<&String>]| {
-                if list.len() < 1 {
+                if list.is_empty() {
                     return Ok(Validation::Invalid("You must select a host!".into()));
-                } else {
-                    Ok(Validation::Valid)
                 }
+                Ok(Validation::Valid)
             })
             .prompt()?,
     )

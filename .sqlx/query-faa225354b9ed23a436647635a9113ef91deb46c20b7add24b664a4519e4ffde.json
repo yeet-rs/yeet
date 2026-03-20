@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT store_path,public_key,substitutor FROM update_request_history\n        JOIN nix_remotes ON update_request_history.remote = nix_remotes.id\n        WHERE host_id = $1\n        ORDER BY update_time DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "store_path",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "public_key",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "substitutor",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "faa225354b9ed23a436647635a9113ef91deb46c20b7add24b664a4519e4ffde"
+}

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use log::info;
 use rootcause::{Report, bail, prelude::ResultExt as _, report};
-use yeet::{cachix, nix, server};
+use yeet::{cachix, nix};
 
 use crate::{cli::common, cli_args::Config, sig::ssh};
 
@@ -51,7 +51,7 @@ pub async fn publish(
 
     cachix::push_paths(hosts.values(), &cachix).await?;
 
-    server::system::update(
+    api::update_hosts(
         &url,
         secret_key,
         &api::HostUpdateRequest {

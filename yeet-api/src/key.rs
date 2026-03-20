@@ -2,14 +2,13 @@ use std::{fs::read_to_string, io, path::Path};
 
 use ed25519_dalek::{
     SigningKey, VerifyingKey,
-    pkcs8::{DecodePrivateKey, DecodePublicKey},
+    pkcs8::{DecodePrivateKey as _, DecodePublicKey as _},
 };
 use httpsig_hyper::prelude::{AlgorithmName, SecretKey};
 use ssh_key::{PrivateKey, PublicKey};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-#[non_exhaustive]
 pub enum KeyError {
     #[error(transparent)]
     IOError(#[from] io::Error),
@@ -25,34 +24,38 @@ pub enum KeyError {
     KeyNotSupported,
 }
 
-// Get a verifying key from either
-// - a public ssh key
-// - a private ssh key (derive)
-// - a public pkcs8 pem file
-// - a private pkcs8 pem file (derive)
+/// Get a verifying key from either
+/// - a public ssh key
+/// - a private ssh key (derive)
+/// - a public pkcs8 pem file
+/// - a private pkcs8 pem file (derive)
+/// # Errors
+/// will throw an `KeyNotSupported` if it could not find a way to get the key material
 pub fn get_verify_key<P: AsRef<Path>>(path: P) -> Result<VerifyingKey, KeyError> {
     let key = read_to_string(path)?;
     verifying_from_private_ssh(&key)
         .or_else(|_| verifying_from_pub_ssh(key.as_str()))
-        .or_else(|_| SigningKey::from_pkcs8_pem(key.as_str()).map(|k| k.verifying_key()))
+        .or_else(|_| SigningKey::from_pkcs8_pem(key.as_str()).map(|key| key.verifying_key()))
         .or_else(|_| VerifyingKey::from_public_key_pem(key.as_str()))
         .map_err(|_err| KeyError::KeyNotSupported)
 }
 
-// Get a verifying key from either
-// - a private ssh key
-// - a private pkcs8 pem
+/// Get a verifying key from either
+/// - a private ssh key
+/// - a private pkcs8 pem
+/// # Errors
+/// will throw an `KeyNotSupported` if it could not find a way to get the key material
 pub fn get_secret_key<P: AsRef<Path>>(path: P) -> Result<SecretKey, KeyError> {
     let secret_key = read_to_string(path)?;
     secret_from_private_ssh(&secret_key)
-        .or_else(|_| SecretKey::from_pem(secret_key.as_str()))
+        .or_else(|_| SecretKey::from_pem(&AlgorithmName::Ed25519, secret_key.as_str()))
         .map_err(|_err| KeyError::KeyNotSupported)
 }
 
 // private key from private ssh key
 fn secret_from_private_ssh(key: impl AsRef<[u8]>) -> Result<SecretKey, KeyError> {
     Ok(SecretKey::from_bytes(
-        AlgorithmName::Ed25519,
+        &AlgorithmName::Ed25519,
         &private_ssh_bytes(key)?,
     )?)
 }

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id: api::SecretID\" FROM secrets WHERE name = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id: api::SecretID",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ddb429c2dbbc8b0a767cd8e548352a47174574bf0da3b856901b50bca1cf7f3a"
+}

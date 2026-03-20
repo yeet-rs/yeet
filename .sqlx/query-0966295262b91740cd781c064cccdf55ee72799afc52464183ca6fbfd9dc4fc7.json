@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM secrets_acl WHERE secret_id = $1 AND host_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "0966295262b91740cd781c064cccdf55ee72799afc52464183ca6fbfd9dc4fc7"
+}

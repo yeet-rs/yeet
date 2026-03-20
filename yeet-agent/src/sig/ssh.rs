@@ -2,7 +2,7 @@ use std::{env, fs::File, io::BufReader};
 
 use httpsig_hyper::prelude::SecretKey;
 use inquire::validator::Validation;
-use rootcause::{Report, bail, prelude::ResultExt};
+use rootcause::{Report, bail, prelude::ResultExt as _};
 use ssh2_config::{ParseRule, SshConfig};
 
 /// Get key from `~/.ssh/config` or ask the user which key should be used
@@ -25,10 +25,9 @@ fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey, Report> {
             .context("Could not open `~/.ssh/config`")?,
         );
 
-        let config = SshConfig::default()
+        SshConfig::default()
             .parse(&mut reader, ParseRule::STRICT)
-            .context("Failed to parse ssh config to get yeet httpsig key")?;
-        config
+            .context("Failed to parse ssh config to get yeet httpsig key")?
     };
 
     // Try to match the yeet server in the ssh config
@@ -39,17 +38,19 @@ fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey, Report> {
             .collect::<Vec<_>>();
 
         // TODO: inquire select
-        if hosts.len() == 0 {
+        if hosts.is_empty() {
             bail!(
                 "No match blocks found in `~/.ssh/config` for {}",
                 url.as_ref()
             )
-        } else if hosts.len() > 1 {
+        }
+        if hosts.len() > 1 {
             bail!(
                 "Multiple match blocks found in `~/.ssh/config` for {}",
                 url.as_ref()
             )
         }
+        #[expect(clippy::unwrap_used)] // we checked with hosts.is_empty
         hosts.pop().unwrap().clone()
     };
 
@@ -66,20 +67,21 @@ fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey, Report> {
                 url.as_ref()
             )
         }
+        #[expect(clippy::unwrap_used)] // we checked
         identity_files.pop().unwrap()
     };
 
-    Ok(api::key::get_secret_key(identity_file)?)
+    Ok(api::get_secret_key(identity_file)?)
 }
 
 pub fn get_key_manual() -> Result<SecretKey, Report> {
     let key = inquire::Text::new("Yeet Admin Key:")
         .with_validator(|path: &str| {
-            Ok(match api::key::get_secret_key(path) {
+            Ok(match api::get_secret_key(path) {
                 Ok(_) => Validation::Valid,
                 Err(err) => Validation::Invalid(format!("Not a valid secret key: {err}").into()),
             })
         })
         .prompt()?;
-    Ok(api::key::get_secret_key(key)?)
+    Ok(api::get_secret_key(key)?)
 }

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT secret FROM secrets WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "secret",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6bd76fc8547c15a5d97fd149fb190ebf0cd2d39f78c3c63fedea58e55159e618"
+}

@@ -7,7 +7,12 @@ use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
 };
-use rootcause::{Report, hooks::Hooks};
+use rootcause::{
+    Report, ReportRef,
+    handlers::{ContextFormattingStyle, FormattingFunction},
+    hooks::{Hooks, context_formatter::ContextFormatterHook},
+    markers::{Dynamic, Local, Uncloneable},
+};
 
 use crate::cli_args::{AgentConfig, Commands, Config, HostArgs, Yeet};
 
@@ -35,15 +40,32 @@ mod systemd;
 mod varlink;
 mod version;
 
+struct ClapDisplayHook;
+
+impl ContextFormatterHook<clap::Error> for ClapDisplayHook {
+    fn preferred_context_formatting_style(
+        &self,
+        _report: ReportRef<'_, Dynamic, Uncloneable, Local>,
+        _report_formatting_function: FormattingFunction,
+    ) -> ContextFormattingStyle {
+        ContextFormattingStyle {
+            function: FormattingFunction::Display,
+            follow_source: false,
+            follow_source_depth: None,
+        }
+    }
+}
+
 #[expect(unexpected_cfgs)]
 #[tokio::main(flavor = "local")]
-#[expect(clippy::too_many_lines)]
-#[expect(clippy::unwrap_in_result)]
 async fn main() -> Result<(), Report> {
     Hooks::new()
-                .report_formatter(rootcause::hooks::builtin_hooks::report_formatter::DefaultReportFormatter::UNICODE_COLORS)
-                .install()
-                .expect("failed to install hooks");
+        .context_formatter::<clap::Error, _>(ClapDisplayHook)
+        .report_formatter(
+            rootcause::hooks::builtin_hooks::report_formatter::DefaultReportFormatter::ASCII,
+        )
+        .install()
+        .expect("failed to install hooks");
 
     let mut log_builder =
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
@@ -73,19 +95,15 @@ async fn main() -> Result<(), Report> {
         Commands::Secret(args) => cli::secret::handle_secret_command(args, &config).await?,
         Commands::Detach {
             version,
-            force,
+
             darwin,
             path,
-        } => cli::detach::detach(version, force, path, darwin).await?,
+        } => cli::detach::detach(version, path, darwin).await?,
         Commands::Attach => cli::detach::attach().await?,
-        Commands::Approve { name, code, facter } => {
-            cli::approve::approve(&config, facter, code, name).await?
-        }
+        Commands::Approve => cli::approve::approve(&config).await?,
         Commands::Host(HostArgs { command }) => match command {
-            cli_args::HostCommands::Rename { name, new } => {
-                cli::host::rename(&config, name, new).await?
-            }
-            cli_args::HostCommands::Remove { name } => cli::host::remove(&config, name).await?,
+            cli_args::HostCommands::Rename => cli::host::rename(&config).await?,
+            cli_args::HostCommands::Remove => cli::host::remove(&config).await?,
         },
         Commands::Hosts { full } => cli::hosts::hosts(&config, full).await?,
         Commands::Notify => notification::notify()?,

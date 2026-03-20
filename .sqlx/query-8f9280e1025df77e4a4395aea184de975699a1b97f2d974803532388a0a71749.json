@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO nix_remotes (public_key, substitutor)\n        VALUES ($1, $2)\n        ON CONFLICT(public_key) DO UPDATE SET public_key = excluded.public_key\n        RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8f9280e1025df77e4a4395aea184de975699a1b97f2d974803532388a0a71749"
+}
