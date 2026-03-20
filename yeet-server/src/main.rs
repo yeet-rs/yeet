@@ -1,7 +1,13 @@
 //! Yeet that Config
 
-use std::{env, fs::read_to_string, str::FromStr};
+use std::{
+    env,
+    fs::{File, read_to_string},
+    io::Write,
+    str::FromStr,
+};
 
+use age::secrecy::ExposeSecret;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 
 #[tokio::main]
@@ -15,9 +21,20 @@ async fn main() {
     let host = env::var("YEET_HOST").unwrap_or("localhost".to_owned());
 
     let age_key = {
-        let path = env::var("YEET_AGE_KEY").expect("YEET_AGE_KEY was not set");
-        let content = read_to_string(path).unwrap();
-        age::x25519::Identity::from_str(&content).unwrap()
+        match read_to_string("age.key") {
+            Ok(content) => age::x25519::Identity::from_str(&content).unwrap(),
+            Err(_) => {
+                let identity = age::x25519::Identity::generate();
+                File::create("age.key")
+                    .unwrap()
+                    .write_all(
+                        &serde_json::to_vec(&identity.to_string().expose_secret().to_string())
+                            .unwrap(),
+                    )
+                    .unwrap();
+                identity
+            }
+        }
     };
 
     let options = SqliteConnectOptions::new()
