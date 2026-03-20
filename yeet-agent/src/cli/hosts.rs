@@ -22,9 +22,6 @@ pub async fn hosts(config: &Config, full: bool) -> Result<(), Report> {
                 inquire::MultiSelect::new("Which hosts do you want to display>", hostnames)
                     .prompt()?;
             hosts.retain(|host| selected.contains(&host.hostname));
-        }
-
-        if full {
             hosts.into_iter().map(|host| host.as_section()).collect()
         } else {
             vec![(
