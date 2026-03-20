@@ -238,14 +238,10 @@ mod test {
 
         let store_key = age::x25519::Identity::generate();
         let host = age::x25519::Identity::generate();
-        let my_host = db::hosts::add_host(
-            &mut conn,
-            "keyid".to_owned(),
-            VerifyingKey::default(),
-            "hostname".to_owned(),
-        )
-        .await
-        .unwrap();
+        let my_host =
+            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
+                .await
+                .unwrap();
 
         let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
 
@@ -312,14 +308,10 @@ mod test {
 
         let store_key = age::x25519::Identity::generate();
         let host = age::x25519::Identity::generate();
-        let my_host = db::hosts::add_host(
-            &mut conn,
-            "keyid".to_owned(),
-            VerifyingKey::default(),
-            "hostname".to_owned(),
-        )
-        .await
-        .unwrap();
+        let my_host =
+            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
+                .await
+                .unwrap();
 
         let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
 
@@ -368,18 +360,13 @@ mod test {
             .unwrap();
         let store_key = age::x25519::Identity::generate();
 
-        let my_host = db::hosts::add_host(
-            &mut conn,
-            "keyid".to_owned(),
-            VerifyingKey::default(),
-            "hostname".to_owned(),
-        )
-        .await
-        .unwrap();
+        let my_host =
+            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
+                .await
+                .unwrap();
 
         let h2 = db::hosts::add_host(
             &mut conn,
-            "keyid2".to_owned(),
             SigningKey::from_bytes(&[1; 32]).verifying_key(),
             "hostname2".to_owned(),
         )
@@ -482,14 +469,10 @@ mod test {
             .unwrap();
         let store_key = age::x25519::Identity::generate();
 
-        let my_host = db::hosts::add_host(
-            &mut conn,
-            "keyid".to_owned(),
-            VerifyingKey::default(),
-            "hostname".to_owned(),
-        )
-        .await
-        .unwrap();
+        let my_host =
+            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
+                .await
+                .unwrap();
 
         let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
 
@@ -523,14 +506,10 @@ mod test {
             .unwrap();
         let store_key = age::x25519::Identity::generate();
 
-        let my_host = db::hosts::add_host(
-            &mut conn,
-            "keyid".to_owned(),
-            VerifyingKey::default(),
-            "hostname".to_owned(),
-        )
-        .await
-        .unwrap();
+        let my_host =
+            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
+                .await
+                .unwrap();
 
         let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
 

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::routing::{delete, get, post, put};
 
@@ -17,9 +17,7 @@ mod db {
 }
 mod error;
 mod httpsig;
-mod state;
 
-#[cfg(any(test, feature = "test-server"))]
 use ed25519_dalek::VerifyingKey;
 pub(crate) use routes::*;
 
@@ -29,12 +27,39 @@ struct YeetState {
     pub age_key: Arc<age::x25519::Identity>,
 }
 
+use serde::{Deserialize, Serialize};
+use serde_json_any_key::any_key_map;
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct AppState {
+    #[serde(with = "any_key_map")]
+    host_by_key: HashMap<VerifyingKey, String>,
+}
+
 pub async fn launch(
     port: &str,
     host: &str,
     pool: sqlx::SqlitePool,
     age_key: age::x25519::Identity,
 ) -> tokio::task::JoinHandle<()> {
+    {
+        let mut conn = pool.acquire().await.unwrap();
+        sqlx::migrate!("../migrations")
+            .run(&mut conn)
+            .await
+            .unwrap();
+        // add hosts from state.json
+        let state = std::fs::File::open("state.json");
+        if let Ok(state) = state
+            && !db::keys::has_any(&mut conn).await.unwrap()
+        {
+            let state: AppState = serde_json::from_reader(state).unwrap();
+            for (key, hostname) in state.host_by_key {
+                db::hosts::add_host(&mut conn, key, hostname).await.unwrap();
+            }
+        }
+    }
+
     let listener = tokio::net::TcpListener::bind(format!("{host}:{port}"))
         .await
         .expect("Could not bind to port");
@@ -42,14 +67,6 @@ pub async fn launch(
     let age_key = Arc::new(age_key);
 
     let state = YeetState { pool, age_key };
-
-    {
-        let mut conn = state.pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-    }
 
     tokio::spawn(async move {
         axum::serve(listener, routes(state))
@@ -124,7 +141,6 @@ async fn add_default_host(conn: &mut sqlx::SqliteConnection) {
 
     db::hosts::add_host(
         conn,
-        httpsig_key.key_id(),
         ed25519_dalek::VerifyingKey::default(),
         "default_host".to_owned(),
     )

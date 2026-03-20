@@ -1,5 +1,6 @@
 use api::ProvisionState;
 use ed25519_dalek::VerifyingKey;
+use httpsig_hyper::prelude::{AlgorithmName, PublicKey, VerifyingKey as _};
 use jiff_sqlx::ToSqlx;
 
 use sqlx::Acquire;
@@ -300,14 +301,16 @@ pub async fn host_by_hostname(
 
 pub async fn add_host(
     conn: &mut sqlx::SqliteConnection,
-    keyid: String,
     key: VerifyingKey,
     hostname: String,
 ) -> Result<api::HostID, sqlx::Error> {
     let mut tx = conn.begin().await?;
     let now = jiff::Timestamp::now().to_sqlx();
 
-    let key = db::keys::add_key(&mut *tx, keyid, key).await?;
+    let keyid = PublicKey::from_bytes(&AlgorithmName::Ed25519, key.as_bytes())
+        .expect("Verifying key already is validated");
+
+    let key = db::keys::add_key(&mut *tx, keyid.key_id(), key).await?;
 
     let host = sqlx::query!(
         r#"

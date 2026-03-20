@@ -1,5 +1,4 @@
 use ed25519_dalek::VerifyingKey;
-use httpsig_hyper::prelude::{AlgorithmName, PublicKey, VerifyingKey as _};
 use jiff_sqlx::ToSqlx as _;
 use rand::RngExt as _;
 
@@ -101,10 +100,8 @@ pub async fn accept_attempt(
             .expect("We never store anything else than verifying keys"),
     )
     .expect("We never store anything else than verifying keys");
-    let httpsig_key = PublicKey::from_bytes(&AlgorithmName::Ed25519, key.as_bytes())
-        .expect("Verifying key already is validated");
 
-    db::hosts::add_host(conn, httpsig_key.key_id(), key, hostname).await?;
+    db::hosts::add_host(conn, key, hostname).await?;
 
     Ok(approved.nixos_facter)
 }
@@ -206,14 +203,9 @@ mod test_verification {
     async fn key_already_in_use(pool: sqlx::SqlitePool) {
         let mut conn = crate::sql_conn(pool).await;
 
-        db::hosts::add_host(
-            &mut conn,
-            "keyid".to_owned(),
-            VerifyingKey::default(),
-            "hostname".to_owned(),
-        )
-        .await
-        .unwrap();
+        db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
+            .await
+            .unwrap();
 
         let err =
             db::verification::add_verification_attempt(&mut conn, VerifyingKey::default(), None)
