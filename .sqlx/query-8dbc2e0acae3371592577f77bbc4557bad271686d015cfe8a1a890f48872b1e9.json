@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT verifying_key FROM keys\n        WHERE keyid = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "verifying_key",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8dbc2e0acae3371592577f77bbc4557bad271686d015cfe8a1a890f48872b1e9"
+}

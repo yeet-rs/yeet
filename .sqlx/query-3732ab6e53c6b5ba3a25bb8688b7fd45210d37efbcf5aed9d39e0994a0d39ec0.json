@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO secrets (name, secret) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "3732ab6e53c6b5ba3a25bb8688b7fd45210d37efbcf5aed9d39e0994a0d39ec0"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT EXISTS(SELECT 1 FROM verification_attempts WHERE verifying_key = $1) AS 'exists!: bool'",
+  "describe": {
+    "columns": [
+      {
+        "name": "exists!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c421e945e0f2dea2dfacbd3d811265f5f3141bf0b821a087f3ccb1c3a733d83d"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO version_history (host_id, store_path, update_time)\n        VALUES ($1,$2,$3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "ca34b194e030c4e5b73f8ea5a0aad642e8dff35f444f60d6eb71a6ac8dd3f81f"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT hosts.id as \"id: api::HostID\" FROM hosts\n        WHERE hostname = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id: api::HostID",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4081b548a04e5a4da9f6c8217a2aa0f224a33b2a082e6da8a38aaf7a9a77a395"
+}

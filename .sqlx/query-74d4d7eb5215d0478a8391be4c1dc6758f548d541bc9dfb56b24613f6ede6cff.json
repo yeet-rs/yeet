@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE hosts\n        SET last_ping = $1\n        WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "74d4d7eb5215d0478a8391be4c1dc6758f548d541bc9dfb56b24613f6ede6cff"
+}

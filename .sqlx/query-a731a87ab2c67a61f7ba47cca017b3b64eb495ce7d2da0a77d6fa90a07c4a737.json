@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT hosts.id as \"id: api::HostID\" FROM hosts\n        LEFT JOIN keys on hosts.key_id = keys.id\n        WHERE verifying_key = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id: api::HostID",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a731a87ab2c67a61f7ba47cca017b3b64eb495ce7d2da0a77d6fa90a07c4a737"
+}

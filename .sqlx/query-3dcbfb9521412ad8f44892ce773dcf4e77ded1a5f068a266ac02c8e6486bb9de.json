@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO secrets_acl (secret_id, host_id) VALUES ($1,$2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "3dcbfb9521412ad8f44892ce773dcf4e77ded1a5f068a266ac02c8e6486bb9de"
+}

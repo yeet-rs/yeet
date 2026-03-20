@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        WITH current_state AS (\n            SELECT host_id, state, update_time,\n                   ROW_NUMBER() OVER(PARTITION BY host_id ORDER BY update_time DESC) as rn\n            FROM state_history\n        ),\n        current_version AS (\n            SELECT host_id, store_path, update_time,\n                   ROW_NUMBER() OVER(PARTITION BY host_id ORDER BY update_time DESC) as rn\n            FROM version_history\n        ),\n        latest_update_request AS (\n            SELECT host_id, store_path, update_time,\n                   ROW_NUMBER() OVER(PARTITION BY host_id ORDER BY update_time DESC) as rn\n            FROM update_request_history\n        )\n        SELECT\n            h.id AS \"id!\",\n            h.hostname AS \"hostname!\",\n            k.verifying_key AS \"verifying_key!\",\n            h.last_ping AS \"last_ping!: jiff_sqlx::Timestamp\",\n            ls.state AS \"state: api::ProvisionState\",\n            lv.store_path AS \"current_version\",\n            lur.store_path AS \"latest_update\"\n        FROM hosts h\n        JOIN keys k ON h.key_id = k.id\n        LEFT JOIN current_state ls ON ls.host_id = h.id AND ls.rn = 1\n        LEFT JOIN current_version lv ON lv.host_id = h.id AND lv.rn = 1\n        LEFT JOIN latest_update_request lur ON lur.host_id = h.id AND lur.rn = 1;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "hostname!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "verifying_key!",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "last_ping!: jiff_sqlx::Timestamp",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "state: api::ProvisionState",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "current_version",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "latest_update",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "5a30837e0ea83a454cf70cdbbe636f21dc23cffc8f763b728f8ecf1a1a2a63a3"
+}

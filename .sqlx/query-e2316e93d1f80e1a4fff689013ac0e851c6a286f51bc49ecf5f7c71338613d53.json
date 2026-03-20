@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM verification_attempts WHERE timestamp < $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "e2316e93d1f80e1a4fff689013ac0e851c6a286f51bc49ecf5f7c71338613d53"
+}

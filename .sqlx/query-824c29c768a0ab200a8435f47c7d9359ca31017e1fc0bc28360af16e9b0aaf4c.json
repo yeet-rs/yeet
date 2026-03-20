@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO state_history (host_id, state, update_time) VALUES ($1,$2,$3) ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "824c29c768a0ab200a8435f47c7d9359ca31017e1fc0bc28360af16e9b0aaf4c"
+}
