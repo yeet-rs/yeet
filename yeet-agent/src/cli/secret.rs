@@ -245,7 +245,7 @@ async fn show(config: &Config) -> Result<(), Report> {
     let mut sections = Vec::new();
     for (secret, hosts) in acl {
         // map the host ids to hostnames
-        let hosts: Vec<String> = hosts
+        let mut hosts: Vec<String> = hosts
             .iter()
             .map(|h| {
                 all_hosts
@@ -254,6 +254,7 @@ async fn show(config: &Config) -> Result<(), Report> {
                     .unwrap_or("Unknown Host".to_owned())
             })
             .collect();
+        hosts.sort();
 
         sections.push((
             style(format!("{secret}:")).bold().underlined().to_string(),
