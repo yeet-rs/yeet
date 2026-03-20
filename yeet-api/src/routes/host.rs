@@ -6,7 +6,7 @@ use http::StatusCode;
 use httpsig_hyper::prelude::SigningKey;
 use url::Url;
 
-use crate::httpsig::{ErrorForJson as _, ReqwestSig, ResponseError, sig_param};
+use crate::httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param};
 use serde::{Deserialize, Serialize};
 
 use crate::StorePath;
@@ -25,13 +25,14 @@ impl std::fmt::Display for HostID {
 
 #[cfg(feature = "hazard")]
 impl HostID {
+    #[must_use]
     pub fn new(id: i64) -> Self {
         Self(id)
     }
 }
 
 // State the Server wants the client to be in
-#[expect(clippy::exhaustive_structs)]
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "hazard", derive(sqlx::Type))]
 pub enum ProvisionState {
@@ -103,10 +104,6 @@ pub async fn rename_host<K: SigningKey + Sync>(
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// Represents a Host Update Request
 /// The Agent uses the substitutor to fetch the update via nix
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "API Structs should be breaking change"
-)]
 // TODO: Split into remote lookup
 pub struct HostUpdateRequest {
     /// The hosts to update identified by their name

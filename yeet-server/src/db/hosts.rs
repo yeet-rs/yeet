@@ -1,9 +1,9 @@
 use api::ProvisionState;
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::{AlgorithmName, PublicKey, VerifyingKey as _};
-use jiff_sqlx::ToSqlx;
+use jiff_sqlx::ToSqlx as _;
 
-use sqlx::Acquire;
+use sqlx::Acquire as _;
 
 use crate::db;
 
@@ -49,13 +49,13 @@ pub async fn fetch_current_version(
     conn: &mut sqlx::SqliteConnection,
     host: api::HostID,
 ) -> Result<Option<api::StorePath>, sqlx::Error> {
-    Ok(sqlx::query_scalar!(
+    sqlx::query_scalar!(
         r#"
         SELECT store_path FROM version_history WHERE host_id = $1 ORDER BY update_time DESC LIMIT 1"#,
         host
     )
     .fetch_optional(conn)
-    .await?)
+    .await
 }
 
 /// Fetch the latest update ignoring if the host has already applied it
@@ -63,7 +63,7 @@ async fn fetch_latest_update(
     conn: &mut sqlx::SqliteConnection,
     host: api::HostID,
 ) -> Result<Option<api::RemoteStorePath>, sqlx::Error> {
-    Ok(sqlx::query_as!(
+    sqlx::query_as!(
         api::RemoteStorePath,
         r#"
         SELECT store_path,public_key,substitutor FROM update_request_history
@@ -73,7 +73,7 @@ async fn fetch_latest_update(
         host
     )
     .fetch_optional(conn)
-    .await?)
+    .await
 }
 
 /// When the host completed an update
@@ -157,7 +157,7 @@ pub async fn update(
 
     // TODO: hehe maybe not a loop
     for (host, store_path) in hosts {
-        let Some(host) = host_by_hostname(&mut *tx, host).await? else {
+        let Some(host) = host_by_hostname(&mut tx, host).await? else {
             return Err(HostUpdateError::HostNotFound { host: host.clone() });
         };
         let now = jiff::Timestamp::now().to_sqlx();
@@ -175,9 +175,9 @@ pub async fn update(
         .execute(&mut *tx)
         .await?;
 
-        let state = fetch_provision_state(&mut *tx, host).await?;
+        let state = fetch_provision_state(&mut tx, host).await?;
         if state != ProvisionState::Detached {
-            set_provision_state(&mut *tx, host, api::ProvisionState::Provisioned).await?;
+            set_provision_state(&mut tx, host, api::ProvisionState::Provisioned).await?;
         }
     }
     tx.commit().await?;
@@ -185,7 +185,7 @@ pub async fn update(
 }
 
 pub async fn list(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::Host>, sqlx::Error> {
-    Ok(sqlx::query!(
+    sqlx::query!(
         r#"
         WITH current_state AS (
             SELECT host_id, state, update_time,
@@ -217,23 +217,23 @@ pub async fn list(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::Host>, s
         LEFT JOIN latest_update_request lur ON lur.host_id = h.id AND lur.rn = 1;
         "#
     )
-    .map(|r| api::Host {
-        id: api::HostID::new(r.id),
-        hostname: r.hostname,
+    .map(|row| api::Host {
+        id: api::HostID::new(row.id),
+        hostname: row.hostname,
         key: VerifyingKey::from_bytes(
-            &r.verifying_key
+            &row.verifying_key
                 .try_into()
                 .expect("We only store valid keys"),
         )
         .expect("We only store valid keys"),
 
-        state: r.state.unwrap_or_default(),
-        last_ping: r.last_ping.to_jiff(),
-        version: r.current_version,
-        latest_update: r.latest_update,
+        state: row.state.unwrap_or_default(),
+        last_ping: row.last_ping.to_jiff(),
+        version: row.current_version,
+        latest_update: row.latest_update,
     })
     .fetch_all(conn)
-    .await?)
+    .await
 }
 
 pub async fn rename(
@@ -274,7 +274,7 @@ pub async fn host_by_verify_key(
     key: VerifyingKey,
 ) -> Result<Option<api::HostID>, sqlx::Error> {
     let key = &key.as_bytes()[..];
-    Ok(sqlx::query_scalar!(
+    sqlx::query_scalar!(
         r#"
         SELECT hosts.id as "id: api::HostID" FROM hosts
         LEFT JOIN keys on hosts.key_id = keys.id
@@ -282,21 +282,21 @@ pub async fn host_by_verify_key(
         key
     )
     .fetch_optional(conn)
-    .await?)
+    .await
 }
 
 pub async fn host_by_hostname(
     conn: &mut sqlx::SqliteConnection,
     hostname: &str,
 ) -> Result<Option<api::HostID>, sqlx::Error> {
-    Ok(sqlx::query_scalar!(
+    sqlx::query_scalar!(
         r#"
         SELECT hosts.id as "id: api::HostID" FROM hosts
         WHERE hostname = $1"#,
         hostname
     )
     .fetch_optional(conn)
-    .await?)
+    .await
 }
 
 pub async fn add_host(
@@ -310,7 +310,7 @@ pub async fn add_host(
     let keyid = PublicKey::from_bytes(&AlgorithmName::Ed25519, key.as_bytes())
         .expect("Verifying key already is validated");
 
-    let key = db::keys::add_key(&mut *tx, keyid.key_id(), key).await?;
+    let key = db::keys::add_key(&mut tx, keyid.key_id(), key).await?;
 
     let host = sqlx::query!(
         r#"

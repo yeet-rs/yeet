@@ -10,7 +10,6 @@ use serde::de::DeserializeOwned;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-#[non_exhaustive]
 pub enum SignatureError {
     #[error(transparent)]
     HyperDigestError(#[from] httpsig_hyper::HyperDigestError),
@@ -59,6 +58,10 @@ pub static HTTPSIG_COMPONENTS: LazyLock<Vec<message_component::HttpMessageCompon
     });
 
 use httpsig_hyper::prelude::*;
+
+/// Set the key info on the defined httpsig components
+/// # Errors
+/// Will throw `InvalidSignatureParams` if there are duplicate components
 pub fn sig_param<K: SigningKey + Sync>(key: &K) -> HttpSigResult<HttpSignatureParams> {
     let mut signature_params = HttpSignatureParams::try_new(&HTTPSIG_COMPONENTS)?;
     signature_params.set_key_info(key);
@@ -66,6 +69,7 @@ pub fn sig_param<K: SigningKey + Sync>(key: &K) -> HttpSigResult<HttpSignaturePa
 }
 
 error_set::error_set! {
+    #[expect(clippy::exhaustive_enums)]
     ResponseError := {
         #[display("The server responded with a non success code: {code}: {error}")]
         ServerError{code: StatusCode, error: String},

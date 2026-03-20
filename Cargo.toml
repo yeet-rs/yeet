@@ -14,6 +14,12 @@ opt-level = 3
 
 [workspace.package]
 version = "0.8.0-beta.1"
+categories = ["Configuration"]
+edition = "2024"
+repository = "https://github.com/yeet-rs/yeet"
+keywords = ["nix", "deployment", "pull-based"]
+license = "AGPL-3.0-or-later"
+readme = "README"
 
 [workspace.dependencies]
 httpsig-hyper = "0.0.24"
@@ -72,3 +78,18 @@ iter_over_hash_type = "allow"
 missing-inline-in-public-items = "allow"
 arbitrary_source_item_ordering = "allow"
 allow_attributes_without_reason = "allow"
+pub_use = "allow"
+# TODO: remove this in future
+missing_errors_doc = "allow"
+exhaustive_structs = "allow"
+exhaustive_enums = "allow"
+impl_trait_in_params = "allow"
+cfg_not_test = "allow" # Auth gets excluded in tests - we test auth in the api tests
+expect_used = "allow" # as long as there is a reason -> also not that bad in axum
+default_numeric_fallback = "allow" # is just really verbose
+semicolon_inside_block = "allow"
+cast_possible_truncation = "allow" # it is still visible by `as`
+cast_sign_loss = "allow"
+as_conversions = "allow"
+pattern_type_mismatch = "allow" # I am too dumb for this
+verbose_file_reads = "allow"

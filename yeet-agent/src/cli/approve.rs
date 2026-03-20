@@ -33,6 +33,7 @@ pub async fn approve(config: &Config) -> Result<(), Report> {
     if nixos_facter.is_none() {
         return Ok(());
     }
+    #[expect(clippy::unwrap_used)] // we checked
     let nixos_facter = nixos_facter.unwrap();
 
     // Get file to write facter data

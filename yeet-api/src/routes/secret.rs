@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use http::StatusCode;
 use httpsig_hyper::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -7,7 +5,7 @@ use url::Url;
 
 use crate::{
     HostID,
-    httpsig::{ErrorForJson as _, ReqwestSig, ResponseError, sig_param},
+    httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param},
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,6 +22,7 @@ impl std::fmt::Display for SecretID {
 
 #[cfg(feature = "hazard")]
 impl SecretID {
+    #[must_use]
     pub fn new(id: i64) -> Self {
         Self(id)
     }

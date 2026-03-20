@@ -4,7 +4,7 @@ use httpsig_hyper::prelude::SigningKey;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::httpsig::{ErrorForJson as _, ReqwestSig, ResponseError, sig_param};
+use crate::httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct AddKey {
@@ -12,7 +12,6 @@ pub struct AddKey {
     pub level: AuthLevel,
 }
 
-#[expect(clippy::exhaustive_structs)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Copy)]
 #[cfg_attr(feature = "hazard", derive(sqlx::Type))]
 pub enum AuthLevel {

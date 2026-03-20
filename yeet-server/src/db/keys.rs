@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use ed25519_dalek::VerifyingKey;
 use sqlx::Acquire as _;
 
-use crate::{db, error::InternalError};
+use crate::{db, error::InternalError as _};
 
 pub async fn fetch_by_keyid(
     conn: &mut sqlx::SqliteConnection,
@@ -73,7 +73,7 @@ pub async fn add_user_key(
 ) -> Result<(), sqlx::Error> {
     let mut tx = conn.begin().await?;
 
-    let key = db::keys::add_key(&mut *tx, keyid, key).await?;
+    let key = db::keys::add_key(&mut tx, keyid, key).await?;
 
     // TODO: return userid
     let _user = sqlx::query!(

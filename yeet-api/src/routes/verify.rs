@@ -4,7 +4,7 @@ use httpsig_hyper::prelude::*;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::httpsig::{ErrorForJson as _, ReqwestSig, ResponseError, sig_param};
+use crate::httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct VerificationAttempt {

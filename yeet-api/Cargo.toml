@@ -1,13 +1,13 @@
 [package]
 name = "yeet-api"
 version.workspace = true
-edition = "2024"
-categories = []
-keywords = ["nix", "deployment", "pull-based"]
-repository = "https://github.com/Srylax/yeet"
-license = "AGPL-3.0-or-later"
-readme = "README.MD"
-description = "Pull-based NixOs deployment server+agent"
+categories.workspace = true
+edition.workspace = true
+keywords.workspace = true
+repository.workspace = true
+license.workspace = true
+readme.workspace = true
+description = "Pull-based NixOs deployment api"
 
 [lints]
 workspace = true

@@ -58,8 +58,6 @@ impl ContextFormatterHook<clap::Error> for ClapDisplayHook {
 
 #[expect(unexpected_cfgs)]
 #[tokio::main(flavor = "local")]
-#[expect(clippy::too_many_lines)]
-#[expect(clippy::unwrap_in_result)]
 async fn main() -> Result<(), Report> {
     Hooks::new()
         .context_formatter::<clap::Error, _>(ClapDisplayHook)

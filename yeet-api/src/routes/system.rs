@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::StorePath;
-use crate::httpsig::{ErrorForJson as _, ReqwestSig, ResponseError, sig_param};
+use crate::httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param};
 
 // Action the server want the client to take
-#[expect(clippy::exhaustive_structs)]
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum AgentAction {
     Nothing,
@@ -23,7 +23,6 @@ impl Default for AgentAction {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[expect(clippy::exhaustive_structs)]
 pub struct VersionRequest {
     pub store_path: StorePath,
 }
@@ -31,10 +30,6 @@ pub struct VersionRequest {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 /// Represents a Version
 /// Each Version can have its own nix cache
-#[expect(
-    clippy::exhaustive_structs,
-    reason = "API Structs should be breaking change"
-)]
 pub struct RemoteStorePath {
     /// The public key the cache uses to sign the store path
     pub public_key: String,

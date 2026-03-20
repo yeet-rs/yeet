@@ -22,32 +22,35 @@ pub async fn detach(
         return Ok(());
     }
 
-    let revision = match version {
-        Some(version) => version,
-        None => {
-            let host = nix::get_host(&path.to_string_lossy(), darwin)?;
+    let revision = if let Some(version) = version {
+        version
+    } else {
+        let host = nix::get_host(&path.to_string_lossy(), darwin)?;
 
-            let mut hosts = nix::build_hosts(
-                &path.to_string_lossy(),
-                vec![host.clone()],
-                darwin,
-                Some("Detached".to_owned()),
-            )?;
-            hosts.remove(&host).unwrap()
-        }
+        let mut hosts = nix::build_hosts(
+            &path.to_string_lossy(),
+            vec![host.clone()],
+            darwin,
+            Some("Detached".to_owned()),
+        )?;
+        #[expect(
+            clippy::unwrap_used,
+            reason = "because we source nix::get_host from the same nix file source"
+        )]
+        hosts.remove(&host).unwrap()
     };
 
     info!("Build done. Connecting to yeet agent");
 
     // The rest is error handling
     match varlink::detach(revision).await {
-        Ok(_) => {
-            info!("Detached successfully")
+        Ok(()) => {
+            info!("Detached successfully");
         }
-        Err(varlink::Error::Report(report)) => {
+        Err(varlink::VarlinkError::Report(report)) => {
             return Err(report.into());
         }
-        Err(varlink::Error::DaemonError(err)) => match err {
+        Err(varlink::VarlinkError::DaemonError(err)) => match err {
             YeetDaemonError::NoConnectionToServer { error } => {
                 return Err(report!("Could not connect to yeet server")
                     .context(error)
@@ -63,6 +66,7 @@ pub async fn detach(
                     .context(error)
                     .into_dynamic());
             }
+            #[expect(clippy::unreachable, reason = "Can only happen on varlink status")]
             YeetDaemonError::NoCurrentSystem => unreachable!(),
         },
     }

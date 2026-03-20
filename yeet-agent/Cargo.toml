@@ -1,12 +1,12 @@
 [package]
 version.workspace = true
 name = "yeet"
-edition = "2024"
-categories = []
-keywords = ["nix", "deployment", "pull-based"]
-repository = "https://github.com/Srylax/yeet"
-license = "AGPL-3.0-or-later"
-readme = "README.MD"
+categories.workspace = true
+edition.workspace = true
+repository.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
 description = "Pull-based NixOs deployment agent"
 
 [dependencies]

@@ -22,14 +22,15 @@ macro_rules! section {
 use console::StyledObject;
 pub(crate) use section;
 
+#[expect(clippy::print_stdout, clippy::unwrap_used)]
 pub fn print_sections(sections: &[Section]) {
     let width = sections
         .iter()
-        .flat_map(|(_, k)| k)
-        .map(|(k, _)| k.len())
+        .flat_map(|(_, section_value)| section_value)
+        .map(|(item_key, _)| item_key.len())
         .max()
         .unwrap_or(0)
-        + 1;
+        .saturating_add(1);
     for (section, items) in sections {
         println!("{section}");
 

@@ -11,17 +11,20 @@ pub async fn remove(config: &Config) -> Result<(), Report> {
     let hosts = api::list_hosts(&url, secret_key).await?;
     let selected_host = {
         let hostnames = {
-            let mut hostnames: Vec<_> = hosts.iter().map(|h| h.hostname.clone()).collect();
+            let mut hostnames: Vec<_> = hosts.iter().map(|host| host.hostname.clone()).collect();
             hostnames.sort();
             hostnames
         };
-        let selected =
-            inquire::Select::new("Which host do you want to delete>", hostnames).prompt()?;
-        selected
+
+        inquire::Select::new("Which host do you want to delete>", hostnames).prompt()?
     };
+    #[expect(
+        clippy::unwrap_used,
+        reason = "we fed the hosts into the select. inquire ensure a selection"
+    )]
     let selected_host = hosts
         .into_iter()
-        .find(|h| h.hostname == selected_host)
+        .find(|host| host.hostname == selected_host)
         .unwrap();
 
     // The user has to confirm the action
@@ -60,18 +63,20 @@ pub async fn rename(config: &Config) -> Result<(), Report> {
     let hosts = api::list_hosts(&url, secret_key).await?;
     let selected_host = {
         let hostnames = {
-            let mut hostnames: Vec<_> = hosts.iter().map(|h| h.hostname.clone()).collect();
+            let mut hostnames: Vec<_> = hosts.iter().map(|host| host.hostname.clone()).collect();
             hostnames.sort();
             hostnames
         };
 
-        let selected =
-            inquire::Select::new("Which host do you want to rename>", hostnames).prompt()?;
-        selected
+        inquire::Select::new("Which host do you want to rename>", hostnames).prompt()?
     };
+    #[expect(
+        clippy::unwrap_used,
+        reason = "we fed the hosts into the select. inquire ensure a selection"
+    )]
     let selected_host = hosts
         .into_iter()
-        .find(|h| h.hostname == selected_host)
+        .find(|host| host.hostname == selected_host)
         .unwrap();
 
     let new_name = inquire::Text::new("What should the new name be?").prompt()?;

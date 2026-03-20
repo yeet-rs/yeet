@@ -51,7 +51,6 @@ pub struct AgentConfig {
     pub key: PathBuf,
 }
 
-#[expect(clippy::doc_markdown, reason = "No Markdown for clap")]
 #[derive(Subcommand)]
 pub enum Commands {
     #[command(hide = true)]

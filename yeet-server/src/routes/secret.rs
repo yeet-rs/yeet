@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::str::FromStr as _;
 
 use axum::{
     Json,
@@ -9,7 +9,7 @@ use axum::{
 use crate::{
     YeetState,
     db::{self},
-    error::{BadRequest, InternalError, WithStatusCode},
+    error::{BadRequest as _, InternalError as _, WithStatusCode as _},
     httpsig::{HttpSig, VerifiedJson},
 };
 

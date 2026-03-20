@@ -9,7 +9,6 @@ use url::Url;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[expect(clippy::exhaustive_structs)]
 pub struct CachixInfo {
     pub github_username: String,
     pub is_public: bool,

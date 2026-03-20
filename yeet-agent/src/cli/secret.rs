@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::Read, path::Path};
+use std::{collections::HashMap, fs::File, io::Read as _, path::Path};
 
 use clap::{Args, Subcommand};
 use console::style;
@@ -142,7 +142,7 @@ pub async fn allow(config: &Config) -> Result<(), Report> {
 
     let mut hosts = api::list_hosts(&url, secret_key).await?;
     let hostnames = {
-        let mut hostnames: Vec<_> = hosts.iter().map(|h| h.hostname.clone()).collect();
+        let mut hostnames: Vec<_> = hosts.iter().map(|host| host.hostname.clone()).collect();
         hostnames.sort();
         hostnames
     };
@@ -152,7 +152,7 @@ pub async fn allow(config: &Config) -> Result<(), Report> {
     )
     .prompt()?;
 
-    hosts.retain(|h| selected.contains(&h.hostname));
+    hosts.retain(|host| selected.contains(&host.hostname));
 
     log::info!("Allowing {hosts:?} to access {secrets:?}...");
 
@@ -163,7 +163,7 @@ pub async fn allow(config: &Config) -> Result<(), Report> {
                 log::error!(
                     "Error adding access for {} from {secret}:\n{err}",
                     host.hostname
-                )
+                );
             }
         }
     }
@@ -188,17 +188,17 @@ async fn deny(config: &Config) -> Result<(), Report> {
         let mut acl = api::list_secret_acl(&url, secret_key).await?;
 
         // only want the acl that are selected
-        acl.retain(|(k, _v)| selected_secrets.contains(k));
+        acl.retain(|(secret, _v)| selected_secrets.contains(secret));
 
-        let host_ids: Vec<api::HostID> = acl.into_iter().flat_map(|(_k, v)| v).collect();
+        let host_ids: Vec<api::HostID> = acl.into_iter().flat_map(|(_k, hosts)| hosts).collect();
         let mut hosts = api::list_hosts(&url, secret_key).await?;
         // only want hosts in the acl
-        hosts.retain(|h| host_ids.contains(&h.id));
+        hosts.retain(|host| host_ids.contains(&host.id));
         hosts
     };
     let selected_hosts = {
         let hostnames = {
-            let mut hostnames: Vec<_> = hosts.iter().map(|h| h.hostname.clone()).collect();
+            let mut hostnames: Vec<_> = hosts.iter().map(|host| host.hostname.clone()).collect();
             hostnames.sort();
             hostnames
         };
@@ -206,7 +206,7 @@ async fn deny(config: &Config) -> Result<(), Report> {
         inquire::MultiSelect::new("Which Hosts should be removed>", hostnames).prompt()?
     };
 
-    hosts.retain(|h| selected_hosts.contains(&h.hostname));
+    hosts.retain(|host| selected_hosts.contains(&host.hostname));
 
     log::info!("Denying {hosts:?} to access {selected_secrets:?}...");
 
@@ -217,7 +217,7 @@ async fn deny(config: &Config) -> Result<(), Report> {
                 log::error!(
                     "Error removing access for {} from {secret}:\n{err}",
                     host.id
-                )
+                );
             }
         }
     }
@@ -239,7 +239,10 @@ async fn show(config: &Config) -> Result<(), Report> {
 
     let all_hosts: HashMap<api::HostID, String> = {
         let hosts = api::list_hosts(&url, secret_key).await?;
-        hosts.into_iter().map(|h| (h.id, h.hostname)).collect()
+        hosts
+            .into_iter()
+            .map(|host| (host.id, host.hostname))
+            .collect()
     };
 
     let mut sections = Vec::new();
@@ -247,9 +250,9 @@ async fn show(config: &Config) -> Result<(), Report> {
         // map the host ids to hostnames
         let mut hosts: Vec<String> = hosts
             .iter()
-            .map(|h| {
+            .map(|host| {
                 all_hosts
-                    .get(h)
+                    .get(host)
                     .cloned()
                     .unwrap_or("Unknown Host".to_owned())
             })
@@ -270,6 +273,6 @@ async fn show(config: &Config) -> Result<(), Report> {
 fn read_to_bytes<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<u8>> {
     let mut file = File::open(path)?;
     let mut buf = Vec::new();
-    file.read_to_end(&mut buf);
+    file.read_to_end(&mut buf)?;
     Ok(buf)
 }

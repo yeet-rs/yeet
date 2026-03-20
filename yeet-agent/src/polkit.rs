@@ -1,5 +1,7 @@
-use zbus::Connection;
-use zbus_polkit::policykit1::*;
+// use zbus::Connection;
+// use zbus_polkit::policykit1::{
+//     AuthorityProxy, AuthorizationResult, CheckAuthorizationFlags, Subject,
+// };
 
 #[derive(thiserror::Error, Debug)]
 pub enum PolkitError {
@@ -9,17 +11,17 @@ pub enum PolkitError {
     SubjectError(#[from] zbus_polkit::Error),
 }
 
-pub async fn detach(pid: u32, uid: u32) -> Result<AuthorizationResult, PolkitError> {
-    let connection = Connection::system().await?;
-    let proxy = AuthorityProxy::new(&connection).await?;
-    let subject = Subject::new_for_owner(pid, None, Some(uid))?;
-    Ok(proxy
-        .check_authorization(
-            &subject,
-            "ch.yeetme.yeet.Detach",
-            &std::collections::HashMap::new(),
-            CheckAuthorizationFlags::AllowUserInteraction.into(),
-            "",
-        )
-        .await?)
-}
+// pub async fn detach(pid: u32, uid: u32) -> Result<AuthorizationResult, PolkitError> {
+//     let connection = Connection::system().await?;
+//     let proxy = AuthorityProxy::new(&connection).await?;
+//     let subject = Subject::new_for_owner(pid, None, Some(uid))?;
+//     Ok(proxy
+//         .check_authorization(
+//             &subject,
+//             "ch.yeetme.yeet.Detach",
+//             &std::collections::HashMap::new(),
+//             CheckAuthorizationFlags::AllowUserInteraction.into(),
+//             "",
+//         )
+//         .await?)
+// }

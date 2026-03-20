@@ -18,7 +18,8 @@ impl DisplaySectionItem for api::Host {
     fn as_section_item(&self) -> (String, String) {
         let commit_ver = match &self.version {
             Some(version) => {
-                let pos = version.rfind('.').map(|i| i + 1).unwrap_or(0);
+                let pos = version.rfind('.').map_or(0, |i| i.saturating_add(1));
+                #[expect(clippy::string_slice)]
                 version[pos..].to_owned()
             }
             None => style("Not Set").blue().to_string(),
@@ -56,21 +57,21 @@ impl DisplaySection for api::Host {
         } else {
             style("No").red().bold()
         };
-        items.push(("Up to date".to_string(), up_to_date.to_string()));
+        items.push(("Up to date".to_owned(), up_to_date.to_string()));
 
         items.push((
-            "Mode".to_string(),
+            "Mode".to_owned(),
             self.state.colored_display().bold().to_string(),
         ));
 
         if let Some(version) = &self.version {
-            items.push(("Current version".to_string(), version.clone()));
+            items.push(("Current version".to_owned(), version.clone()));
         }
 
         if let Some(update) = &self.latest_update
             && self.version != self.latest_update
         {
-            items.push(("Next version".to_string(), update.clone()));
+            items.push(("Next version".to_owned(), update.clone()));
         }
 
         {
@@ -80,8 +81,8 @@ impl DisplaySection for api::Host {
                 30_f64,
                 jiff::Unit::Second,
             );
-            items.push(("Last seen".to_string(), last_seen.to_string()));
-        }
+            items.push(("Last seen".to_owned(), last_seen.clone()));
+        };
 
         (style(&self.hostname).underlined().to_string(), items)
     }

@@ -19,7 +19,7 @@ mod error;
 mod httpsig;
 
 use ed25519_dalek::VerifyingKey;
-pub(crate) use routes::*;
+pub(crate) use routes::{host, key, secret, system, verify};
 
 #[derive(Clone)]
 struct YeetState {
@@ -37,12 +37,14 @@ pub struct AppState {
     keyids: HashMap<String, VerifyingKey>,
 }
 
+#[expect(clippy::missing_panics_doc)]
 pub async fn launch(
     port: &str,
     host: &str,
     pool: sqlx::SqlitePool,
     age_key: age::x25519::Identity,
 ) -> tokio::task::JoinHandle<()> {
+    #[expect(clippy::unwrap_used)]
     {
         let mut conn = pool.acquire().await.unwrap();
         sqlx::migrate!("../migrations")

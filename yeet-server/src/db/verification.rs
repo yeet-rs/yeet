@@ -28,7 +28,7 @@ error_set::error_set! {
 /// # Security
 /// This is the only method that is done without any form of authentication.
 /// It may be advised to but this behind a firewall
-/// However no DDoS can come from this because the attempt count is hard limited at 10
+/// However no `DDoS` can come from this because the attempt count is hard limited at 10
 pub async fn add_verification_attempt(
     conn: &mut sqlx::SqliteConnection,
     key: VerifyingKey,
@@ -70,7 +70,10 @@ pub async fn add_verification_attempt(
     .await?
     .last_insert_rowid();
 
-    assert_eq!(id, row_id);
+    assert_eq!(
+        id, row_id,
+        "verification code and row_id need to be the same"
+    );
 
     Ok(id)
 }
@@ -107,11 +110,9 @@ pub async fn accept_attempt(
 }
 
 async fn count_attempts(conn: &mut sqlx::SqliteConnection) -> Result<i64, sqlx::Error> {
-    Ok(
-        sqlx::query_scalar!(r#"SELECT COUNT(*) FROM verification_attempts"#)
-            .fetch_one(conn)
-            .await?,
-    )
+    sqlx::query_scalar!(r#"SELECT COUNT(*) FROM verification_attempts"#)
+        .fetch_one(conn)
+        .await
 }
 
 async fn key_exists(
@@ -119,16 +120,17 @@ async fn key_exists(
     key: VerifyingKey,
 ) -> Result<bool, sqlx::Error> {
     let key = &key.as_bytes()[..];
-    Ok(sqlx::query_scalar!(
+    sqlx::query_scalar!(
         r#"SELECT EXISTS(SELECT 1 FROM verification_attempts WHERE verifying_key = $1) AS 'exists!: bool'"#,
         key
     )
     .fetch_one(conn)
-    .await?)
+    .await
 }
 
 async fn delete_old_attempts(conn: &mut sqlx::SqliteConnection) -> Result<u64, sqlx::Error> {
     // threshold: 2min
+    #[expect(clippy::arithmetic_side_effects)]
     let cutoff = (jiff::Timestamp::now() - jiff::Span::new().minutes(2)).to_sqlx();
 
     let result = sqlx::query!(

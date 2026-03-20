@@ -4,7 +4,7 @@ use httpsig_hyper::prelude::VerifyingKey as _;
 
 use crate::{
     YeetState, db,
-    error::{BadRequest, InternalError as _},
+    error::{BadRequest as _, InternalError as _},
     httpsig::{HttpSig, VerifiedJson},
 };
 

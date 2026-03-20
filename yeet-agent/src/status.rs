@@ -14,6 +14,7 @@ use crate::{
 
 shadow_rs::shadow!(build);
 
+#[expect(clippy::print_stdout)]
 pub async fn status(json: bool) -> Result<(), Report> {
     let yeet = yeet_info().await?;
     let system = system_info()?;
@@ -64,27 +65,24 @@ impl Display for varlink::UpToDate {
 
 impl DisplaySection for YeetInfo {
     fn as_section(&self) -> Section {
-        let (up_to_date, mode, daemon_version) = match &self.daemon_status {
-            Some(daemon_state) => {
-                let up_to_date = daemon_state.up_to_date.to_string();
-                let mode = format!(
-                    "{} ({})",
-                    daemon_state.mode,
-                    style(daemon_state.server.to_string()).underlined()
-                );
+        let (up_to_date, mode, daemon_version) = if let Some(daemon_state) = &self.daemon_status {
+            let up_to_date = daemon_state.up_to_date.to_string();
+            let mode = format!(
+                "{} ({})",
+                daemon_state.mode,
+                style(daemon_state.server.to_string()).underlined()
+            );
 
-                (up_to_date, mode, daemon_state.version.clone())
-            }
-            None => {
-                let no_con = style("No connection to daemon").red().bold().to_string();
-                (no_con.clone(), no_con.clone(), no_con)
-            }
+            (up_to_date, mode, daemon_state.version.clone())
+        } else {
+            let no_con = style("No connection to daemon").red().bold().to_string();
+            (no_con.clone(), no_con.clone(), no_con)
         };
 
-        let daemon_version = if daemon_version != self.cli_version_short {
-            style(daemon_version).red().bold()
-        } else {
+        let daemon_version = if daemon_version == self.cli_version_short {
             style(daemon_version)
+        } else {
+            style(daemon_version).red().bold()
         };
 
         section!(
@@ -111,7 +109,7 @@ async fn yeet_info() -> Result<YeetInfo, Report> {
     Ok(YeetInfo {
         cli_version_short: String::from(build::PKG_VERSION),
         cli_version_long: String::from(build::CLAP_LONG_VERSION),
-        daemon_status: daemon_status,
+        daemon_status,
         systemd_status: systemd::systemd_status_value("Active", "yeet")?
             .unwrap_or("Service health not found".to_owned()),
     })
@@ -128,8 +126,10 @@ struct SystemInfo {
     pub current_generation: u32,
 }
 
+#[expect(clippy::string_slice)]
 impl DisplaySection for SystemInfo {
     fn as_section(&self) -> Section {
+        #[expect(clippy::unwrap_used)]
         let build_date_span = display::time_diff(
             self.build_date
                 .to_zoned(TimeZone::system())
@@ -171,7 +171,7 @@ fn system_info() -> Result<SystemInfo, Report> {
         nix::nixos_generations().context("Could not fetch nixos generations")?;
     let generation = nixos_generations
         .into_iter()
-        .find(|g| g.current)
+        .find(|generation| generation.current)
         .unwrap_or_default();
 
     Ok(SystemInfo {

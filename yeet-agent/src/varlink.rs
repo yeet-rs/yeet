@@ -1,5 +1,6 @@
+#![expect(clippy::multiple_inherent_impl)]
 use std::{
-    os::unix::fs::{PermissionsExt, lchown},
+    os::unix::fs::{PermissionsExt as _, lchown},
     path::Path,
 };
 
@@ -7,7 +8,7 @@ use api::AgentAction;
 use httpsig_hyper::prelude::SecretKey;
 use log::info;
 use nix::unistd::Group;
-use rootcause::{Report, compat::ReportAsError, prelude::ResultExt};
+use rootcause::{Report, compat::ReportAsError, prelude::ResultExt as _};
 use serde::{Deserialize, Serialize};
 use tokio::fs::{self, remove_file};
 use url::Url;
@@ -36,7 +37,7 @@ pub trait YeetProxy {
     async fn attach(&mut self) -> zlink::Result<Result<(), YeetDaemonError>>;
 }
 
-pub async fn client() -> Result<Connection<zlink::unix::Stream>, Error> {
+pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
     log::debug!("Connecting to {SOCKET_PATH}");
     Ok(unix::connect(SOCKET_PATH)
         .await
@@ -44,17 +45,17 @@ pub async fn client() -> Result<Connection<zlink::unix::Stream>, Error> {
         .map_err(ReportAsError::from)?)
 }
 
-pub async fn status() -> Result<DaemonStatus, Error> {
+pub async fn status() -> Result<DaemonStatus, VarlinkError> {
     let mut client = client().await?;
     client
         .status()
         .await
         .context("Could not communicate with the varlink daemon. Are you running the same version?")
         .map_err(ReportAsError::from)?
-        .map_err(|e| Error::DaemonError(e))
+        .map_err(VarlinkError::DaemonError)
 }
 
-pub async fn config() -> Result<AgentConfig, Error> {
+pub async fn config() -> Result<AgentConfig, VarlinkError> {
     let mut client = client().await?;
     Ok(client
         .config()
@@ -64,28 +65,28 @@ pub async fn config() -> Result<AgentConfig, Error> {
         .expect("Config can never Error because it does not return a result"))
 }
 
-pub async fn detach(version: api::StorePath) -> Result<(), Error> {
+pub async fn detach(version: api::StorePath) -> Result<(), VarlinkError> {
     let mut client = client().await?;
     client
         .detach(version)
         .await
         .context("Could not communicate with the varlink daemon. Are you running the same version?")
         .map_err(ReportAsError::from)?
-        .map_err(|e| Error::DaemonError(e))
+        .map_err(VarlinkError::DaemonError)
 }
 
-pub async fn attach() -> Result<(), Error> {
+pub async fn attach() -> Result<(), VarlinkError> {
     let mut client = client().await?;
     client
         .attach()
         .await
         .context("Could not communicate with the varlink daemon. Are you running the same version?")
         .map_err(ReportAsError::from)?
-        .map_err(|e| Error::DaemonError(e))
+        .map_err(VarlinkError::DaemonError)
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum VarlinkError {
     #[error(transparent)]
     Report(#[from] ReportAsError<&'static str>),
     #[error("Defined error from Daemon:\n{0:?}")]
@@ -179,7 +180,7 @@ where
             }
 
             match system_check {
-                Ok(AgentAction::Nothing) | Ok(AgentAction::SwitchTo(_)) => DaemonMode::Provisioned,
+                Ok(AgentAction::Nothing | AgentAction::SwitchTo(_)) => DaemonMode::Provisioned,
                 Ok(AgentAction::Detach) => DaemonMode::Detached,
                 Err(_) => DaemonMode::NetworkError,
             }
@@ -193,6 +194,7 @@ where
         })
     }
 
+    #[expect(clippy::unused_async)]
     pub async fn config(&self) -> AgentConfig {
         self.config.clone()
     }
@@ -219,11 +221,11 @@ where
         // Only use force on offline clients
 
         // Signal detaching to server
-        let _ = api::detach_self(&self.config.server, &self.key).await?;
+        let _status = api::detach_self(&self.config.server, &self.key).await?;
         info!("System detached. Switching");
 
         // Switch to version
-        agent::switch_to(&version);
+        let _err = agent::switch_to(&version);
 
         info!("Switched to detached version");
 
@@ -231,7 +233,7 @@ where
     }
 
     pub async fn attach(&self) -> Result<(), YeetDaemonError> {
-        let _ = api::attach_self(&self.config.server, &self.key).await?;
+        let _status = api::attach_self(&self.config.server, &self.key).await?;
         info!("System attached");
 
         Ok(())
@@ -245,7 +247,8 @@ pub async fn start_service(config: cli_args::AgentConfig, key: SecretKey) -> Res
 impl YeetVarlinkService {
     pub async fn start(config: cli_args::AgentConfig, key: SecretKey) -> Result<(), Report> {
         let listener = {
-            let _ = remove_file(SOCKET_PATH).await;
+            let _err = remove_file(SOCKET_PATH).await;
+            #[expect(clippy::unwrap_used)]
             fs::create_dir_all(Path::new(SOCKET_PATH).parent().unwrap())
                 .await
                 .context("Ensuring the Socket dir is available")?;

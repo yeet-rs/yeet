@@ -50,9 +50,9 @@ pub async fn add_secret<I: age::Identity, S: Into<String>, V: Into<Vec<u8>>>(
 error_set::error_set! {
     GetSecretError := {
         #[display("Could not encrypt the secret for the target: {0}")]
-        EncryptError(age::EncryptError),
-        DecryptError(age::DecryptError),
-        SQLXError(sqlx::Error),
+        Encrypt(age::EncryptError),
+        Decrypt(age::DecryptError),
+        SQLX(sqlx::Error),
     }
 }
 
@@ -100,13 +100,13 @@ async fn check_acl(
     secret: api::SecretID,
     host: api::HostID,
 ) -> Result<bool, sqlx::Error> {
-    Ok(sqlx::query_scalar!(
+    sqlx::query_scalar!(
         r#"SELECT EXISTS(SELECT 1 FROM secrets_acl WHERE secret_id = $1 AND host_id = $2) AS 'exists!: bool'"#,
         secret,
         host
     )
     .fetch_one(conn)
-    .await?)
+    .await
 }
 
 /// Adds the specified host to the acl of a secret
@@ -158,9 +158,9 @@ pub async fn list_secrets(
     conn: &mut sqlx::SqliteConnection,
 ) -> Result<Vec<api::SecretName>, sqlx::Error> {
     let secrets = sqlx::query!(r#"SELECT id, name FROM secrets"#)
-        .map(|r| api::SecretName {
-            id: api::SecretID::new(r.id),
-            name: r.name,
+        .map(|row| api::SecretName {
+            id: api::SecretID::new(row.id),
+            name: row.name,
         })
         .fetch_all(conn)
         .await?;
@@ -179,13 +179,13 @@ pub async fn list_acl(
         LEFT JOIN secrets_acl on secrets_acl.secret_id = secrets.id"#
     )
     .fetch(conn)
-    .map_ok(|r| {
+    .map_ok(|row| {
         (
             api::SecretName {
-                id: api::SecretID::new(r.id),
-                name: r.name,
+                id: api::SecretID::new(row.id),
+                name: row.name,
             },
-            r.host_id.map(|id| api::HostID::new(id)),
+            row.host_id.map(api::HostID::new),
         )
     })
     .try_fold(

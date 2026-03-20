@@ -48,6 +48,7 @@ impl FromRequestParts<YeetState> for HttpSig {
             ));
         }
 
+        #[expect(clippy::pattern_type_mismatch)] // I am to dumb for this one
         let (_signature, (alg, keyid)) = keyids
             .first()
             .expect("This is safe as long as we check the keyid length");
@@ -59,6 +60,7 @@ impl FromRequestParts<YeetState> for HttpSig {
             ));
         }
 
+        #[expect(clippy::pattern_type_mismatch)] // I am to dumb for this one
         let Some(keyid) = keyid else {
             return Err((
                 StatusCode::BAD_REQUEST,

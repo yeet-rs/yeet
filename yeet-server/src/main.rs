@@ -3,8 +3,8 @@
 use std::{
     env,
     fs::{File, read_to_string},
-    io::Write,
-    str::FromStr,
+    io::Write as _,
+    str::FromStr as _,
 };
 
 use age::secrecy::ExposeSecret as _;
@@ -13,7 +13,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 #[tokio::main]
 #[expect(
     clippy::expect_used,
-    clippy::print_stdout,
+    clippy::unwrap_used,
     reason = "allow in server main"
 )]
 async fn main() {
@@ -21,21 +21,17 @@ async fn main() {
     let host = env::var("YEET_HOST").unwrap_or("localhost".to_owned());
 
     let age_key = {
-        match read_to_string("age.key") {
-            Ok(content) => {
-                age::x25519::Identity::from_str(serde_json::from_str(&content).unwrap()).unwrap()
-            }
-            Err(_) => {
-                let identity = age::x25519::Identity::generate();
-                File::create("age.key")
-                    .unwrap()
-                    .write_all(
-                        &serde_json::to_vec(&identity.to_string().expose_secret().to_string())
-                            .unwrap(),
-                    )
-                    .unwrap();
-                identity
-            }
+        if let Ok(content) = read_to_string("age.key") {
+            age::x25519::Identity::from_str(serde_json::from_str(&content).unwrap()).unwrap()
+        } else {
+            let identity = age::x25519::Identity::generate();
+            File::create("age.key")
+                .unwrap()
+                .write_all(
+                    &serde_json::to_vec(&identity.to_string().expose_secret().to_owned()).unwrap(),
+                )
+                .unwrap();
+            identity
         }
     };
 

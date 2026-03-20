@@ -23,8 +23,8 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
             substitutor,
         } => {
             api::update_hosts(
-                &url,
-                &get_secret_key(&httpsig_key)?,
+                url,
+                &get_secret_key(httpsig_key)?,
                 &api::HostUpdateRequest {
                     hosts: HashMap::from([(host, store_path)]),
                     public_key,
@@ -40,8 +40,8 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
                 api::AuthLevel::Build
             };
             let status = api::add_key(
-                &url,
-                &get_secret_key(&httpsig_key)?,
+                url,
+                &get_secret_key(httpsig_key)?,
                 &api::AddKey {
                     key: get_verify_key(&key)?,
                     level,
@@ -52,7 +52,7 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
         }
         ServerCommands::DeleteKey { key } => {
             let status =
-                api::delete_key(&url, &get_secret_key(&httpsig_key)?, &get_verify_key(&key)?)
+                api::delete_key(url, &get_secret_key(httpsig_key)?, &get_verify_key(&key)?)
                     .await?;
             info!("{status}");
         }

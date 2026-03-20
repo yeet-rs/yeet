@@ -16,7 +16,7 @@ use axum::{
 
 use crate::{
     YeetState, db,
-    error::{BadRequest, InternalError as _},
+    error::{BadRequest as _, InternalError as _},
     httpsig::{HttpSig, VerifiedJson},
 };
 
@@ -53,7 +53,7 @@ pub async fn accept_attempt(
     db::keys::auth_admin(&mut conn, key).await?;
 
     // TODO: return Bad request if key does not exist
-    let facter = db::verification::accept_attempt(&mut conn, id as i64, hostname)
+    let facter = db::verification::accept_attempt(&mut conn, i64::from(id), hostname)
         .await
         .bad_request()?;
 
