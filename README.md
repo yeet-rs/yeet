@@ -1,4 +1,5 @@
 # Yeet
+
 <br>
 <div align="center">
 <img src="./media/yeet_logo_with_text.svg" width="200">
@@ -7,6 +8,7 @@
 
 A better pull-based nix deployment tool.
 <br>
+
 <div>
 <img alt="Yeet" src="https://img.shields.io/badge/NixOS-4A6BB0">
 <img alt="Yeet" src="https://img.shields.io/badge/WIP-f54260">
@@ -18,10 +20,10 @@ A better pull-based nix deployment tool.
 <br>
 
 <a title="Features" href="#features">Features</a>
-&nbsp;~&nbsp;
+&nbsp;&#126;&nbsp;
 <a title="Installing" href="#installing">Installing</a>
-&nbsp;~&nbsp;
-<a title="Documentation" href="#documentation">Documentation</a>
+&nbsp;&#126;&nbsp;
+<a title="Documentation" href="https://docs.yeetme.ch">Documentation</a>
 
 <br>
 <br>
@@ -57,11 +59,6 @@ Fleet management that scales, from home lab to enterprise setup. Manage devices 
 On NixOS you can use Npins or Flakes to add the `yeet`(agent) and `yeetd`(server) modules.
 
 Non NixOS distros can install the server directly with `cargo install https://github.com/yeet-rs/yeet.git yeetd`
-
-## Documentation
-
-You can build the latest version of the documentation using `mdook serve book`.
-Make sure you have `mdbook-mermaid` installed and it uses the same version of `mdbook`.
 
 ## Contributing
 
