@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use age::secrecy::ExposeSecret;
+use age::secrecy::ExposeSecret as _;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 
 #[tokio::main]
@@ -22,7 +22,9 @@ async fn main() {
 
     let age_key = {
         match read_to_string("age.key") {
-            Ok(content) => age::x25519::Identity::from_str(&content).unwrap(),
+            Ok(content) => {
+                age::x25519::Identity::from_str(serde_json::from_str(&content).unwrap()).unwrap()
+            }
             Err(_) => {
                 let identity = age::x25519::Identity::generate();
                 File::create("age.key")
