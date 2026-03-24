@@ -86,3 +86,24 @@ impl DisplaySection for api::Host {
         (style(&self.hostname).underlined().to_string(), items)
     }
 }
+
+// TODO: config to extract wanted fields
+impl DisplaySection for api::Node {
+    fn as_section(&self) -> crate::section::Section {
+        let details = {
+            let mut details = self.host_details.os_version.iter().collect::<Vec<_>>();
+            details.extend(self.host_details.osquery_info.iter());
+            details.extend(self.host_details.platform_info.iter());
+            details.extend(self.host_details.system_info.iter());
+            details
+                .into_iter()
+                .map(|detail| (detail.0.clone(), detail.1.clone()))
+                .collect()
+        };
+
+        (
+            style(&self.host_identifier).underlined().to_string(),
+            details,
+        )
+    }
+}

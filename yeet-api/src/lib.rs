@@ -7,6 +7,7 @@ mod secret;
 mod routes {
     pub mod host;
     pub mod key;
+    pub mod osquery;
     pub mod secret;
     pub mod system;
     pub mod verify;
@@ -14,7 +15,7 @@ mod routes {
 
 pub use httpsig::*;
 pub use key::*;
-pub use routes::{host::*, key::*, secret::*, system::*, verify::*};
+pub use routes::{host::*, key::*, osquery::*, secret::*, system::*, verify::*};
 pub use secret::*;
 
 pub type StorePath = String;

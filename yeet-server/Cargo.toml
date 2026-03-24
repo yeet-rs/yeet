@@ -43,6 +43,9 @@ sqlx = { version = "0.8.6", features = ["json", "runtime-tokio", "sqlite", "uuid
 futures = "0.3.32"
 error_set.workspace = true
 axum-server = { version = "0.8.0", features = ["tls-rustls"] }
+tower-http = { version = "0.6.8", features = ["trace"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+indexmap = { version = "2.13.0", features = ["serde"] }
 
 [dev-dependencies]
 paste = "1.0"

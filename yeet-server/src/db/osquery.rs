@@ -1,3 +1,8 @@
+use std::collections::HashMap;
+
+use ed25519_dalek::VerifyingKey;
+use indexmap::IndexMap;
+use sqlx::{Acquire, types::Json};
 use uuid::Uuid;
 
 error_set::error_set! {
@@ -9,6 +14,88 @@ error_set::error_set! {
         Decrypt(age::DecryptError),
         SQLXE(sqlx::Error),
     }
+}
+
+pub async fn list_nodes(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::Node>, sqlx::Error> {
+    let nodes = sqlx::query!(r#"
+        SELECT id, host_identifier, host_details as "host_details: Json<osquery_tls::EnrollmentHostDetails>"
+        FROM osquery_nodes"#)
+        .map(|row| api::Node {
+            id: api::NodeID::new(row.id),
+            host_identifier: row.host_identifier,
+            host_details: row.host_details.0,
+        })
+        .fetch_all(&mut *conn)
+        .await?;
+
+    Ok(nodes)
+}
+
+pub async fn create_query(
+    conn: &mut sqlx::SqliteConnection,
+    user: VerifyingKey,
+    query: String,
+) -> Result<api::QueryID, sqlx::Error> {
+    let mut tx = conn.begin().await?;
+    let user = &user.as_bytes()[..];
+
+    // TODO no user lookup
+    let user_id = sqlx::query_scalar!("SELECT id FROM keys WHERE verifying_key = $1", user)
+        .fetch_one(&mut *tx)
+        .await?;
+
+    let query_id = sqlx::query!(
+        r#"INSERT INTO osquery_dq_queries (query,user_id) VALUES ($1,$2) "#,
+        query,
+        user_id
+    )
+    .execute(&mut *tx)
+    .await?
+    .last_insert_rowid();
+
+    // TODO: no loop
+
+    let nodes = sqlx::query_scalar!(r#"SELECT id FROM osquery_nodes"#)
+        .fetch_all(&mut *tx)
+        .await?;
+
+    for node in nodes {
+        sqlx::query!(
+            r#"INSERT INTO osquery_dq_requests (query_id,node_id) VALUES ($1,$2)"#,
+            query_id,
+            node
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+    Ok(api::QueryID::new(query_id))
+}
+
+pub async fn get_query_response_all(
+    conn: &mut sqlx::SqliteConnection,
+    query: api::QueryID,
+) -> Result<api::QueryFulfillment, sqlx::Error> {
+    let responses = sqlx::query!(
+        r#"SELECT id as "node: api::NodeID", status, response
+        FROM osquery_dq_responses WHERE query_id = $1"#,
+        query
+    )
+    .map(|row| api::QueryResponse {
+        node: row.node,
+        response: serde_json::from_str(&row.response).unwrap_or_default(),
+        status: row.status,
+    })
+    .fetch_all(&mut *conn)
+    .await?;
+
+    let missing = sqlx::query_scalar!(
+        r#"SELECT node_id as "node_id: api::NodeID" FROM osquery_dq_requests WHERE is_done = 0 AND query_id = $1"#,
+        query
+    ).fetch_all(conn).await?;
+
+    Ok(api::QueryFulfillment { responses, missing })
 }
 
 /// The node needs to provide the same content as the `osquery-enroll` secret
@@ -34,7 +121,7 @@ pub async fn enroll_node<I: age::Identity>(
         return Err(EnrollError::SecretMismatch);
     }
     let node_key = uuid::Uuid::now_v7();
-    let details = sqlx::types::Json::from(enroll_request.host_details);
+    let details = Json::from(enroll_request.host_details);
 
     sqlx::query!(
         r#"INSERT INTO osquery_nodes (node_key, host_identifier, platform_type, host_details)
@@ -48,6 +135,86 @@ pub async fn enroll_node<I: age::Identity>(
     .await?;
 
     Ok(node_key)
+}
+
+error_set::error_set! {
+    DQueryError := {
+        SQLXE(sqlx::Error),
+    }
+}
+
+/// Return all queries that a node has to still execute
+pub async fn dqueries_for_node(
+    conn: &mut sqlx::SqliteConnection,
+    node: &uuid::Uuid,
+) -> Result<osquery_tls::DistributedReadResponse, DQueryError> {
+    let node_id = sqlx::query_scalar!(r#"SELECT id FROM osquery_nodes WHERE node_key = $1"#, node)
+        .fetch_one(&mut *conn)
+        .await?;
+
+    let queries = sqlx::query!(
+        r#"
+        SELECT id as "id: String", query
+        FROM osquery_dq_requests as odr
+        JOIN osquery_dq_queries as oq on oq.id = odr.query_id
+        WHERE is_done = 0 AND node_id = $1"#,
+        node_id
+    )
+    .map(|row| (row.id, row.query))
+    .fetch_all(&mut *conn)
+    .await?;
+
+    Ok(osquery_tls::DistributedReadResponse {
+        queries: queries.into_iter().collect(),
+        node_invalid: None,
+    })
+}
+
+error_set::error_set! {
+    DWriteError := {
+        SQLXE(sqlx::Error),
+    }
+}
+
+/// Store the result of a query (from the node)
+pub async fn write_dquery_response(
+    conn: &mut sqlx::SqliteConnection,
+    node: &uuid::Uuid,
+    queries: &HashMap<String, Vec<IndexMap<String, String>>>,
+    statuses: &HashMap<String, u32>,
+) -> Result<osquery_tls::DistributedWriteResponse, DWriteError> {
+    let mut tx = conn.begin().await?;
+
+    let node_id = sqlx::query_scalar!(r#"SELECT id FROM osquery_nodes WHERE node_key = $1"#, node)
+        .fetch_one(&mut *tx)
+        .await?;
+
+    // TODO: sqlx in operator
+    for (query_id, response) in queries.into_iter() {
+        sqlx::query!(
+            r#"UPDATE osquery_dq_requests SET is_done = 1 WHERE node_id = $1 AND query_id = $2"#,
+            node_id,
+            query_id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        let status = statuses.get(query_id).cloned().unwrap_or(0);
+        let response = serde_json::to_string(response).unwrap();
+        sqlx::query!(
+            r#"INSERT INTO osquery_dq_responses (query_id, node_id, response, status)
+            VALUES ($1,$2,$3,$4)"#,
+            query_id,
+            node_id,
+            response,
+            status
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+    Ok(osquery_tls::DistributedWriteResponse { node_invalid: None })
 }
 
 #[cfg(test)]

@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,10 +35,34 @@ pub struct EnrollmentResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct DistributedReadRequest {
+    pub node_key: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+/// TODO: Discovery queries on distributed queries
 pub struct DistributedReadResponse {
     pub queries: HashMap<String, String>,
     /// Optional, return true to indicate re-enrollmen.
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_invalid: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DistributedWriteRequest {
+    pub node_key: Option<String>,
+    pub queries: HashMap<String, Vec<IndexMap<String, String>>>,
+    /// As of osquery version 2.1.2, the distributed write API includes a top-level statuses key.
+    /// These error codes correspond to SQLite error codes.
+    /// Consider non-0 values to indicate query execution failures.
+    pub statuses: HashMap<String, u32>,
+    /// Optional, return true to indicate re-enrollmen.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_invalid: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DistributedWriteResponse {
     pub node_invalid: Option<bool>,
 }
 

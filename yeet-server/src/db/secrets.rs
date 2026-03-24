@@ -201,6 +201,7 @@ pub async fn list_acl(
     )
     .await?;
 
+    // Json does not allow non string as key
     Ok(secrets.into_iter().collect())
 }
 

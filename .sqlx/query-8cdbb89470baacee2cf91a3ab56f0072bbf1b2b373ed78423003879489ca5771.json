@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE osquery_dq_requests SET is_done = 1 WHERE node_id = $1 AND query_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "8cdbb89470baacee2cf91a3ab56f0072bbf1b2b373ed78423003879489ca5771"
+}

@@ -5,6 +5,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
 use shadow_rs::shadow;
 use url::Url;
+use zbus::zvariant::Str;
 
 shadow!(build);
 
@@ -56,6 +57,13 @@ pub enum Commands {
     #[command(hide = true)]
     /// Used to notify all users
     Notify,
+    /// show all osquery nodes
+    Nodes,
+    /// Create an distributed osquery and wait for the result of all nodes
+    Query {
+        #[arg(index = 1)]
+        query: String,
+    },
     Agent {
         /// URL of the Yeet Server
         #[arg(long)]

@@ -29,6 +29,7 @@ mod cli {
     pub mod detach;
     pub mod host;
     pub mod hosts;
+    pub mod osquery;
     pub mod publish;
     pub mod secret;
 }
@@ -92,10 +93,11 @@ async fn main() -> Result<(), Report> {
         .extract()?;
 
     match args.command {
+        Commands::Nodes => cli::osquery::show_nodes(&config).await?,
+        Commands::Query { query } => cli::osquery::query(&config, query).await?,
         Commands::Secret(args) => cli::secret::handle_secret_command(args, &config).await?,
         Commands::Detach {
             version,
-
             darwin,
             path,
         } => cli::detach::detach(version, path, darwin).await?,

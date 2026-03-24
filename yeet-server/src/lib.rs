@@ -89,6 +89,14 @@ pub async fn launch<I: Into<std::net::IpAddr>>(
 }
 
 fn routes(state: YeetState) -> axum::Router {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .or_else(|_| tracing_subscriber::EnvFilter::try_new("yeetd=error,tower_http=warn"))
+                .unwrap(),
+        )
+        .init();
+
     axum::Router::new()
         .route("/verification/add", post(verify::add_verification_attempt))
         .route("/verification/{id}/accept", put(verify::accept_attempt))
@@ -125,6 +133,18 @@ fn routes(state: YeetState) -> axum::Router {
         .route("/osquery/enroll", post(osquery::enroll))
         .route("/osquery/query/read", post(osquery::query_read))
         .route("/osquery/query/write", post(osquery::query_write))
+        .route("/osquery/nodes", get(osquery::list_nodes))
+        // === TODO
+        .route("/osquery/query/create", post(osquery::create_query))
+        .route(
+            "/osquery/query/response/{query}",
+            get(osquery::query_response_all),
+        )
+        // .route(
+        // "/osquery/query/response/{query_id}/{node_id}",
+        // get(osquery::query_write),
+        // )
+        .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(state)
 }
 
