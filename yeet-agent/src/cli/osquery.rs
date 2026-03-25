@@ -33,11 +33,32 @@ pub async fn query(config: &Config, sql: String) -> Result<(), Report> {
 
     let mut response = api::query_response_all(&url, key, query).await?;
     while !response.missing.is_empty() {
-        log::info!("{:#?} has not yet responded to the query", response.missing);
         sleep(Duration::from_secs(1)).await; // TODO: async model
         response = api::query_response_all(&url, key, query).await?;
     }
-    println!("{:#?}", response.responses);
+
+    for node in response.responses {
+        let mut builder = tabled::builder::Builder::new();
+        let headers: Vec<_> = node
+            .response
+            .first()
+            .cloned()
+            .unwrap_or_default()
+            .keys()
+            .cloned()
+            .collect();
+
+        builder.push_record(headers);
+
+        for row in node.response {
+            let values: Vec<_> = row.into_values().collect();
+            builder.push_record(values);
+        }
+        let mut table = builder.build();
+        table.with(tabled::settings::Style::modern_rounded());
+
+        println!("{table}");
+    }
 
     Ok(())
 }

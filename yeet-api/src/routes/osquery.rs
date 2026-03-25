@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param};
 use httpsig_hyper::prelude::SigningKey;
 use indexmap::IndexMap;

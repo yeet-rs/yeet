@@ -5,7 +5,6 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
 use shadow_rs::shadow;
 use url::Url;
-use zbus::zvariant::Str;
 
 shadow!(build);
 
