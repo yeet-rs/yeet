@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use axum::{
     Json,
     extract::{Path, State},
     http::StatusCode,
 };
+use indexmap::IndexMap;
 
 use crate::{
     YeetState, db,
@@ -119,13 +120,26 @@ pub async fn query_write(
         node_key
     };
 
-    let Ok(response) = db::osquery::write_dquery_response(
-        &mut conn,
-        &node_key,
-        &request.queries,
-        &request.statuses,
-    )
-    .await
+    let queries = {
+        let mut queries = HashMap::new();
+        for (query_id, query) in request.queries {
+            let mut columns: IndexMap<String, Vec<String>> = IndexMap::new();
+
+            for row in query {
+                for (column_name, value) in row {
+                    columns
+                        .entry(column_name)
+                        .or_insert_with(Vec::new)
+                        .push(value);
+                }
+            }
+            queries.insert(query_id, columns);
+        }
+        queries
+    };
+
+    let Ok(response) =
+        db::osquery::write_dquery_response(&mut conn, &node_key, &queries, &request.statuses).await
     else {
         return Json(query_write_failure());
     };

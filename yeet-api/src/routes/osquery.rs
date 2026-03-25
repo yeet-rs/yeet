@@ -97,7 +97,7 @@ pub struct QueryFulfillment {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryResponse {
     pub node: NodeID,
-    pub response: Vec<IndexMap<String, String>>,
+    pub response: IndexMap<String, Vec<String>>,
     pub status: i64,
 }
 

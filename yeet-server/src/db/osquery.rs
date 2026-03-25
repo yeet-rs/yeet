@@ -91,9 +91,11 @@ pub async fn get_query_response_all(
     .await?;
 
     let missing = sqlx::query_scalar!(
-        r#"SELECT node_id as "node_id: api::NodeID" FROM osquery_dq_requests WHERE is_done = 0 AND query_id = $1"#,
+        r#"SELECT node_id as "node_id: api::NodeID" FROM osquery_dq_requests WHERE query_id = $1"#,
         query
-    ).fetch_all(conn).await?;
+    )
+    .fetch_all(conn)
+    .await?;
 
     Ok(api::QueryFulfillment { responses, missing })
 }
@@ -157,7 +159,7 @@ pub async fn dqueries_for_node(
         SELECT id as "id: String", query
         FROM osquery_dq_requests as odr
         JOIN osquery_dq_queries as oq on oq.id = odr.query_id
-        WHERE is_done = 0 AND node_id = $1"#,
+        WHERE node_id = $1"#,
         node_id
     )
     .map(|row| (row.id, row.query))
@@ -180,7 +182,7 @@ error_set::error_set! {
 pub async fn write_dquery_response(
     conn: &mut sqlx::SqliteConnection,
     node: &uuid::Uuid,
-    queries: &HashMap<String, Vec<IndexMap<String, String>>>,
+    queries: &HashMap<String, IndexMap<String, Vec<String>>>,
     statuses: &HashMap<String, u32>,
 ) -> Result<osquery_tls::DistributedWriteResponse, DWriteError> {
     let mut tx = conn.begin().await?;
@@ -192,7 +194,7 @@ pub async fn write_dquery_response(
     // TODO: sqlx in operator
     for (query_id, response) in queries.into_iter() {
         sqlx::query!(
-            r#"UPDATE osquery_dq_requests SET is_done = 1 WHERE node_id = $1 AND query_id = $2"#,
+            r#"DELETE FROM osquery_dq_requests WHERE node_id = $1 AND query_id = $2"#,
             node_id,
             query_id
         )
