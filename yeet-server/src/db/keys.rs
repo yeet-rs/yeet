@@ -1,9 +1,4 @@
-use api::AuthLevel;
-use axum::http::StatusCode;
 use ed25519_dalek::VerifyingKey;
-use sqlx::Acquire as _;
-
-use crate::{db, error::InternalError as _};
 
 pub async fn fetch_by_keyid(
     conn: &mut sqlx::SqliteConnection,
@@ -63,82 +58,4 @@ pub async fn delete_key(
         .execute(conn)
         .await?;
     Ok(())
-}
-
-pub async fn add_user_key(
-    conn: &mut sqlx::SqliteConnection,
-    keyid: String,
-    key: VerifyingKey,
-    level: AuthLevel,
-) -> Result<(), sqlx::Error> {
-    let mut tx = conn.begin().await?;
-
-    let key = db::keys::add_key(&mut tx, keyid, key).await?;
-
-    // TODO: return userid
-    let _user = sqlx::query!(
-        r#"
-        INSERT INTO users (key_id, level)
-        VALUES ($1, $2)"#,
-        key,
-        level
-    )
-    .execute(&mut *tx)
-    .await?
-    .last_insert_rowid();
-    tx.commit().await?;
-    Ok(())
-}
-
-pub async fn auth_admin(
-    conn: &mut sqlx::SqliteConnection,
-    key: VerifyingKey,
-) -> Result<(), (StatusCode, String)> {
-    auth_level(conn, key, AuthLevel::Admin).await
-}
-
-pub async fn auth_build(
-    conn: &mut sqlx::SqliteConnection,
-    key: VerifyingKey,
-) -> Result<(), (StatusCode, String)> {
-    auth_level(conn, key, AuthLevel::Build).await
-}
-
-pub async fn auth_level(
-    conn: &mut sqlx::SqliteConnection,
-    key: VerifyingKey,
-    level: AuthLevel,
-) -> Result<(), (StatusCode, String)> {
-    #[cfg(any(test, feature = "test-server"))]
-    return Ok(());
-
-    let key = &key.as_bytes()[..];
-
-    let user_level = sqlx::query_scalar!(
-        r#"
-        SELECT level AS "level: api::AuthLevel" FROM users
-        LEFT JOIN keys ON users.key_id = keys.id
-        WHERE verifying_key = $1"#,
-        key
-    )
-    .fetch_optional(conn)
-    .await
-    .internal_server()?;
-
-    match user_level {
-        Some(user_level) => {
-            if user_level == level || user_level == api::AuthLevel::Admin {
-                Ok(())
-            } else {
-                Err((
-                    StatusCode::FORBIDDEN,
-                    "Key is registered but you have not the required permissions".to_owned(),
-                ))
-            }
-        }
-        None => Err((
-            StatusCode::FORBIDDEN,
-            "Key is registered but has no AuthLevel associated".to_owned(),
-        )),
-    }
 }

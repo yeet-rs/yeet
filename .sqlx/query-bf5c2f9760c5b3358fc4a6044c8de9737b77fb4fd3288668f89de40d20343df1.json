@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT id as \"id: String\", query\n        FROM osquery_dq_requests as odr\n        JOIN osquery_dq_queries as oq on oq.id = odr.query_id\n        WHERE is_done = 0 AND node_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id: String",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "query",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "bf5c2f9760c5b3358fc4a6044c8de9737b77fb4fd3288668f89de40d20343df1"
+}

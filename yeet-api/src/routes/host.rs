@@ -1,35 +1,12 @@
 use std::collections::HashMap;
 
 use ed25519_dalek::VerifyingKey;
-use http::StatusCode;
-use httpsig_hyper::prelude::SigningKey;
+
 use serde::{Deserialize, Serialize};
-use url::Url;
 
-use crate::{
-    StorePath,
-    httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param},
-};
+use crate::{StorePath, request, tag};
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "hazard", derive(sqlx::Type))]
-#[cfg_attr(feature = "hazard", sqlx(transparent))]
-#[serde(transparent)]
-pub struct HostID(i64);
-
-impl std::fmt::Display for HostID {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[cfg(feature = "hazard")]
-impl HostID {
-    #[must_use]
-    pub fn new(id: i64) -> Self {
-        Self(id)
-    }
-}
+crate::db_id!(HostID);
 
 // State the Server wants the client to be in
 
@@ -56,6 +33,7 @@ pub struct Host {
     pub last_ping: jiff::Timestamp,
     pub version: Option<StorePath>,
     pub latest_update: Option<StorePath>,
+    pub tags: Vec<tag::Tag>,
 }
 
 impl PartialEq for Host {
@@ -71,35 +49,15 @@ impl PartialEq for Host {
 }
 impl Eq for Host {}
 
-pub async fn list_hosts<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-) -> Result<Vec<Host>, ResponseError> {
-    reqwest::Client::new()
-        .get(url.join("/host/list")?)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_json()
-        .await
-}
+request! (
+    list_hosts(),
+    get("/host") -> Vec<Host>
+);
 
-pub async fn rename_host<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-    host: HostID,
-    new_name: &str,
-) -> Result<StatusCode, ResponseError> {
-    reqwest::Client::new()
-        .put(url.join(&format!("/host/{host}/rename/{new_name}"))?)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_code()
-        .await
-}
+request! (
+    rename_host(host: HostID, new_name: &str),
+    put("/host/{host}/rename/{new_name}") -> StatusCode
+);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// Represents a Host Update Request
@@ -114,18 +72,8 @@ pub struct HostUpdateRequest {
     pub substitutor: String,
 }
 
-pub async fn update_hosts<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-    update: &HostUpdateRequest,
-) -> Result<StatusCode, ResponseError> {
-    reqwest::Client::new()
-        .post(url.join("/host/update")?)
-        .json(update)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_code()
-        .await
-}
+request! (
+    update_hosts(update: HostUpdateRequest),
+    post("/host/update") -> StatusCode,
+    body: &update
+);

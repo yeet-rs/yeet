@@ -42,7 +42,7 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
             let status = api::add_key(
                 url,
                 &get_secret_key(httpsig_key)?,
-                &api::AddKey {
+                &api::AddUser {
                     key: get_verify_key(&key)?,
                     level,
                 },

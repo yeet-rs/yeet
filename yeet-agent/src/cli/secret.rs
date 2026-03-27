@@ -70,7 +70,7 @@ async fn add(config: &Config) -> Result<(), Report> {
         age::encrypt(&recipient, &bytes)
     }?;
 
-    api::add_secret(&url, secret_key, &name, &secret).await?;
+    api::create_secret(&url, secret_key, &name, &secret).await?;
     log::info!("Secret {name} created!");
 
     allow(config).await?;

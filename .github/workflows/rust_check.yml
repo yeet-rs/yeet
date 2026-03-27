@@ -52,3 +52,23 @@ jobs:
         run: cargo test -p yeet-api --release
       - name: cargo test (yeet)
         run: cargo test -p yeet --release
+  codecov:
+    name: coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Generate code coverage
+        run: |
+          cargo tarpaulin --timeout 120 --out xml --workspace --engine llvm --exclude yeet
+
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

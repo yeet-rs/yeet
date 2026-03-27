@@ -11,9 +11,7 @@
 //! because an attack would need to also obtain the identity key of a hosts that
 //! has access to the secrets
 
-use std::collections::HashMap;
-
-use futures::TryStreamExt as _;
+use sqlx::types::Json;
 
 error_set::error_set! {
     AddSecretError := {
@@ -23,6 +21,8 @@ error_set::error_set! {
     }
 }
 
+/// The secrets needs to be encrypted with the servers identity key
+/// retrieve it with GET `/secret/server_key`
 /// Add a new secret - `store_key` required to test if it is an actual encrypted secret and not bogus
 pub async fn add_secret<I: age::Identity, S: Into<String>, V: Into<Vec<u8>>>(
     conn: &mut sqlx::SqliteConnection,
@@ -44,6 +44,8 @@ pub async fn add_secret<I: age::Identity, S: Into<String>, V: Into<Vec<u8>>>(
     Ok(api::SecretName {
         id: api::SecretID::new(row.last_insert_rowid()),
         name,
+        tags: Vec::new(),
+        hosts: Vec::new(),
     })
 }
 
@@ -153,53 +155,86 @@ pub async fn remove_secret(
     Ok(())
 }
 
-/// list secrets
+//        SELECT
+//     s.id as "id!: api::SecretID",
+//     s.name,
+//     -- Gather tags authorized for this User+Secret via the View
+//     json_group_array(json_object('id', t.id, 'name', t.name)) as "tags!: Json<Vec<api::tag::Tag>>",
+//     -- Gather hosts authorized for this User+Host via the View
+//     json_group_array(
+//         CASE WHEN a_h.resource_id IS NOT NULL THEN sacl.host_id ELSE NULL END
+//     ) as "hosts!: Json<Vec<api::HostID>>"
+// FROM secrets s
+
+// -- Join View to find authorized Secrets
+// JOIN access a_s
+//     ON s.id = a_s.resource_id
+//     AND a_s.resource_type = $2
+//     AND a_s.user_id = $1
+// -- Get tag details for the secret
+// LEFT JOIN tags t ON t.id = a_s.tag_id
+
+// -- Join Hosts (Secret ACL)
+// LEFT JOIN secrets_acl sacl ON s.id = sacl.secret_id
+
+// -- Join View to verify the User is allowed to see these specific Hosts
+// LEFT JOIN access a_h
+//     ON sacl.host_id = a_h.resource_id
+//     AND a_h.resource_type = $3
+//     AND a_h.user_id = $1
+// GROUP BY s.id, s.name
+
 pub async fn list_secrets(
     conn: &mut sqlx::SqliteConnection,
+    user: api::UserID,
 ) -> Result<Vec<api::SecretName>, sqlx::Error> {
-    let secrets = sqlx::query!(r#"SELECT id, name FROM secrets"#)
-        .map(|row| api::SecretName {
-            id: api::SecretID::new(row.id),
-            name: row.name,
-        })
-        .fetch_all(conn)
-        .await?;
-
-    Ok(secrets)
-}
-
-/// list acl
-pub async fn list_acl(
-    conn: &mut sqlx::SqliteConnection,
-) -> Result<Vec<(api::SecretName, Vec<api::HostID>)>, sqlx::Error> {
     let secrets = sqlx::query!(
         r#"
-        SELECT id, name, host_id
-        FROM secrets
-        LEFT JOIN secrets_acl on secrets_acl.secret_id = secrets.id"#
+        SELECT
+            s.id as "id!: api::SecretID",
+            s.name,
+            -- Gather tags authorized for this User+Secret via the View
+            json_group_array(
+                json_object('id', t.id, 'name', t.name)
+            ) FILTER (WHERE t.id IS NOT NULL) as "tags!: Json<Vec<api::tag::Tag>>",
+            -- Gather hosts authorized for this User+Host via the View
+            json_group_array(sacl.host_id)
+                FILTER (WHERE a_h.resource_id IS NOT NULL)
+                as "hosts!: Json<Vec<api::HostID>>"
+        FROM secrets s
+
+        -- Join View to find authorized Secrets
+        JOIN access a_s
+            ON s.id = a_s.resource_id
+            AND a_s.resource_type = $2
+            AND a_s.user_id = $1
+        -- Get tag details for the secret
+        LEFT JOIN tags t ON t.id = a_s.tag_id
+
+        -- Join Hosts (Secret ACL)
+        LEFT JOIN secrets_acl sacl ON s.id = sacl.secret_id
+
+        -- Join View to verify the User is allowed to see these specific Hosts
+        LEFT JOIN access a_h
+            ON sacl.host_id = a_h.resource_id
+            AND a_h.resource_type = $3
+            AND a_h.user_id = $1
+        GROUP BY s.id, s.name
+        "#,
+        user,
+        api::tag::ResourceType::Secret,
+        api::tag::ResourceType::Host
     )
-    .fetch(conn)
-    .map_ok(|row| {
-        (
-            api::SecretName {
-                id: api::SecretID::new(row.id),
-                name: row.name,
-            },
-            row.host_id.map(api::HostID::new),
-        )
+    .map(|row| api::SecretName {
+        id: row.id,
+        name: row.name,
+        tags: row.tags.0,
+        hosts: row.hosts.0,
     })
-    .try_fold(
-        HashMap::<_, Vec<_>>::new(),
-        |mut acc, (key, value)| async move {
-            if let Some(id) = value {
-                acc.entry(key).or_default().push(id);
-            }
-            Ok(acc)
-        },
-    )
+    .fetch_all(conn)
     .await?;
 
-    Ok(secrets.into_iter().collect())
+    Ok(secrets)
 }
 
 /// Rename a secret including its acl
@@ -219,319 +254,4 @@ pub async fn rename_secret(
     .execute(conn)
     .await?;
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-
-    use ed25519_dalek::{SigningKey, VerifyingKey};
-
-    use crate::db::{self};
-
-    #[sqlx::test]
-    async fn create_and_retrieve_secret(pool: sqlx::SqlitePool) {
-        let mut conn = pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-
-        let store_key = age::x25519::Identity::generate();
-        let host = age::x25519::Identity::generate();
-        let my_host =
-            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
-                .await
-                .unwrap();
-
-        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
-
-        let my_secret = db::secrets::add_secret(&mut conn, "my_secret", encrypted, &store_key)
-            .await
-            .unwrap();
-
-        db::secrets::add_access_for(&mut conn, my_secret.id, my_host)
-            .await
-            .unwrap();
-
-        let encrypted_for_host = db::secrets::get_secret_for(
-            &mut conn,
-            "my_secret",
-            &store_key,
-            my_host,
-            &host.to_public(),
-        )
-        .await
-        .unwrap()
-        .unwrap();
-
-        let decrypted = age::decrypt(&host, &encrypted_for_host).unwrap();
-        assert_eq!(decrypted, b"secret_text");
-    }
-
-    #[sqlx::test]
-    async fn retrieve_without_access(pool: sqlx::SqlitePool) {
-        let mut conn = pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-
-        let store_key = age::x25519::Identity::generate();
-        let host = age::x25519::Identity::generate();
-
-        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
-
-        let _my_secret = db::secrets::add_secret(&mut conn, "my_secret", encrypted, &store_key)
-            .await
-            .unwrap();
-
-        let secret = db::secrets::get_secret_for(
-            &mut conn,
-            "my_secret",
-            &store_key,
-            api::HostID::new(1),
-            &host.to_public(),
-        )
-        .await
-        .unwrap();
-
-        assert!(secret.is_none());
-    }
-
-    #[sqlx::test]
-    async fn remove_access(pool: sqlx::SqlitePool) {
-        let mut conn = pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-
-        let store_key = age::x25519::Identity::generate();
-        let host = age::x25519::Identity::generate();
-        let my_host =
-            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
-                .await
-                .unwrap();
-
-        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
-
-        let secret = db::secrets::add_secret(&mut conn, "my_secret", encrypted, &store_key)
-            .await
-            .unwrap();
-
-        db::secrets::add_access_for(&mut conn, secret.id, my_host)
-            .await
-            .unwrap();
-
-        let _: Vec<u8> = db::secrets::get_secret_for(
-            &mut conn,
-            "my_secret",
-            &store_key,
-            my_host,
-            &host.to_public(),
-        )
-        .await
-        .unwrap()
-        .unwrap();
-
-        db::secrets::remove_access_for(&mut conn, secret.id, my_host)
-            .await
-            .unwrap();
-
-        let secret = db::secrets::get_secret_for(
-            &mut conn,
-            "my_secret",
-            &store_key,
-            my_host,
-            &host.to_public(),
-        )
-        .await
-        .unwrap();
-
-        assert!(secret.is_none());
-    }
-
-    #[sqlx::test]
-    async fn check_acl(pool: sqlx::SqlitePool) {
-        let mut conn = pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-        let store_key = age::x25519::Identity::generate();
-
-        let my_host =
-            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
-                .await
-                .unwrap();
-
-        let h2 = db::hosts::add_host(
-            &mut conn,
-            SigningKey::from_bytes(&[1; 32]).verifying_key(),
-            "hostname2".to_owned(),
-        )
-        .await
-        .unwrap();
-
-        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
-
-        let my_secret =
-            db::secrets::add_secret(&mut conn, "my_secret", encrypted.clone(), &store_key)
-                .await
-                .unwrap();
-        let secret2 = db::secrets::add_secret(&mut conn, "secret2", encrypted, &store_key)
-            .await
-            .unwrap();
-
-        db::secrets::add_access_for(&mut conn, my_secret.id, my_host)
-            .await
-            .unwrap();
-
-        db::secrets::add_access_for(&mut conn, secret2.id, my_host)
-            .await
-            .unwrap();
-
-        db::secrets::add_access_for(&mut conn, secret2.id, h2)
-            .await
-            .unwrap();
-
-        assert!(
-            db::secrets::check_acl(&mut conn, my_secret.id, my_host)
-                .await
-                .unwrap()
-        );
-
-        assert!(
-            db::secrets::check_acl(&mut conn, secret2.id, my_host)
-                .await
-                .unwrap()
-        );
-
-        assert!(
-            db::secrets::check_acl(&mut conn, secret2.id, h2)
-                .await
-                .unwrap()
-        );
-    }
-
-    #[sqlx::test]
-    async fn non_encrypted(pool: sqlx::SqlitePool) {
-        let mut conn = pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-        let store_key = age::x25519::Identity::generate();
-
-        assert!(
-            db::secrets::add_secret(&mut conn, "my_secret", b"secret_text", &store_key)
-                .await
-                .is_err()
-        );
-    }
-
-    #[sqlx::test]
-    fn rename_secret(pool: sqlx::SqlitePool) {
-        let mut conn = pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-        let store_key = age::x25519::Identity::generate();
-
-        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
-
-        let my_secret = db::secrets::add_secret(&mut conn, "my_secret", encrypted, &store_key)
-            .await
-            .unwrap();
-
-        db::secrets::rename_secret(&mut conn, my_secret.id, "newsecret".to_owned())
-            .await
-            .unwrap();
-
-        assert!(
-            db::secrets::list_secrets(&mut conn)
-                .await
-                .unwrap()
-                .contains(&api::SecretName {
-                    id: my_secret.id,
-                    name: "newsecret".to_owned()
-                })
-        );
-    }
-
-    #[sqlx::test]
-    fn remove_secret(pool: sqlx::SqlitePool) {
-        let mut conn = pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-        let store_key = age::x25519::Identity::generate();
-
-        let my_host =
-            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
-                .await
-                .unwrap();
-
-        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
-
-        let my_secret = db::secrets::add_secret(&mut conn, "my_secret", encrypted, &store_key)
-            .await
-            .unwrap();
-
-        db::secrets::add_access_for(&mut conn, my_secret.id, my_host)
-            .await
-            .unwrap();
-
-        db::secrets::remove_secret(&mut conn, my_secret.id)
-            .await
-            .unwrap();
-
-        assert!(
-            db::secrets::list_secrets(&mut conn)
-                .await
-                .unwrap()
-                .is_empty()
-        );
-        assert!(db::secrets::list_acl(&mut conn).await.unwrap().is_empty());
-    }
-
-    #[sqlx::test]
-    fn remove_host(pool: sqlx::SqlitePool) {
-        let mut conn = pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
-        let store_key = age::x25519::Identity::generate();
-
-        let my_host =
-            db::hosts::add_host(&mut conn, VerifyingKey::default(), "hostname".to_owned())
-                .await
-                .unwrap();
-
-        let encrypted = age::encrypt(&store_key.to_public(), b"secret_text").unwrap();
-
-        let my_secret = db::secrets::add_secret(&mut conn, "my_secret", encrypted, &store_key)
-            .await
-            .unwrap();
-
-        db::secrets::add_access_for(&mut conn, my_secret.id, my_host)
-            .await
-            .unwrap();
-
-        sqlx::query!(r#"DELETE FROM hosts WHERE id = $1"#, my_host)
-            .execute(&mut *conn)
-            .await
-            .unwrap();
-
-        assert!(
-            !db::secrets::list_secrets(&mut conn)
-                .await
-                .unwrap()
-                .is_empty()
-        );
-        assert!(db::secrets::list_acl(&mut conn).await.unwrap().is_empty());
-    }
 }

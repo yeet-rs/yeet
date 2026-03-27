@@ -56,6 +56,13 @@ pub enum Commands {
     #[command(hide = true)]
     /// Used to notify all users
     Notify,
+    /// show all osquery nodes
+    Nodes,
+    /// Create an distributed osquery and wait for the result of all nodes
+    Query {
+        #[arg(index = 1)]
+        query: String,
+    },
     Agent {
         /// URL of the Yeet Server
         #[arg(long)]

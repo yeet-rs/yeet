@@ -19,7 +19,7 @@ hazard = ["dep:sqlx"]
 ahash = { version = "0.8.12", features = ["std"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"], optional = true }
 
-
+osquery-tls.workspace = true
 reqwest.workspace = true
 httpsig-hyper.workspace = true
 jiff.workspace = true
@@ -28,10 +28,10 @@ ed25519-dalek.workspace = true
 http.workspace = true
 ssh-key.workspace = true
 thiserror.workspace = true
-serde_json_any_key.workspace = true
 error_set.workspace = true
 url.workspace = true
 age.workspace = true
+indexmap = { version = "2.13.0", features = ["serde"] }
 
 [dev-dependencies]
 axum-test.workspace = true
