@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT node_id as \"node_id: api::NodeID\" FROM osquery_dq_requests WHERE query_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "node_id: api::NodeID",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "66829833e30275392780ba13569d376650d3058f22361c258226e94ea260e54f"
+}

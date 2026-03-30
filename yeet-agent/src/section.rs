@@ -8,10 +8,6 @@ pub trait DisplaySectionItem {
     fn as_section_item(&self) -> (String, String);
 }
 
-pub trait ColoredDisplay<D> {
-    fn colored_display(&self) -> StyledObject<D>;
-}
-
 macro_rules! section {
     ( $title:expr => [ $( $k:expr, $v:expr ),* $(,)? ] ) => {
         ( $title.to_string(),
@@ -19,7 +15,7 @@ macro_rules! section {
         )
     };
 }
-use console::StyledObject;
+
 pub(crate) use section;
 
 #[expect(clippy::print_stdout, clippy::unwrap_used)]

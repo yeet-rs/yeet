@@ -1,35 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
+use colored::Colorize as _;
 use ed25519_dalek::VerifyingKey;
-use http::StatusCode;
-use httpsig_hyper::prelude::SigningKey;
 use serde::{Deserialize, Serialize};
-use url::Url;
 
-use crate::{
-    StorePath,
-    httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param},
-};
+use crate::{StorePath, request, tag};
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "hazard", derive(sqlx::Type))]
-#[cfg_attr(feature = "hazard", sqlx(transparent))]
-#[serde(transparent)]
-pub struct HostID(i64);
-
-impl std::fmt::Display for HostID {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[cfg(feature = "hazard")]
-impl HostID {
-    #[must_use]
-    pub fn new(id: i64) -> Self {
-        Self(id)
-    }
-}
+crate::db_id!(HostID);
 
 // State the Server wants the client to be in
 
@@ -40,6 +17,27 @@ pub enum ProvisionState {
     Detached,
     Provisioned,
 }
+
+impl Display for ProvisionState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let colored = match self {
+            ProvisionState::NotSet => "Not set".blue(),
+            ProvisionState::Detached => "Detached".yellow(),
+            ProvisionState::Provisioned => "Provisioned".green(),
+        };
+        write!(f, "{colored}")
+    }
+}
+// impl ColoredDisplay for api::ProvisionState {
+//     fn colored_display(&self) -> StyledObject<&'static str> {
+//         match self {
+//             api::ProvisionState::NotSet => "Not set".blue(),
+//             api::ProvisionState::Detached => "Detached".yellow(),
+//             api::ProvisionState::Provisioned => "Provisioned".green(),
+//         }
+//     }
+// }
+
 impl Default for ProvisionState {
     #[inline]
     fn default() -> Self {
@@ -56,6 +54,41 @@ pub struct Host {
     pub last_ping: jiff::Timestamp,
     pub version: Option<StorePath>,
     pub latest_update: Option<StorePath>,
+    pub tags: Vec<tag::Tag>,
+}
+
+impl Display for Host {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.hostname)?;
+        write!(f, " {}", self.state)?;
+
+        let commit_ver = match &self.version {
+            Some(version) => {
+                let pos = version.rfind('.').map_or(0, |i| i.saturating_add(1));
+                #[expect(clippy::string_slice)]
+                version[pos..].to_owned()
+            }
+            None => "Not Set".blue().to_string(),
+        };
+        write!(f, "({commit_ver})")?;
+
+        let up_to_date = if self.version == self.latest_update {
+            "Up to date ".green()
+        } else {
+            "Outdated   ".red()
+        };
+        write!(f, " {up_to_date}")?;
+        write!(
+            f,
+            " {}",
+            crate::time_diff(
+                self.last_ping,
+                jiff::Unit::Second,
+                30_f64,
+                jiff::Unit::Second
+            )
+        )
+    }
 }
 
 impl PartialEq for Host {
@@ -71,35 +104,15 @@ impl PartialEq for Host {
 }
 impl Eq for Host {}
 
-pub async fn list_hosts<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-) -> Result<Vec<Host>, ResponseError> {
-    reqwest::Client::new()
-        .get(url.join("/host/list")?)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_json()
-        .await
-}
+request! (
+    list_hosts(),
+    get("/host") -> Vec<Host>
+);
 
-pub async fn rename_host<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-    host: HostID,
-    new_name: &str,
-) -> Result<StatusCode, ResponseError> {
-    reqwest::Client::new()
-        .put(url.join(&format!("/host/{host}/rename/{new_name}"))?)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_code()
-        .await
-}
+request! (
+    rename_host(host: HostID, new_name: &str),
+    put("/host/{host}/rename/{new_name}") -> StatusCode
+);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// Represents a Host Update Request
@@ -114,18 +127,8 @@ pub struct HostUpdateRequest {
     pub substitutor: String,
 }
 
-pub async fn update_hosts<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-    update: &HostUpdateRequest,
-) -> Result<StatusCode, ResponseError> {
-    reqwest::Client::new()
-        .post(url.join("/host/update")?)
-        .json(update)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_code()
-        .await
-}
+request! (
+    update_hosts(update: HostUpdateRequest),
+    post("/host/update") -> StatusCode,
+    body: &update
+);

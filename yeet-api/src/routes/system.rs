@@ -1,12 +1,6 @@
-use http::StatusCode;
-use httpsig_hyper::prelude::SigningKey;
 use serde::{Deserialize, Serialize};
-use url::Url;
 
-use crate::{
-    StorePath,
-    httpsig::{ErrorForJson as _, ReqwestSig as _, ResponseError, sig_param},
-};
+use crate::{StorePath, request};
 
 // Action the server want the client to take
 
@@ -41,46 +35,18 @@ pub struct RemoteStorePath {
     pub substitutor: String,
 }
 
-pub async fn detach_self<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-) -> Result<StatusCode, ResponseError> {
-    reqwest::Client::new()
-        .put(url.join("/system/self/detach")?)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_code()
-        .await
-}
+request! (
+    detach_self(),
+    put("/system/self/detach") -> StatusCode
+);
 
-pub async fn attach_self<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-) -> Result<StatusCode, ResponseError> {
-    reqwest::Client::new()
-        .put(url.join("/system/self/attach")?)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_code()
-        .await
-}
+request! (
+    attach_self(),
+    put("/system/self/attach") -> StatusCode
+);
 
-pub async fn check_system<K: SigningKey + Sync>(
-    url: &Url,
-    key: &K,
-    version: &VersionRequest,
-) -> Result<AgentAction, ResponseError> {
-    reqwest::Client::new()
-        .post(url.join("/system/check")?)
-        .json(version)
-        .sign(&sig_param(key)?, key)
-        .await?
-        .send()
-        .await?
-        .error_for_json()
-        .await
-}
+request! (
+    check_system(version: VersionRequest),
+    post("/system/check") -> AgentAction,
+    body: &version
+);

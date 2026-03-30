@@ -2,7 +2,7 @@ use api::ProvisionState;
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::{AlgorithmName, PublicKey, VerifyingKey as _};
 use jiff_sqlx::ToSqlx as _;
-use sqlx::Acquire as _;
+use sqlx::{Acquire as _, types::Json};
 
 use crate::db;
 
@@ -183,8 +183,11 @@ pub async fn update(
     Ok(())
 }
 
-pub async fn list(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::Host>, sqlx::Error> {
-    sqlx::query!(
+pub async fn list_hosts(
+    conn: &mut sqlx::SqliteConnection,
+    user: api::UserID,
+) -> Result<Vec<api::Host>, sqlx::Error> {
+    let hosts = sqlx::query!(
         r#"
         WITH current_state AS (
             SELECT host_id, state, update_time,
@@ -206,15 +209,28 @@ pub async fn list(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::Host>, s
             h.hostname AS "hostname!",
             k.verifying_key AS "verifying_key!",
             h.last_ping AS "last_ping!: jiff_sqlx::Timestamp",
-            ls.state AS "state: api::ProvisionState",
-            lv.store_path AS "current_version",
-            lur.store_path AS "latest_update"
+            ls.state AS "state: Option<api::ProvisionState>",
+            lv.store_path AS "current_version: Option<String>",
+            lur.store_path AS "latest_update: Option<String>",
+            json_group_array(
+                json_object('id', t.id, 'name', t.name)
+            ) FILTER (WHERE t.id IS NOT NULL) as "tags!: Json<Vec<api::tag::Tag>>"
         FROM hosts h
         JOIN keys k ON h.key_id = k.id
         LEFT JOIN current_state ls ON ls.host_id = h.id AND ls.rn = 1
         LEFT JOIN current_version lv ON lv.host_id = h.id AND lv.rn = 1
-        LEFT JOIN latest_update_request lur ON lur.host_id = h.id AND lur.rn = 1;
-        "#
+        LEFT JOIN latest_update_request lur ON lur.host_id = h.id AND lur.rn = 1
+
+        JOIN access a_s
+            ON h.id = a_s.resource_id
+            AND a_s.resource_type = $2
+            AND a_s.user_id = $1
+        -- Get tag details for the secret
+        LEFT JOIN tags t ON t.id = a_s.tag_id
+        GROUP BY h.id
+        "#,
+        user,
+        api::tag::ResourceType::Host
     )
     .map(|row| api::Host {
         id: api::HostID::new(row.id),
@@ -230,9 +246,12 @@ pub async fn list(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::Host>, s
         last_ping: row.last_ping.to_jiff(),
         version: row.current_version,
         latest_update: row.latest_update,
+        tags: row.tags.0,
     })
-    .fetch_all(conn)
-    .await
+    .fetch_all(&mut *conn)
+    .await?;
+
+    Ok(hosts)
 }
 
 pub async fn rename(

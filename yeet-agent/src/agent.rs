@@ -88,7 +88,8 @@ async fn agent_loop(
 
         let code = api::add_verification_attempt(
             &config.server,
-            &api::VerificationAttempt {
+            key,
+            api::VerificationAttempt {
                 key: pub_key,
                 nixos_facter,
             },
@@ -104,7 +105,7 @@ async fn agent_loop(
         let action = api::check_system(
             &config.server,
             key,
-            &api::VersionRequest {
+            api::VersionRequest {
                 store_path: get_active_version()?,
             },
         )

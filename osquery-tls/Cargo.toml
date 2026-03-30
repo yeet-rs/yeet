@@ -1,0 +1,18 @@
+[package]
+name = "osquery-tls"
+version = "0.1.0"
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+readme.workspace = true
+description = "osquery structs for the tls plugin"
+keywords = ["osquery"]
+categories = ["api-bindings"]
+
+[dependencies]
+indexmap = { version = "2.13.0", features = ["serde"] }
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

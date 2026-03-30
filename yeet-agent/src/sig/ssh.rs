@@ -1,5 +1,6 @@
 use std::{env, fs::File, io::BufReader};
 
+use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::SecretKey;
 use inquire::validator::Validation;
 use rootcause::{Report, bail, prelude::ResultExt as _};
@@ -84,4 +85,16 @@ pub fn get_key_manual() -> Result<SecretKey, Report> {
         })
         .prompt()?;
     Ok(api::get_secret_key(key)?)
+}
+
+pub fn get_pub_key_manual() -> Result<VerifyingKey, Report> {
+    let key = inquire::Text::new("Yeet Admin Key:")
+        .with_validator(|path: &str| {
+            Ok(match api::get_verify_key(path) {
+                Ok(_) => Validation::Valid,
+                Err(err) => Validation::Invalid(format!("Not a valid public key: {err}").into()),
+            })
+        })
+        .prompt()?;
+    Ok(api::get_verify_key(key)?)
 }

@@ -21,7 +21,6 @@ tokio = { version = "1.49", features = ["full"] } # TODO: maybe switch to smoll?
 figment = { version = "0.10", features = ["toml", "env"] }
 xdg = "3.0.0"
 similar = { version = "2.7.0", features = ["unicode"] }
-console = "0.16.1"
 backon = "1.6.0"
 rootcause = "0.12"
 tempfile = "3.23.0"
@@ -44,6 +43,8 @@ ed25519-dalek = { workspace = true , features = ["serde", "pem", "pkcs8"]}
 ssh-key.workspace = true
 thiserror.workspace = true
 url.workspace = true
+tabled.workspace = true
+colored.workspace = true
 
 
 # TODO: ssh-agent-client-rs = "1.1.2"

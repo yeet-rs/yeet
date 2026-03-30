@@ -1,10 +1,10 @@
 use std::fmt::Display;
 
-use console::style;
+use colored::Colorize as _;
 use jiff::tz::TimeZone;
 use rootcause::{Report, prelude::ResultExt as _};
 use serde::{Deserialize, Serialize};
-use yeet::{display, nix};
+use yeet::nix;
 
 use crate::{
     section::{self, DisplaySection, Section, section},
@@ -43,10 +43,10 @@ struct YeetInfo {
 impl Display for varlink::DaemonMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mode = match &self {
-            Self::Provisioned => style("Provisioned").green().bold(),
-            Self::Detached => style("Detached").yellow().bold(),
-            Self::NetworkError => style("NetworkError").red().bold(),
-            Self::Unverified => style("Unverified").red().bold(),
+            Self::Provisioned => "Provisioned".green().bold(),
+            Self::Detached => "Detached".yellow().bold(),
+            Self::NetworkError => "NetworkError".red().bold(),
+            Self::Unverified => "Unverified".red().bold(),
         };
         write!(f, "{mode}")
     }
@@ -55,9 +55,9 @@ impl Display for varlink::DaemonMode {
 impl Display for varlink::UpToDate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let up_to_date = match &self {
-            Self::Yes => style("Yes").green().bold(),
-            Self::No => style("No").red().bold(),
-            Self::Detached => style("Detached").yellow().bold(),
+            Self::Yes => "Yes".green().bold(),
+            Self::No => "No".red().bold(),
+            Self::Detached => "Detached".yellow().bold(),
         };
         write!(f, "{up_to_date}")
     }
@@ -70,23 +70,23 @@ impl DisplaySection for YeetInfo {
             let mode = format!(
                 "{} ({})",
                 daemon_state.mode,
-                style(daemon_state.server.to_string()).underlined()
+                daemon_state.server.to_string().underline()
             );
 
             (up_to_date, mode, daemon_state.version.clone())
         } else {
-            let no_con = style("No connection to daemon").red().bold().to_string();
+            let no_con = "No connection to daemon".red().bold().to_string();
             (no_con.clone(), no_con.clone(), no_con)
         };
 
         let daemon_version = if daemon_version == self.cli_version_short {
-            style(daemon_version)
+            daemon_version
         } else {
-            style(daemon_version).red().bold()
+            daemon_version.red().bold().to_string()
         };
 
         section!(
-            style("Yeet:").underlined() => [
+            "Yeet:".underline() => [
                 "Up to date", up_to_date,
                 "Mode", mode,
                 "Systemd Unit", self.systemd_status,
@@ -130,7 +130,7 @@ struct SystemInfo {
 impl DisplaySection for SystemInfo {
     fn as_section(&self) -> Section {
         #[expect(clippy::unwrap_used)]
-        let build_date_span = display::time_diff(
+        let build_date_span = api::time_diff(
             self.build_date
                 .to_zoned(TimeZone::system())
                 .unwrap()
@@ -141,21 +141,21 @@ impl DisplaySection for SystemInfo {
         );
 
         let os_version = if self.nixos_version.starts_with("dirty") {
-            style(&self.nixos_version).red().bold()
+            &self.nixos_version.red().bold()
         } else {
-            style(&self.nixos_version).green()
+            &self.nixos_version.green()
         };
 
         let variant = if self.variant.starts_with("dirty") {
-            style(&self.variant).red().bold()
+            &self.variant.red().bold()
         } else {
-            style(&self.variant).bold()
+            &self.variant.bold()
         };
 
         section!(
-            style("System:").underlined() => [
+            "System:".underline() => [
                 "Kernel", self.kernel,
-                "NixOS version", format!("{} Generation {}", os_version, style(self.current_generation).bold()),
+                "NixOS version", format!("{} Generation {}", os_version, self.current_generation.to_string().bold()),
                 "Build date", format!("\u{2514}\u{2500}{}; {}",self.build_date, build_date_span),
                 "Variant", variant,
                 "Conf revision", self.configuration_revision[..8],

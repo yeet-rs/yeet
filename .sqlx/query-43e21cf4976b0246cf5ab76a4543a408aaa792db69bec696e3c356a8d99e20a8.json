@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO policies (user_id, tag_id)\n        VALUES ($1,$2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "43e21cf4976b0246cf5ab76a4543a408aaa792db69bec696e3c356a8d99e20a8"
+}

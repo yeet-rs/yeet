@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM resource_tags WHERE resource_id = $1 AND resource_type = $2 AND tag_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "4700815f7de8f25b96edb78bb7c5356ba0fa92f234d61a399fe2a1b536132599"
+}

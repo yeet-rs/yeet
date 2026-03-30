@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT level AS \"level: api::AuthLevel\" FROM users\n        LEFT JOIN keys ON users.key_id = keys.id\n        WHERE verifying_key = $1",
+  "query": "\n        SELECT level AS \"level: api::AuthLevel\" FROM users\n        WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -16,5 +16,5 @@
       false
     ]
   },
-  "hash": "889ec8be70249304c03fd78a7f236c78ffc918e6955775b1ecdb9e67bef44ac8"
+  "hash": "4468be066da425df2f5592c8aa8843b1e7178e716e2737839c03df64e7dc4d1a"
 }

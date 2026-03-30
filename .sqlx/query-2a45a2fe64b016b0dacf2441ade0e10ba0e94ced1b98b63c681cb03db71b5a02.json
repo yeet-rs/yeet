@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO resource_tags (resource_id, resource_type, tag_id)\n        VALUES ($1,$2,$3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "2a45a2fe64b016b0dacf2441ade0e10ba0e94ced1b98b63c681cb03db71b5a02"
+}

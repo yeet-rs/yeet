@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE tags\n        SET name = $1\n        WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "bf03290cc4a54d3453110da9f9344b16231b6ca53b803a750e4eb5ef852be5ad"
+}

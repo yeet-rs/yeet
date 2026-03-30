@@ -54,7 +54,7 @@ pub async fn publish(
     api::update_hosts(
         &url,
         secret_key,
-        &api::HostUpdateRequest {
+        api::HostUpdateRequest {
             hosts,
             public_key,
             substitutor: format!("https://{cachix}.cachix.org"),

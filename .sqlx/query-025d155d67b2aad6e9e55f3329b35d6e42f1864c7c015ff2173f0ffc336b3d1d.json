@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT users.id from users\n        JOIN keys on keys.id = users.key_id\n        WHERE verifying_key = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "025d155d67b2aad6e9e55f3329b35d6e42f1864c7c015ff2173f0ffc336b3d1d"
+}

@@ -1,6 +1,6 @@
 [workspace]
-members = ["yeet-agent","yeet-api", "yeet-server"]
-resolver = "2"
+members = ["osquery-tls","yeet-agent", "yeet-api", "yeet-server"]
+resolver = "3"
 
 [profile.release]
 lto = true
@@ -13,7 +13,7 @@ panic = "abort"
 opt-level = 3
 
 [workspace.package]
-version = "0.8.0-beta.1"
+version = "0.9.0"
 categories = ["Configuration"]
 edition = "2024"
 repository = "https://github.com/yeet-rs/yeet"
@@ -36,6 +36,10 @@ url = { version = "2.5", features = ["serde"] }
 age = "0.11.2"
 axum-test = "19.1"
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"]}
+serde_json = "1.0"
+osquery-tls = {path = "./osquery-tls"}
+colored = "3.1.1"
+tabled = "0.20.0"
 
 
 [workspace.lints.rust]
@@ -94,3 +98,4 @@ as_conversions = "allow"
 pattern_type_mismatch = "allow" # I am too dumb for this
 verbose_file_reads = "allow"
 doc_paragraphs_missing_punctuation = "allow"
+field_scoped_visibility_modifiers = "allow"

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM policies WHERE user_id = $1 AND tag_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "e8e64ba4a05f6ee1ea01c5c865eff7dbd67b90a98fc949f439bac52b82553c2e"
+}
