@@ -55,17 +55,15 @@ impl Display for User {
             write!(f, "{}", " (ALL TAG)".red().bold())
         } else {
             let tags = {
-                let tags = self
-                    .tags
-                    .iter()
-                    .map(|tag| tag.name.as_str())
-                    .collect::<Vec<_>>();
-                if tags.is_empty() {
-                    "<no tags>".italic().to_string()
+                let tags = self.tags.iter().map(|tag| tag.name.as_str());
+                if tags.len() == 0 {
+                    "<no tags>".italic()
                 } else {
-                    tags.join(" #")
+                    tags.fold(String::new(), |acc, x| format!("{acc}#{x} "))
+                        .italic()
                 }
             };
+
             write!(f, " {tags}")
         }
     }

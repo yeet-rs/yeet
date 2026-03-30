@@ -14,7 +14,7 @@ use rootcause::{
     markers::{Dynamic, Local, Uncloneable},
 };
 
-use crate::cli_args::{AgentConfig, Commands, Config, HostArgs, Yeet};
+use crate::cli_args::{AgentConfig, Commands, Config, Yeet};
 
 mod agent;
 mod cli_args;
@@ -28,10 +28,11 @@ mod cli {
     pub mod common;
     pub mod detach;
     pub mod host;
-    pub mod hosts;
+
     pub mod osquery;
     pub mod publish;
     pub mod secret;
+    pub mod tag;
     pub mod user;
 }
 mod notification;
@@ -96,9 +97,14 @@ async fn main() -> Result<(), Report> {
     match args.command {
         Commands::Nodes => cli::osquery::show_nodes(&config).await?,
         Commands::Query { query } => cli::osquery::query(&config, query).await?,
-        Commands::Secret(args) => cli::secret::handle_secret_command(args, &config).await?,
-        Commands::User(args) => cli::user::handle_user_command(args, &config).await?,
+        Commands::Secret(args) => cli::secret::handle_command(args, &config).await?,
+        Commands::Secrets => cli::secret::list(&config).await?,
+        Commands::User(args) => cli::user::handle_command(args, &config).await?,
         Commands::Users => cli::user::list_users(&config).await?,
+        Commands::Tag(args) => cli::tag::handle_command(args, &config).await?,
+        Commands::Host(args) => cli::host::handle_command(args, &config).await?,
+        Commands::Hosts { full } => cli::host::hosts(&config, full).await?,
+        Commands::Tags => cli::tag::list_tags(&config).await?,
         Commands::Detach {
             version,
             darwin,
@@ -106,11 +112,6 @@ async fn main() -> Result<(), Report> {
         } => cli::detach::detach(version, path, darwin).await?,
         Commands::Attach => cli::detach::attach().await?,
         Commands::Approve => cli::approve::approve(&config).await?,
-        Commands::Host(HostArgs { command }) => match command {
-            cli_args::HostCommands::Rename => cli::host::rename(&config).await?,
-            cli_args::HostCommands::Remove => cli::host::remove(&config).await?,
-        },
-        Commands::Hosts { full } => cli::hosts::hosts(&config, full).await?,
         Commands::Notify => notification::notify()?,
         Commands::Agent {
             server,

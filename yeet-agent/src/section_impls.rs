@@ -1,39 +1,13 @@
 use colored::Colorize;
-use yeet::display;
 
 use crate::section::{DisplaySection, DisplaySectionItem};
 
 impl DisplaySectionItem for api::Host {
     fn as_section_item(&self) -> (String, String) {
-        let commit_ver = match &self.version {
-            Some(version) => {
-                let pos = version.rfind('.').map_or(0, |i| i.saturating_add(1));
-                #[expect(clippy::string_slice)]
-                version[pos..].to_owned()
-            }
-            None => "Not Set".blue().to_string(),
-        };
+        let str = self.to_string();
+        let (l, r) = str.split_once(":").unwrap();
 
-        let up_to_date = if self.version == self.latest_update {
-            "Up to date ".green()
-        } else {
-            "Outdated   ".red()
-        };
-
-        (
-            self.hostname.clone(),
-            format!(
-                "{} ({}) {up_to_date}{}",
-                self.state,
-                commit_ver,
-                display::time_diff(
-                    self.last_ping,
-                    jiff::Unit::Second,
-                    30_f64,
-                    jiff::Unit::Second
-                ),
-            ),
-        )
+        (l.to_string(), r.trim().to_owned())
     }
 }
 
@@ -61,7 +35,7 @@ impl DisplaySection for api::Host {
         }
 
         {
-            let last_seen = display::time_diff(
+            let last_seen = api::time_diff(
                 self.last_ping,
                 jiff::Unit::Second,
                 30_f64,

@@ -39,6 +39,7 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"]}
 serde_json = "1.0"
 osquery-tls = {path = "./osquery-tls"}
 colored = "3.1.1"
+tabled = "0.20.0"
 
 
 [workspace.lints.rust]

@@ -43,7 +43,7 @@ ed25519-dalek = { workspace = true , features = ["serde", "pem", "pkcs8"]}
 ssh-key.workspace = true
 thiserror.workspace = true
 url.workspace = true
-tabled = "0.20.0"
+tabled.workspace = true
 colored.workspace = true
 
 

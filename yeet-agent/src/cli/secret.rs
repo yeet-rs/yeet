@@ -3,6 +3,7 @@ use std::{collections::HashMap, fs::File, io::Read as _, path::Path};
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use inquire::validator::Validation;
+use log::info;
 use rootcause::Report;
 
 use crate::{cli::common, cli_args::Config, section, sig::ssh};
@@ -16,7 +17,7 @@ pub struct SecretArgs {
 #[derive(Subcommand)]
 pub enum SecretCommands {
     /// Add or Update a secret
-    Add,
+    Create,
     /// Rename an existing secret
     Rename,
     /// Delete a secret
@@ -25,26 +26,25 @@ pub enum SecretCommands {
     Allow,
     /// Deny a `host` to access a `secret`
     Block,
-    /// Show secrets and the associated hosts
-    Show,
+    /// Tag secrets
+    Tag,
+    /// Remove tags
+    RemoveTag,
 }
 
-pub async fn handle_secret_command(
-    args: SecretArgs,
-    config: &Config,
-) -> Result<(), rootcause::Report> {
+pub async fn handle_command(args: SecretArgs, config: &Config) -> Result<(), rootcause::Report> {
     match args.command {
-        SecretCommands::Add => add(config).await?,
-        SecretCommands::Rename => rename(config).await?,
-        SecretCommands::Remove => remove(config).await?,
-        SecretCommands::Allow => allow(config).await?,
-        SecretCommands::Block => deny(config).await?,
-        SecretCommands::Show => show(config).await?,
+        SecretCommands::Create => create(config).await,
+        SecretCommands::Rename => rename(config).await,
+        SecretCommands::Remove => remove(config).await,
+        SecretCommands::Allow => allow(config).await,
+        SecretCommands::Block => deny(config).await,
+        SecretCommands::Tag => tag(config).await,
+        SecretCommands::RemoveTag => remove_tag(config).await,
     }
-    Ok(())
 }
 
-async fn add(config: &Config) -> Result<(), Report> {
+async fn create(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -221,7 +221,7 @@ async fn deny(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn show(config: &Config) -> Result<(), Report> {
+pub async fn list(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -257,11 +257,131 @@ async fn show(config: &Config) -> Result<(), Report> {
 
         sections.push((
             format!("{secret}:").bold().underline().to_string(),
-            vec![("Hosts".to_owned(), hosts.join("\n"))],
+            vec![
+                ("Hosts".to_owned(), hosts.join("\n")),
+                (
+                    "Tags".to_owned(),
+                    secret
+                        .tags
+                        .iter()
+                        .fold(String::new(), |acc, x| format!("{acc}#{} ", x.name))
+                        .italic()
+                        .to_string(),
+                ),
+            ],
         ));
     }
 
     section::print_sections(&sections);
+
+    Ok(())
+}
+
+async fn tag(config: &Config) -> Result<(), Report> {
+    let url = common::get_server_url(config).await?;
+    let key = &ssh::key_by_url(&url)?;
+
+    let secrets = api::list_secrets(&url, key).await?;
+
+    let secrets = inquire::MultiSelect::new("Which secrets do you want to tag?", secrets)
+        .with_validator(
+            |list: &[inquire::list_option::ListOption<&api::SecretName>]| {
+                if list.is_empty() {
+                    return Ok(inquire::validator::Validation::Invalid(
+                        "You must select a secret!".into(),
+                    ));
+                }
+                Ok(inquire::validator::Validation::Valid)
+            },
+        )
+        .prompt()?;
+
+    let tags = api::tag::list_tags(&url, key).await?;
+    let tags = inquire::MultiSelect::new(&format!("Which tags should be assigned?"), tags)
+        .with_validator(
+            |list: &[inquire::list_option::ListOption<&api::tag::Tag>]| {
+                if list.is_empty() {
+                    return Ok(inquire::validator::Validation::Invalid(
+                        "You must select a tag!".into(),
+                    ));
+                }
+                Ok(inquire::validator::Validation::Valid)
+            },
+        )
+        .prompt()?;
+
+    for tag in tags {
+        for secret in &secrets {
+            api::tag::tag_resource(
+                &url,
+                key,
+                api::tag::ResourceTag {
+                    resource: api::tag::Resource::Secret(secret.id),
+                    tag: tag.id,
+                },
+            )
+            .await?;
+            info!("Tagging {} with {}", secret.name, tag.name);
+        }
+    }
+
+    Ok(())
+}
+
+async fn remove_tag(config: &Config) -> Result<(), Report> {
+    let url = common::get_server_url(config).await?;
+    let key = &ssh::key_by_url(&url)?;
+
+    let secrets = api::list_secrets(&url, key).await?;
+
+    let secrets = inquire::MultiSelect::new("Which secrets do you want to modify?", secrets)
+        .with_validator(
+            |list: &[inquire::list_option::ListOption<&api::SecretName>]| {
+                if list.is_empty() {
+                    return Ok(inquire::validator::Validation::Invalid(
+                        "You must select a secret!".into(),
+                    ));
+                }
+                Ok(inquire::validator::Validation::Valid)
+            },
+        )
+        .prompt()?;
+
+    let tags = {
+        let mut tags = secrets
+            .iter()
+            .flat_map(|secret| secret.tags.clone())
+            .collect::<Vec<_>>();
+        tags.dedup();
+        tags
+    };
+    let tags = inquire::MultiSelect::new(&format!("Which tags should be removed?"), tags)
+        .with_validator(
+            |list: &[inquire::list_option::ListOption<&api::tag::Tag>]| {
+                if list.is_empty() {
+                    return Ok(inquire::validator::Validation::Invalid(
+                        "You must select a tag!".into(),
+                    ));
+                }
+                Ok(inquire::validator::Validation::Valid)
+            },
+        )
+        .prompt()?;
+
+    for tag in tags {
+        for secret in &secrets {
+            api::tag::delete_resource_from_tag(
+                &url,
+                key,
+                api::tag::ResourceTag {
+                    resource: api::tag::Resource::Secret(secret.id),
+                    tag: tag.id,
+                },
+            )
+            .await?;
+            info!("Removing {} from {}", tag.name, secret.name);
+        }
+    }
 
     Ok(())
 }

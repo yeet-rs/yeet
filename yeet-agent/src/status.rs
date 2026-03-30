@@ -4,7 +4,7 @@ use colored::Colorize as _;
 use jiff::tz::TimeZone;
 use rootcause::{Report, prelude::ResultExt as _};
 use serde::{Deserialize, Serialize};
-use yeet::{display, nix};
+use yeet::nix;
 
 use crate::{
     section::{self, DisplaySection, Section, section},
@@ -130,7 +130,7 @@ struct SystemInfo {
 impl DisplaySection for SystemInfo {
     fn as_section(&self) -> Section {
         #[expect(clippy::unwrap_used)]
-        let build_date_span = display::time_diff(
+        let build_date_span = api::time_diff(
             self.build_date
                 .to_zoned(TimeZone::system())
                 .unwrap()

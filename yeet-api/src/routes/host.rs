@@ -58,6 +58,40 @@ pub struct Host {
     pub tags: Vec<tag::Tag>,
 }
 
+impl Display for Host {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.hostname)?;
+        write!(f, " {}", self.state)?;
+
+        let commit_ver = match &self.version {
+            Some(version) => {
+                let pos = version.rfind('.').map_or(0, |i| i.saturating_add(1));
+                #[expect(clippy::string_slice)]
+                version[pos..].to_owned()
+            }
+            None => "Not Set".blue().to_string(),
+        };
+        write!(f, "({commit_ver})")?;
+
+        let up_to_date = if self.version == self.latest_update {
+            "Up to date ".green()
+        } else {
+            "Outdated   ".red()
+        };
+        write!(f, " {up_to_date}")?;
+        write!(
+            f,
+            " {}",
+            crate::time_diff(
+                self.last_ping,
+                jiff::Unit::Second,
+                30_f64,
+                jiff::Unit::Second
+            )
+        )
+    }
+}
+
 impl PartialEq for Host {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id

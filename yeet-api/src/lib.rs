@@ -33,6 +33,36 @@ pub fn hash_hex(value: impl std::hash::Hash) -> String {
     format!("{:x}", hash(value))
 }
 
+/// # Panics
+/// idk maybe
+#[must_use]
+#[expect(clippy::unwrap_used, clippy::arithmetic_side_effects)]
+pub fn time_diff(
+    timestamp: jiff::Timestamp,
+    unit: jiff::Unit,
+    threshold: f64,
+    smallest: jiff::Unit,
+) -> String {
+    use colored::Colorize;
+
+    let span = (timestamp - jiff::Timestamp::now())
+        .round(
+            jiff::SpanRound::new()
+                .largest(jiff::Unit::Month)
+                .smallest(smallest)
+                .relative(&jiff::Zoned::now())
+                .mode(jiff::RoundMode::Trunc),
+        )
+        .unwrap();
+
+    if span.total((unit, &jiff::Zoned::now())).unwrap().abs() < threshold {
+        format!("{span:#}").green().bold()
+    } else {
+        format!("{span:#}").red().bold()
+    }
+    .to_string()
+}
+
 macro_rules! db_id {
     ($name:ident) => {
         #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq, Hash)]
