@@ -19,6 +19,7 @@ pub async fn list_nodes(
 ) -> Result<Json<Vec<api::Node>>, (StatusCode, String)> {
     let mut conn = state.pool.acquire().await.internal_server()?;
     db::tag::auth_osquery(&mut conn, user).await?;
+    db::tag::auth_all_tag(&mut conn, user).await?;
 
     Ok(Json(
         db::osquery::list_nodes(&mut conn).await.internal_server()?,
@@ -32,6 +33,7 @@ pub async fn create_query(
 ) -> Result<Json<api::QueryID>, (StatusCode, String)> {
     let mut conn = state.pool.acquire().await.internal_server()?;
     db::tag::auth_osquery(&mut conn, user).await?;
+    db::tag::auth_all_tag(&mut conn, user).await?;
     Ok(Json(
         db::osquery::create_query(&mut conn, user, query.sql)
             .await
@@ -46,6 +48,7 @@ pub async fn query_response_all(
 ) -> Result<Json<api::QueryFulfillment>, (StatusCode, String)> {
     let mut conn = state.pool.acquire().await.internal_server()?;
     db::tag::auth_osquery(&mut conn, user).await?;
+    db::tag::auth_all_tag(&mut conn, user).await?;
 
     Ok(Json(
         db::osquery::get_query_response_all(&mut conn, query)
