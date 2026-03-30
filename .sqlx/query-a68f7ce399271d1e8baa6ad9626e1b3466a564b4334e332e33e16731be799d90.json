@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT user_id FROM access\n        WHERE user_id = $1 AND resource_type = $2 AND resource_id = $3",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a68f7ce399271d1e8baa6ad9626e1b3466a564b4334e332e33e16731be799d90"
+}

@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-use api::{get_secret_key, get_verify_key};
-use log::info;
+use api::get_secret_key;
 use rootcause::Report;
 
-use crate::cli_args::{AuthLevel, Config, ServerArgs, ServerCommands};
+use crate::cli_args::{Config, ServerArgs, ServerCommands};
 
 pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result<(), Report> {
     let url = &config
@@ -25,35 +24,13 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
             api::update_hosts(
                 url,
                 &get_secret_key(httpsig_key)?,
-                &api::HostUpdateRequest {
+                api::HostUpdateRequest {
                     hosts: HashMap::from([(host, store_path)]),
                     public_key,
                     substitutor,
                 },
             )
             .await?;
-        }
-        ServerCommands::AddKey { key, admin } => {
-            let level = if admin == AuthLevel::Admin {
-                api::AuthLevel::Admin
-            } else {
-                api::AuthLevel::Build
-            };
-            let status = api::add_key(
-                url,
-                &get_secret_key(httpsig_key)?,
-                &api::AddKey {
-                    key: get_verify_key(&key)?,
-                    level,
-                },
-            )
-            .await?;
-            info!("{status}");
-        }
-        ServerCommands::DeleteKey { key } => {
-            let status =
-                api::delete_key(url, &get_secret_key(httpsig_key)?, &get_verify_key(&key)?).await?;
-            info!("{status}");
         }
     }
     Ok(())

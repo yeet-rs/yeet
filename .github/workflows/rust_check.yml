@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
 
@@ -25,6 +24,7 @@ jobs:
       - name: check rustfmt
         run: cargo +nightly fmt -- --check --color always
 
+      - uses: dtolnay/rust-toolchain@stable
       - run: rustup component add clippy
       - run: cargo fetch
       - name: cargo clippy
@@ -47,8 +47,28 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fetch
       - name: cargo test (yeetd)
-        run: cargo test -p yeetd --release --features test-server
+        run: cargo test -p yeetd --release
       - name: cargo test (yeet-api)
         run: cargo test -p yeet-api --release
       - name: cargo test (yeet)
         run: cargo test -p yeet --release
+  codecov:
+    name: coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Generate code coverage
+        run: |
+          cargo tarpaulin --timeout 120 --out xml --workspace --engine llvm --exclude yeet
+
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT secret FROM secrets WHERE name = \"osquery-enroll\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "secret",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "84f4c92b475934ac887b639fd9e5ad89c984dcb3b3bfff182f7816e3dda05e4c"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM osquery_dq_requests WHERE node_id = $1 AND query_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "aaad724b3deba9628ea11f85ab05be4275b92449d5e2c38c815966d1bd86a281"
+}

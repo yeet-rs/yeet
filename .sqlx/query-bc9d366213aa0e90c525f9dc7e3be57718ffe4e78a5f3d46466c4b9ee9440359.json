@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            u.id as \"id!: api::UserID\",\n            k.verifying_key as \"key!\",\n            u.username as \"username!\",\n            u.level as \"level!: api::AuthLevel\",\n            u.all_tag as \"all_tag: bool\",\n            json_group_array(json_object('id', t.id, 'name', t.name))\n                FILTER (WHERE t.id IS NOT NULL) as \"tags!: Json<Vec<api::tag::Tag>>\"\n        FROM users u\n        LEFT JOIN keys k on k.id = u.key_id\n        LEFT JOIN policies p\n            ON p.user_id = u.id\n            AND u.all_tag != 1\n        LEFT JOIN tags t\n            ON (u.all_tag = 1 OR p.tag_id = t.id)\n        GROUP BY u.id, u.username, u.level;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: api::UserID",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "key!",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "username!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "level!: api::AuthLevel",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "all_tag: bool",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "tags!: Json<Vec<api::tag::Tag>>",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bc9d366213aa0e90c525f9dc7e3be57718ffe4e78a5f3d46466c4b9ee9440359"
+}

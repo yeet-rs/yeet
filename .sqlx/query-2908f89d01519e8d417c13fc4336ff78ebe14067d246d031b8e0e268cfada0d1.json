@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT id, host_identifier, host_details as \"host_details: Json<osquery_tls::EnrollmentHostDetails>\"\n        FROM osquery_nodes",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "host_identifier",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "host_details: Json<osquery_tls::EnrollmentHostDetails>",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2908f89d01519e8d417c13fc4336ff78ebe14067d246d031b8e0e268cfada0d1"
+}

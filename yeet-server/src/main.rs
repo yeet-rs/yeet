@@ -8,6 +8,7 @@ use std::{
 };
 
 use age::secrecy::ExposeSecret as _;
+use axum_server::tls_rustls::RustlsConfig;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 
 #[tokio::main]
@@ -17,8 +18,12 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
     reason = "allow in server main"
 )]
 async fn main() {
-    let port = env::var("YEET_PORT").unwrap_or("4337".to_owned());
-    let host = env::var("YEET_HOST").unwrap_or("localhost".to_owned());
+    let port = env::var("YEET_PORT")
+        .map(|port| port.parse().unwrap())
+        .unwrap_or(4337);
+    let host = env::var("YEET_HOST")
+        .map(|host| host.parse().unwrap())
+        .unwrap_or(std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST));
 
     let age_key = {
         if let Ok(content) = read_to_string("age.key") {
@@ -35,6 +40,12 @@ async fn main() {
         }
     };
 
+    let tls = {
+        let cert = env::var("YEET_CERT").expect("`YEET_CERT` must be set");
+        let key = env::var("YEET_CERT_KEY").expect("`YEET_CERT_KEY` must be set");
+        RustlsConfig::from_pem_file(cert, key).await.unwrap()
+    };
+
     let options = SqliteConnectOptions::new()
         .filename("yeet.db")
         .create_if_missing(true);
@@ -44,6 +55,6 @@ async fn main() {
         .await
         .expect("Can't connect to yeet.db");
 
-    let handle = yeetd::launch(&port, &host, pool, age_key).await;
+    let handle = yeetd::launch(port, host, pool, age_key, Some(tls)).await;
     handle.await.expect("axum quit");
 }

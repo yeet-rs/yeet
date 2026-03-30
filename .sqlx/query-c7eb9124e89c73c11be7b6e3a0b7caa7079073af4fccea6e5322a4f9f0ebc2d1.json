@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            s.id as \"id!: api::SecretID\",\n            s.name,\n            -- Gather tags authorized for this User+Secret via the View\n            json_group_array(\n                json_object('id', t.id, 'name', t.name)\n            ) FILTER (WHERE t.id IS NOT NULL) as \"tags!: Json<Vec<api::tag::Tag>>\",\n            -- Gather hosts authorized for this User+Host via the View\n            json_group_array(sacl.host_id)\n                FILTER (WHERE a_h.resource_id IS NOT NULL)\n                as \"hosts!: Json<Vec<api::HostID>>\"\n        FROM secrets s\n\n        -- Join View to find authorized Secrets\n        JOIN access a_s\n            ON s.id = a_s.resource_id\n            AND a_s.resource_type = $2\n            AND a_s.user_id = $1\n        -- Get tag details for the secret\n        LEFT JOIN tags t ON t.id = a_s.tag_id\n\n        -- Join Hosts (Secret ACL)\n        LEFT JOIN secrets_acl sacl ON s.id = sacl.secret_id\n\n        -- Join View to verify the User is allowed to see these specific Hosts\n        LEFT JOIN access a_h\n            ON sacl.host_id = a_h.resource_id\n            AND a_h.resource_type = $3\n            AND a_h.user_id = $1\n        GROUP BY s.id, s.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: api::SecretID",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "tags!: Json<Vec<api::tag::Tag>>",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "hosts!: Json<Vec<api::HostID>>",
+        "ordinal": 3,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "c7eb9124e89c73c11be7b6e3a0b7caa7079073af4fccea6e5322a4f9f0ebc2d1"
+}

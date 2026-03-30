@@ -1,7 +1,7 @@
 use std::{env::current_dir, path::PathBuf};
 
 use build::CLAP_LONG_VERSION;
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use shadow_rs::shadow;
 use url::Url;
@@ -56,6 +56,13 @@ pub enum Commands {
     #[command(hide = true)]
     /// Used to notify all users
     Notify,
+    /// show all osquery nodes
+    Nodes,
+    /// Create an distributed osquery and wait for the result of all nodes
+    Query {
+        #[arg(index = 1)]
+        query: String,
+    },
     Agent {
         /// URL of the Yeet Server
         #[arg(long)]
@@ -127,30 +134,25 @@ pub enum Commands {
     },
     /// Attach your system to the server
     Attach,
+
     /// Query the status of all hosts
     Hosts {
         /// Filter for some hosts
         #[arg(long)]
         full: bool,
     },
-
+    Host(crate::cli::host::HostArgs),
+    /// List all secrets
+    Secrets,
+    Secret(crate::cli::secret::SecretArgs),
+    /// List all users
+    Users,
+    User(crate::cli::user::UserArgs),
+    /// List all tags
+    Tags,
+    Tag(crate::cli::tag::TagArgs),
     /// These are the raw subcommands to execute functions on the server
     Server(ServerArgs),
-    Host(HostArgs),
-    Secret(crate::cli::secret::SecretArgs),
-}
-#[derive(Args)]
-pub struct HostArgs {
-    #[command(subcommand)]
-    pub command: HostCommands,
-}
-
-#[derive(Subcommand)]
-pub enum HostCommands {
-    /// Rename an existing yeet host
-    Rename,
-    /// Delete an host including all authentication info
-    Remove,
 }
 
 #[derive(Args)]
@@ -182,28 +184,4 @@ pub enum ServerCommands {
         #[arg(long)]
         substitutor: String,
     },
-
-    /// Add a new admin or build key to the server
-    AddKey {
-        /// Public key to add
-        #[arg(index = 1)]
-        key: PathBuf,
-        /// Should the key be added as admin or as build
-        #[arg(value_enum, index = 2)]
-        admin: AuthLevel,
-    },
-    /// Remove a key from the server (can also used to remove hosts)
-    DeleteKey {
-        /// Public key to remove
-        #[arg(index = 1)]
-        key: PathBuf,
-    },
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum AuthLevel {
-    /// New Admin Level key [CAUTION]
-    Admin,
-    /// New key for build pipelines
-    Build,
 }

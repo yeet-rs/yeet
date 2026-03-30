@@ -160,7 +160,7 @@ where
             api::check_system(
                 &self.config.server,
                 &self.key,
-                &api::VersionRequest { store_path },
+                api::VersionRequest { store_path },
             )
             .await
         };

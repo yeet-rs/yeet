@@ -1,10 +1,10 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, name FROM secrets",
+  "query": "\n        SELECT\n            tags.id as \"id: api::tag::TagID\",\n            tags.name\n        FROM tags\n        ",
   "describe": {
     "columns": [
       {
-        "name": "id",
+        "name": "id: api::tag::TagID",
         "ordinal": 0,
         "type_info": "Integer"
       },
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "f744b2169570cc21cc4293b947ae1f1073964178e3e790576791830819ee8e0b"
+  "hash": "cb93fee74680f54f8ec58265f7a04a19ad74174832fd9b0e0170462475deb2ca"
 }
