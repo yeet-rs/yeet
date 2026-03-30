@@ -1,5 +1,4 @@
 use clap::{Args, Subcommand};
-
 use colored::Colorize as _;
 use log::info;
 use rootcause::Report;

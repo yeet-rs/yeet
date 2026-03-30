@@ -1,7 +1,7 @@
-use crate::request;
-
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+
+use crate::request;
 
 crate::db_id!(NodeID);
 crate::db_id!(QueryID);

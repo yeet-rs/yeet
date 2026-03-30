@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use api::get_secret_key;
-
 use rootcause::Report;
 
 use crate::cli_args::{Config, ServerArgs, ServerCommands};

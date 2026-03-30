@@ -1,6 +1,5 @@
 use ed25519_dalek::VerifyingKey;
-use sqlx::Acquire as _;
-use sqlx::types::Json;
+use sqlx::{Acquire as _, types::Json};
 
 use crate::db;
 

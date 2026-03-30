@@ -1,5 +1,4 @@
 use ed25519_dalek::VerifyingKey;
-
 use serde::{Deserialize, Serialize};
 
 use crate::request;

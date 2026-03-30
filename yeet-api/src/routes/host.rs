@@ -2,7 +2,6 @@ use std::{collections::HashMap, fmt::Display};
 
 use colored::Colorize as _;
 use ed25519_dalek::VerifyingKey;
-
 use serde::{Deserialize, Serialize};
 
 use crate::{StorePath, request, tag};
