@@ -43,7 +43,7 @@ pub async fn query(config: &Config, sql: String) -> Result<(), Report> {
 
         for (header, column) in node.response {
             let mut header = vec![header];
-            header.extend(column.into_iter());
+            header.extend(column);
             builder.push_column(header);
         }
         let mut table = builder.build();

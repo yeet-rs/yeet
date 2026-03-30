@@ -63,22 +63,6 @@ async fn extract_key(
     parts: &mut axum::http::request::Parts,
     state: &YeetState,
 ) -> Result<VerifyingKey, (StatusCode, String)> {
-    // #[cfg(any(test, feature = "test-server"))]
-    // {
-    //     if let Some(header) = parts.headers.get("key") {
-    //         let key = VerifyingKey::from_bytes(
-    //             &serde_json::from_slice::<Vec<u8>>(header.as_bytes())
-    //                 .unwrap()
-    //                 .try_into()
-    //                 .unwrap(),
-    //         )
-    //         .unwrap();
-    //         return Ok(key);
-    //     } else {
-    //         return Ok(VerifyingKey::default());
-    //     }
-    // };
-
     let req = http::Request::from_parts(parts.clone(), String::new());
 
     let keyids = req.get_alg_key_ids().with_code(StatusCode::BAD_REQUEST)?;
@@ -153,13 +137,11 @@ where
     type Rejection = (StatusCode, String);
 
     async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
-        // #[cfg(not(any(test, feature = "test-server")))]
         let req = req
             .verify_content_digest()
             .await
             .with_code(StatusCode::BAD_REQUEST)?;
 
-        // #[cfg(not(any(test, feature = "test-server")))]
         if !json_content_type(req.headers()) {
             return Err((
                 StatusCode::UNSUPPORTED_MEDIA_TYPE,

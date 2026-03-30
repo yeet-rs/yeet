@@ -183,43 +183,6 @@ fn routes(state: YeetState) -> axum::Router {
         .with_state(state)
 }
 
-// #[cfg(any(test, feature = "test-server"))]
-// pub async fn test_server(pool: sqlx::SqlitePool) -> axum_test::TestServer {
-//     let age_key = std::sync::Arc::new(age::x25519::Identity::generate());
-//     let state = YeetState { pool, age_key };
-//     let mut conn = state.pool.acquire().await.unwrap();
-//     sqlx::migrate!("../migrations")
-//         .run(&mut conn)
-//         .await
-//         .unwrap();
-//     let app = routes(state);
-//     let server = axum_test::TestServer::builder()
-//         .expect_success_by_default()
-//         .http_transport()
-//         .build(app);
-
-//     server
-// }
-
-// #[cfg(any(test, feature = "test-server"))]
-// async fn add_default_host(conn: &mut sqlx::SqliteConnection) {
-//     use httpsig_hyper::prelude::VerifyingKey as _;
-
-//     let httpsig_key = httpsig_hyper::prelude::PublicKey::from_bytes(
-//         &httpsig_hyper::prelude::AlgorithmName::Ed25519,
-//         ed25519_dalek::VerifyingKey::default().as_bytes(),
-//     )
-//     .unwrap();
-
-//     db::hosts::add_host(
-//         conn,
-//         ed25519_dalek::VerifyingKey::default(),
-//         "default_host".to_owned(),
-//     )
-//     .await
-//     .unwrap();
-// }
-
 #[cfg(test)]
 async fn sql_conn(pool: sqlx::SqlitePool) -> sqlx::pool::PoolConnection<sqlx::Sqlite> {
     let mut conn = pool.acquire().await.unwrap();

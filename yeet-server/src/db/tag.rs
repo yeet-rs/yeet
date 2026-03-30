@@ -218,9 +218,6 @@ pub async fn auth_level(
     user: api::UserID,
     level: api::AuthLevel,
 ) -> Result<(), (StatusCode, String)> {
-    // #[cfg(any(test, feature = "test-server"))]
-    // return Ok(());
-
     let user_level = sqlx::query_scalar!(
         r#"
         SELECT level AS "level: api::AuthLevel" FROM users

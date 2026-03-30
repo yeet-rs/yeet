@@ -40,9 +40,11 @@ async fn main() {
         }
     };
 
-    let tls = RustlsConfig::from_pem_file("cert.pem", "key.pem")
-        .await
-        .unwrap();
+    let tls = {
+        let cert = env::var("YEET_CERT").expect("`YEET_CERT` must be set");
+        let key = env::var("YEET_CERT_KEY").expect("`YEET_CERT_KEY` must be set");
+        RustlsConfig::from_pem_file(cert, key).await.unwrap()
+    };
 
     let options = SqliteConnectOptions::new()
         .filename("yeet.db")
