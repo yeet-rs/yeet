@@ -12,6 +12,9 @@ A better pull-based nix deployment tool.
 <div>
 <img alt="Yeet" src="https://img.shields.io/badge/NixOS-4A6BB0">
 <img alt="Yeet" src="https://img.shields.io/badge/WIP-f54260">
+<a href="https://sloprank.io/repo/yeet-rs/yeet">
+  <img alt="sloprank" src="https://sloprank.io/badge/yeet-rs/yeet.svg">
+</a>
 <a href="https://github.com/yeet-rs/yeet/">
   <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/yeet-rs/yeet">
 </a>
