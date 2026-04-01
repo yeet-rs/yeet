@@ -1,0 +1,21 @@
+[package]
+name = "splunk_hec"
+version.workspace = true
+categories.workspace = true
+edition.workspace = true
+repository.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+
+[dependencies]
+indexmap = { version = "2.13.0", features = ["serde"] }
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1.49", features = ["full"] }
+
+[lints]
+workspace = true
