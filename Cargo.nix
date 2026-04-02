@@ -21692,7 +21692,7 @@ rec {
       };
       "yeet" = rec {
         crateName = "yeet";
-        version = "0.8.0-beta.1";
+        version = "0.9.0";
         edition = "2024";
         crateBin = [
           {
@@ -21860,7 +21860,7 @@ rec {
       };
       "yeet-api" = rec {
         crateName = "yeet-api";
-        version = "0.8.0-beta.1";
+        version = "0.9.0";
         edition = "2024";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeet-api; };
         libName = "yeet_api";
@@ -21967,7 +21967,7 @@ rec {
       };
       "yeetd" = rec {
         crateName = "yeetd";
-        version = "0.8.0-beta.1";
+        version = "0.9.0";
         edition = "2024";
         crateBin = [
           {
