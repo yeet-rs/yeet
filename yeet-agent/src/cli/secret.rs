@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fs::File, io::Read as _, path::Path};
+use std::{
+    collections::HashMap,
+    fs::{File, read_to_string},
+};
 
 use clap::{Args, Subcommand};
 use colored::Colorize as _;
@@ -66,8 +69,9 @@ async fn create(config: &Config) -> Result<(), Report> {
                 })
             })
             .prompt()?;
-        let bytes = read_to_bytes(path)?;
-        age::encrypt(&recipient, &bytes)
+        let bytes = read_to_string(path)?;
+
+        age::encrypt(&recipient, bytes.trim().as_bytes())
     }?;
 
     api::create_secret(&url, secret_key, &name, &secret).await?;
@@ -384,11 +388,4 @@ async fn remove_tag(config: &Config) -> Result<(), Report> {
     }
 
     Ok(())
-}
-
-fn read_to_bytes<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<u8>> {
-    let mut file = File::open(path)?;
-    let mut buf = Vec::new();
-    file.read_to_end(&mut buf)?;
-    Ok(buf)
 }
