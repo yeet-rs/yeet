@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
-use axum::{
-    Json,
-    extract::{Path, State},
-    http::StatusCode,
-};
+use axum::{Json, extract::State, http::StatusCode};
 use indexmap::IndexMap;
 
 use crate::{
@@ -34,29 +30,13 @@ pub async fn create_query(
     let mut conn = state.pool.acquire().await.internal_server()?;
     db::tag::auth_osquery(&mut conn, user).await?;
     db::tag::auth_all_tag(&mut conn, user).await?;
-    let query_id = db::osquery::create_query(&mut conn, user, query.sql)
+    let query_id = db::osquery::create_query(&mut conn, user, query.sql, query.nodes)
         .await
         .internal_server()?;
 
     crate::wake_splunk(state.sender.as_ref()).await;
 
     Ok(Json(query_id))
-}
-
-pub async fn query_response_all(
-    State(state): State<YeetState>,
-    User(user): User,
-    Path(query): Path<api::QueryID>,
-) -> Result<Json<api::QueryFulfillment>, (StatusCode, String)> {
-    let mut conn = state.pool.acquire().await.internal_server()?;
-    db::tag::auth_osquery(&mut conn, user).await?;
-    db::tag::auth_all_tag(&mut conn, user).await?;
-
-    Ok(Json(
-        db::osquery::get_query_response_all(&mut conn, query)
-            .await
-            .internal_server()?,
-    ))
 }
 
 pub async fn enroll(
