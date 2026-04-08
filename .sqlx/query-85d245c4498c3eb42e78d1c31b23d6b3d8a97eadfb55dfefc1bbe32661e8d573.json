@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            odr.id,\n            odr.query_id,\n            odr.status,\n            osn.host_identifier,\n            odr.response_time as \"response_time: jiff_sqlx::Timestamp\",\n            odr.response\n\n        FROM osquery_dq_responses odr\n        JOIN osquery_nodes osn on odr.query_id = osn.id\n        WHERE odr.splunk_status = $0",
+  "query": "\n        SELECT\n            odr.id,\n            odr.query_id,\n            odr.status,\n            osn.host_identifier,\n            odr.response_time as \"response_time: jiff_sqlx::Timestamp\",\n            odr.response\n\n        FROM osquery_dq_responses odr\n        JOIN osquery_nodes osn on odr.query_id = osn.id\n        WHERE odr.splunk_status = $1",
   "describe": {
     "columns": [
       {
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "e231cbeae53861a876c2fd530181e78a414718e52d6db127ca433f1db99921dc"
+  "hash": "85d245c4498c3eb42e78d1c31b23d6b3d8a97eadfb55dfefc1bbe32661e8d573"
 }

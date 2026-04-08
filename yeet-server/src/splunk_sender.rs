@@ -45,7 +45,7 @@ async fn send_responses(
 
         FROM osquery_dq_responses odr
         JOIN osquery_nodes osn on odr.query_id = osn.id
-        WHERE odr.splunk_status = $0"#,
+        WHERE odr.splunk_status = $1"#,
         SplunkStatus::NotSent
     )
     .fetch_all(&mut *conn)
@@ -71,8 +71,8 @@ async fn send_responses(
         if response.is_ok() {
             sqlx::query!(
                 r#"UPDATE osquery_dq_responses
-                SET splunk_status = $0
-                WHERE id = $1"#,
+                SET splunk_status = $1
+                WHERE id = $2"#,
                 SplunkStatus::Sent,
                 node_response.id
             )
@@ -125,8 +125,8 @@ async fn send_queries(
         if response.is_ok() {
             sqlx::query!(
                 r#"UPDATE osquery_dq_queries
-                SET splunk_status = $0
-                WHERE id = $1"#,
+                SET splunk_status = $1
+                WHERE id = $2"#,
                 SplunkStatus::Sent,
                 query.id
             )

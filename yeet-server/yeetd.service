@@ -14,10 +14,10 @@ Environment="YEET_HOST=0.0.0.0"
 Environment="YEET_STATE=/var/lib/yeetd/yeetd.db"
 Environment="YEET_CERT="
 Environment="YEET_CERT_KEY="
-Environment="YEET_URL=https://"
+Environment="YEET_URL="
 Environment="YEET_SPLUNK_URL=https://"
 Environment="YEET_SPLUNK_INDEX=my_index"
-Environment="YEET_SPLUNK_TOKEN=my_index"
+Environment="YEET_SPLUNK_TOKEN="
 # Environment="YEET_INIT_KEY="
 
 [Install]
