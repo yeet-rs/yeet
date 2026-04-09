@@ -24,30 +24,37 @@ impl SplunkConfig {
             reqwest_client: Client::new(),
         }
     }
-    pub async fn send_msg(
+    /// Only ever send events that correlate to the same timestamp
+    pub async fn send_msgs(
         &self,
-        msg: SplunkMessageType,
-        time: i64,
+        msgs: Vec<SplunkMessageType>,
+        time: jiff::Timestamp,
     ) -> Result<reqwest::Response, reqwest::Error> {
-        let msg = SplunkMessage {
-            time,
-            host: self.yeet_server.to_string(),
-            index: self.index.clone(),
-            sourcetype: self.sourcetype.clone(),
-            message_type: msg,
-        };
+        let mut events = Vec::new();
+        for msg in msgs {
+            let msg = SplunkMessage {
+                time: time.as_nanosecond(),
+                host: self.yeet_server.to_string(),
+                index: self.index.clone(),
+                sourcetype: self.sourcetype.clone(),
+                message_type: msg,
+            };
+            events.push(msg);
+        }
+
         self.reqwest_client
             .post(self.server.as_str())
-            .json(&msg)
+            .json(&events)
             .header("Authorization", format!("Splunk {}", self.token))
             .send()
-            .await
+            .await?
+            .error_for_status()
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SplunkMessage {
-    time: i64,
+    time: i128,
     /// Yeet Server
     host: String,
     index: String,
@@ -69,16 +76,21 @@ pub enum SplunkMessageType {
         nodes: Vec<String>,
         /// Yeet user that created the query
         user: String,
-        /// Yeet version
-        version: String,
+        /// actual query that is sent to the nodes
+        query: String, // Yeet version
+                       // version: String,
     },
-    QueryResponse {
+    /// Instead of sending the response as a whole we send each row as a seperate event
+    QueryRow {
         /// Corresponding `QueryJob`
-        sid: SearchID,
+        osquery_sid: SearchID,
         /// osqueryd `host_identifier`
-        hostname: String,
+        osquery_hostname: String,
         /// The query output in a row based table
         /// Each Vec element is a row and the Map is column name -> value
-        response: Vec<IndexMap<String, String>>,
+        #[serde(flatten)]
+        row: IndexMap<String, String>,
+        /// "SQLite" (osquery) Status of the response. If it is non 0 `response` will be empty
+        osquery_status: i64,
     },
 }

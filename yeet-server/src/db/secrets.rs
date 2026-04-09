@@ -155,35 +155,6 @@ pub async fn remove_secret(
     Ok(())
 }
 
-//        SELECT
-//     s.id as "id!: api::SecretID",
-//     s.name,
-//     -- Gather tags authorized for this User+Secret via the View
-//     json_group_array(json_object('id', t.id, 'name', t.name)) as "tags!: Json<Vec<api::tag::Tag>>",
-//     -- Gather hosts authorized for this User+Host via the View
-//     json_group_array(
-//         CASE WHEN a_h.resource_id IS NOT NULL THEN sacl.host_id ELSE NULL END
-//     ) as "hosts!: Json<Vec<api::HostID>>"
-// FROM secrets s
-
-// -- Join View to find authorized Secrets
-// JOIN access a_s
-//     ON s.id = a_s.resource_id
-//     AND a_s.resource_type = $2
-//     AND a_s.user_id = $1
-// -- Get tag details for the secret
-// LEFT JOIN tags t ON t.id = a_s.tag_id
-
-// -- Join Hosts (Secret ACL)
-// LEFT JOIN secrets_acl sacl ON s.id = sacl.secret_id
-
-// -- Join View to verify the User is allowed to see these specific Hosts
-// LEFT JOIN access a_h
-//     ON sacl.host_id = a_h.resource_id
-//     AND a_h.resource_type = $3
-//     AND a_h.user_id = $1
-// GROUP BY s.id, s.name
-
 pub async fn list_secrets(
     conn: &mut sqlx::SqliteConnection,
     user: api::UserID,

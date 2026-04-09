@@ -1,10 +1,10 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id FROM osquery_nodes",
+  "query": "SELECT id as \"id: api::NodeID\" FROM osquery_nodes",
   "describe": {
     "columns": [
       {
-        "name": "id",
+        "name": "id: api::NodeID",
         "ordinal": 0,
         "type_info": "Integer"
       }
@@ -16,5 +16,5 @@
       false
     ]
   },
-  "hash": "c3186ff4eaff25aaff947d69e356b578115c827ab312b10836e6e3b91250451a"
+  "hash": "e8df16fe5681f23315e489598b3e883b09282ddccaa289079aacae385ecc27d3"
 }

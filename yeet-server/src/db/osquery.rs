@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
+use jiff_sqlx::ToSqlx;
 use sqlx::{Acquire as _, types::Json};
 use uuid::Uuid;
 
@@ -34,23 +35,30 @@ pub async fn create_query(
     conn: &mut sqlx::SqliteConnection,
     user: api::UserID,
     query: String,
+    filter: Vec<api::NodeID>,
 ) -> Result<api::QueryID, sqlx::Error> {
     let mut tx = conn.begin().await?;
 
+    let now = jiff::Timestamp::now().to_sqlx();
     let query_id = sqlx::query!(
-        r#"INSERT INTO osquery_dq_queries (query,user_id) VALUES ($1,$2) "#,
+        r#"INSERT INTO osquery_dq_queries (query,user_id,splunk_status,creation_time) VALUES ($1,$2,$3,$4)"#,
         query,
-        user
+        user,
+        crate::splunk_sender::SplunkStatus::NotSent,
+        now
     )
     .execute(&mut *tx)
     .await?
     .last_insert_rowid();
 
     // TODO: no loop
+    // TODO: what if no nodes
 
-    let nodes = sqlx::query_scalar!(r#"SELECT id FROM osquery_nodes"#)
+    let mut nodes = sqlx::query_scalar!(r#"SELECT id as "id: api::NodeID" FROM osquery_nodes"#)
         .fetch_all(&mut *tx)
         .await?;
+
+    nodes.retain(|id| filter.contains(id));
 
     for node in nodes {
         sqlx::query!(
@@ -64,33 +72,6 @@ pub async fn create_query(
 
     tx.commit().await?;
     Ok(api::QueryID::new(query_id))
-}
-
-pub async fn get_query_response_all(
-    conn: &mut sqlx::SqliteConnection,
-    query: api::QueryID,
-) -> Result<api::QueryFulfillment, sqlx::Error> {
-    let responses = sqlx::query!(
-        r#"SELECT id as "node: api::NodeID", status, response
-        FROM osquery_dq_responses WHERE query_id = $1"#,
-        query
-    )
-    .map(|row| api::QueryResponse {
-        node: row.node,
-        response: serde_json::from_str(&row.response).unwrap_or_default(),
-        status: row.status,
-    })
-    .fetch_all(&mut *conn)
-    .await?;
-
-    let missing = sqlx::query_scalar!(
-        r#"SELECT node_id as "node_id: api::NodeID" FROM osquery_dq_requests WHERE query_id = $1"#,
-        query
-    )
-    .fetch_all(conn)
-    .await?;
-
-    Ok(api::QueryFulfillment { responses, missing })
 }
 
 /// The node needs to provide the same content as the `osquery-enroll` secret
@@ -195,13 +176,16 @@ pub async fn write_dquery_response(
 
         let status = statuses.get(query_id).copied().unwrap_or(0);
         let response = serde_json::to_string(response).expect("Could not serialize a json");
+        let now = jiff::Timestamp::now().to_sqlx();
         sqlx::query!(
-            r#"INSERT INTO osquery_dq_responses (query_id, node_id, response, status)
-            VALUES ($1,$2,$3,$4)"#,
+            r#"INSERT INTO osquery_dq_responses (query_id, node_id, response, status, splunk_status, response_time)
+            VALUES ($1,$2,$3,$4,$5,$6)"#,
             query_id,
             node_id,
             response,
-            status
+            status,
+            crate::splunk_sender::SplunkStatus::NotSent,
+            now
         )
         .execute(&mut *tx)
         .await?;

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO osquery_dq_queries (query,user_id,splunk_status,creation_time) VALUES ($1,$2,$3,$4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "34092e416a6a0cfbe349ba55fdd1589a6d99ada99eaebba73169008942379e16"
+}

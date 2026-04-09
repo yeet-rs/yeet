@@ -46,6 +46,25 @@ async fn main() {
         RustlsConfig::from_pem_file(cert, key).await.unwrap()
     };
 
+    let splunk = 'splunk: {
+        let Ok(server) = env::var("YEET_SPLUNK_URL").map(|url| url.parse().unwrap()) else {
+            println!("`YEET_SPLUNK_URL` not set. Not using splunk");
+            break 'splunk None;
+        };
+
+        let index = env::var("YEET_SPLUNK_INDEX").expect("`YEET_SPLUNK_INDEX` must be set");
+        let yeet_server = env::var("YEET_URL")
+            .map(|url| url.parse().unwrap())
+            .expect("`YEET_URL` must be set");
+        let token = env::var("YEET_SPLUNK_TOKEN").expect("`YEET_SPLUNK_TOKEN` must be set");
+        Some(splunk_hec::SplunkConfig::new(
+            index,
+            yeet_server,
+            server,
+            token,
+        ))
+    };
+
     let options = SqliteConnectOptions::new()
         .filename("yeet.db")
         .create_if_missing(true);
@@ -55,6 +74,6 @@ async fn main() {
         .await
         .expect("Can't connect to yeet.db");
 
-    let handle = yeetd::launch(port, host, pool, age_key, Some(tls)).await;
+    let handle = yeetd::launch(port, host, pool, age_key, Some(tls), splunk).await;
     handle.await.expect("axum quit");
 }

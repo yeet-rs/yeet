@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            q.id,\n            q.query,\n            u.username,\n            q.creation_time as \"creation_time: jiff_sqlx::Timestamp\",\n            json_group_array(\n                osn.host_identifier\n            ) as \"nodes!: Json<Vec<String>>\"\n        FROM osquery_dq_queries q\n        JOIN users u on q.user_id = u.id\n        LEFT JOIN osquery_dq_requests odreq on odreq.query_id = q.id -- these nodes have not yet responded\n        LEFT JOIN osquery_dq_responses odr on odr.query_id = q.id -- these nodes have already responded\n        JOIN osquery_nodes osn on odr.node_id = osn.id or odreq.node_id = osn.id\n        WHERE q.splunk_status = $1\n        GROUP BY q.id, u.username",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "query",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "username",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "creation_time: jiff_sqlx::Timestamp",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "nodes!: Json<Vec<String>>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4359acb1512311ae9b00bdee335e30000c2821220f8d01837caa92edfcdf6245"
+}
