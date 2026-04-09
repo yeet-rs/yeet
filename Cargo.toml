@@ -13,7 +13,7 @@ panic = "abort"
 opt-level = 3
 
 [workspace.package]
-version = "0.9.3"
+version = "0.9.4"
 categories = ["Configuration"]
 edition = "2024"
 repository = "https://github.com/yeet-rs/yeet"

@@ -56,19 +56,26 @@ async fn send_responses(
     log::info!("Sending {} responses", unsent_dq_responses.len());
 
     for node_response in unsent_dq_responses {
-        let columns: IndexMap<String, Vec<String>> =
-            serde_json::from_str(&node_response.response).unwrap_or_default();
+        let rows = {
+            let columns: IndexMap<String, Vec<String>> =
+                serde_json::from_str(&node_response.response).unwrap_or_default();
+            crate::routes::osquery::column_to_row(columns)
+        };
+
+        let mut query_rows = Vec::new();
+
+        for row in rows {
+            let row = splunk_hec::SplunkMessageType::QueryRow {
+                osquery_sid: node_response.query_id,
+                osquery_hostname: node_response.host_identifier.clone(),
+                row,
+                osquery_status: node_response.status,
+            };
+            query_rows.push(row);
+        }
 
         let response = config
-            .send_msg(
-                splunk_hec::SplunkMessageType::QueryResponse {
-                    sid: node_response.query_id,
-                    hostname: node_response.host_identifier,
-                    response: crate::routes::osquery::column_to_row(columns),
-                    status: node_response.status,
-                },
-                node_response.response_time.to_jiff(),
-            )
+            .send_msgs(query_rows, node_response.response_time.to_jiff())
             .await;
 
         // only update that it was sent if it was sent successfull
@@ -120,13 +127,13 @@ async fn send_queries(
 
     for query in unsent_dq_queries {
         let response = config
-            .send_msg(
-                splunk_hec::SplunkMessageType::QueryJob {
+            .send_msgs(
+                vec![splunk_hec::SplunkMessageType::QueryJob {
                     sid: query.id,
                     query: query.query,
                     nodes: query.nodes.0,
                     user: query.username,
-                },
+                }],
                 query.creation_time.to_jiff(),
             )
             .await;
