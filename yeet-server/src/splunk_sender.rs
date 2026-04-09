@@ -46,7 +46,7 @@ async fn send_responses(
             odr.response
 
         FROM osquery_dq_responses odr
-        JOIN osquery_nodes osn on odr.query_id = osn.id
+        JOIN osquery_nodes osn on odr.node_id = osn.id
         WHERE odr.splunk_status = $1"#,
         SplunkStatus::NotSent
     )
