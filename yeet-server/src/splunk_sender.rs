@@ -127,6 +127,17 @@ async fn send_responses(
             query_rows.push(row);
         }
 
+        // If we have no response we still want to send a single response log with metadata
+        if query_rows.is_empty() {
+            let row = splunk_hec::SplunkMessageType::response(
+                node_response.query_id,
+                node_response.host_identifier.clone(),
+                node_response.status,
+                IndexMap::new(),
+            );
+            query_rows.push(row);
+        }
+
         let response = config
             .send_msgs(query_rows, node_response.response_time.to_jiff())
             .await;
