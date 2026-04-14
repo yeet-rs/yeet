@@ -13,7 +13,7 @@ panic = "abort"
 opt-level = 3
 
 [workspace.package]
-version = "0.9.1"
+version = "0.9.7"
 categories = ["Configuration"]
 edition = "2024"
 repository = "https://github.com/yeet-rs/yeet"
@@ -40,6 +40,8 @@ serde_json = "1.0"
 osquery-tls = {path = "./osquery-tls"}
 colored = "3.1.1"
 tabled = "0.20.0"
+splunk_hec = {path = "./splunk_hec"}
+log = "0.4"
 
 
 [workspace.lints.rust]

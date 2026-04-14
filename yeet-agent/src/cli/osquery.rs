@@ -1,7 +1,4 @@
-use std::time::Duration;
-
 use rootcause::Report;
-use tokio::time::sleep;
 
 use crate::{
     cli::common,
@@ -25,32 +22,34 @@ pub async fn show_nodes(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-#[expect(clippy::print_stdout)]
 pub async fn query(config: &Config, sql: String) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
+    let mut nodes = api::list_nodes(&url, key).await?;
+    nodes.sort();
 
-    let query = api::create_query(&url, key, api::CreateQuery { sql }).await?;
+    let nodes =
+        inquire::MultiSelect::new("Which nodes should execute this query?", nodes).prompt()?;
 
-    let mut response = api::query_response_all(&url, key, query).await?;
-    while !response.missing.is_empty() {
-        sleep(Duration::from_secs(1)).await; // TODO: async model
-        response = api::query_response_all(&url, key, query).await?;
-    }
+    let nodes = nodes.into_iter().map(|node| node.id).collect();
 
-    for node in response.responses {
-        let mut builder = tabled::builder::Builder::new();
+    let query = api::create_query(&url, key, api::CreateQuery { sql, nodes }).await?;
 
-        for (header, column) in node.response {
-            let mut header = vec![header];
-            header.extend(column);
-            builder.push_column(header);
-        }
-        let mut table = builder.build();
-        table.with(tabled::settings::Style::modern_rounded());
+    // TODO: maybe server streaming
+    // for node in response.responses {
+    //     let mut builder = tabled::builder::Builder::new();
 
-        println!("{table}");
-    }
+    //     for (header, column) in node.response {
+    //         let mut header = vec![header];
+    //         header.extend(column);
+    //         builder.push_column(header);
+    //     }
+    //     let mut table = builder.build();
+    //     table.with(tabled::settings::Style::modern_rounded());
 
+    //     println!("{table}");
+    // }
+
+    log::info!("You can search for your query with `sid: {query}`");
     Ok(())
 }

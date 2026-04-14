@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::routing::{delete, get, post, put};
 
@@ -23,6 +23,7 @@ mod db {
 }
 mod error;
 mod httpsig;
+mod splunk_sender;
 
 use axum_server::tls_rustls::RustlsConfig;
 use ed25519_dalek::VerifyingKey;
@@ -32,6 +33,7 @@ pub(crate) use routes::{host, key, secret, system, verify};
 struct YeetState {
     pub pool: sqlx::SqlitePool,
     pub age_key: Arc<age::x25519::Identity>,
+    pub sender: Option<tokio::sync::mpsc::Sender<()>>,
 }
 
 use serde::{Deserialize, Serialize};
@@ -53,6 +55,7 @@ pub async fn launch<I: Into<std::net::IpAddr>>(
     pool: sqlx::SqlitePool,
     age_key: age::x25519::Identity,
     tls: Option<RustlsConfig>,
+    splunk: Option<splunk_hec::SplunkConfig>,
 ) -> tokio::task::JoinHandle<()> {
     #[expect(clippy::unwrap_used)]
     {
@@ -80,7 +83,23 @@ pub async fn launch<I: Into<std::net::IpAddr>>(
 
     let age_key = Arc::new(age_key);
 
-    let state = YeetState { pool, age_key };
+    let sender = if let Some(splunk) = splunk {
+        let (tx, rx) = tokio::sync::mpsc::channel(5);
+        let pool = pool.clone();
+        let _detached = tokio::spawn(async move { splunk_sender::run(splunk, rx, pool).await });
+        Some(tx)
+    } else {
+        None
+    };
+
+    let state = YeetState {
+        pool,
+        age_key,
+        sender,
+    };
+
+    // wake the splunk sender immediately so that he can send all logs
+    wake_splunk(state.sender.as_ref()).await;
 
     tokio::spawn(async move {
         if let Some(tls) = tls {
@@ -168,19 +187,23 @@ fn routes(state: YeetState) -> axum::Router {
         .route("/osquery/enroll", post(osquery::enroll))
         .route("/osquery/query/read", post(osquery::query_read))
         .route("/osquery/query/write", post(osquery::query_write))
-        // === TODO
+        // === Osquery
         .route("/osquery/nodes", get(osquery::list_nodes))
         .route("/osquery/query/create", post(osquery::create_query))
-        .route(
-            "/osquery/query/response/{query}",
-            get(osquery::query_response_all),
-        )
+        // query status
         // .route(
         // "/osquery/query/response/{query_id}/{node_id}",
         // get(osquery::query_write),
         // )
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(state)
+}
+
+pub(crate) async fn wake_splunk(sender: Option<&tokio::sync::mpsc::Sender<()>>) {
+    if let Some(sender) = sender {
+        // TODO: log if we could not notify
+        let _ignore = sender.send_timeout((), Duration::from_secs(1)).await;
+    }
 }
 
 #[cfg(test)]

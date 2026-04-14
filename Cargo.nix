@@ -13770,13 +13770,18 @@ rec {
       };
       "splunk_hec" = rec {
         crateName = "splunk_hec";
-        version = "0.9.1";
+        version = "0.9.7";
         edition = "2024";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./splunk_hec; };
         dependencies = [
           {
             name = "indexmap";
             packageId = "indexmap";
+            features = [ "serde" ];
+          }
+          {
+            name = "jiff";
+            packageId = "jiff";
             features = [ "serde" ];
           }
           {
@@ -21742,7 +21747,7 @@ rec {
       };
       "yeet" = rec {
         crateName = "yeet";
-        version = "0.9.1";
+        version = "0.9.7";
         edition = "2024";
         crateBin = [
           {
@@ -21910,7 +21915,7 @@ rec {
       };
       "yeet-api" = rec {
         crateName = "yeet-api";
-        version = "0.9.1";
+        version = "0.9.7";
         edition = "2024";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeet-api; };
         libName = "yeet_api";
@@ -22017,7 +22022,7 @@ rec {
       };
       "yeetd" = rec {
         crateName = "yeetd";
-        version = "0.9.1";
+        version = "0.9.7";
         edition = "2024";
         crateBin = [
           {
@@ -22088,6 +22093,10 @@ rec {
             features = [ "sqlite" ];
           }
           {
+            name = "log";
+            packageId = "log";
+          }
+          {
             name = "memmap2";
             packageId = "memmap2";
           }
@@ -22115,6 +22124,10 @@ rec {
           {
             name = "serde_json_any_key";
             packageId = "serde_json_any_key";
+          }
+          {
+            name = "splunk_hec";
+            packageId = "splunk_hec";
           }
           {
             name = "sqlx";

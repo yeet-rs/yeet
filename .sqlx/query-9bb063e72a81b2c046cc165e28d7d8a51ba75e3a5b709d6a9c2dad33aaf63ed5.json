@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        DELETE FROM osquery_dq_responses\n        WHERE query_id IN (\n            SELECT id FROM osquery_dq_queries\n            WHERE persistent = 0\n        ) AND splunk_status = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "9bb063e72a81b2c046cc165e28d7d8a51ba75e3a5b709d6a9c2dad33aaf63ed5"
+}

@@ -1,5 +1,6 @@
 [package]
 name = "splunk_hec"
+description = "Splunk bindings for osquery data"
 version.workspace = true
 categories.workspace = true
 edition.workspace = true
@@ -14,6 +15,7 @@ serde.workspace = true
 serde_json.workspace = true
 reqwest.workspace = true
 url.workspace = true
+jiff.workspace = true
 
 [dev-dependencies]
 tokio = { version = "1.49", features = ["full"] }

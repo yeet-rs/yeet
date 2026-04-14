@@ -64,7 +64,18 @@ pub fn time_diff(
 
 macro_rules! db_id {
     ($name:ident) => {
-        #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq, Hash)]
+        #[derive(
+            Clone,
+            Copy,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            PartialEq,
+            Eq,
+            Hash,
+            PartialOrd,
+            Ord,
+        )]
         #[cfg_attr(feature = "hazard", derive(sqlx::Type))]
         #[cfg_attr(feature = "hazard", sqlx(transparent))]
         #[serde(transparent)]

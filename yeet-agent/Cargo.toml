@@ -15,7 +15,6 @@ api = { path = "../yeet-api", package="yeet-api"}
 notify-rust = "4.11"
 clap = { version = "4.5", features = ["derive","string"] }
 env_logger = "0.11"
-log = "0.4"
 tokio = { version = "1.49", features = ["full"] } # TODO: maybe switch to smoll?
 
 figment = { version = "0.10", features = ["toml", "env"] }
@@ -45,7 +44,7 @@ thiserror.workspace = true
 url.workspace = true
 tabled.workspace = true
 colored.workspace = true
-
+log.workspace = true
 
 # TODO: ssh-agent-client-rs = "1.1.2"
 

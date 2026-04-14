@@ -12,6 +12,7 @@ fn api_e2e_with_credentials(pool: sqlx::SqlitePool) {
         pool,
         age::x25519::Identity::generate(),
         None,
+        None,
     )
     .await;
 
@@ -287,6 +288,7 @@ fn api_e2e_with_non_superuser(pool: sqlx::SqlitePool) {
         std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
         pool,
         age::x25519::Identity::generate(),
+        None,
         None,
     )
     .await;
@@ -602,6 +604,7 @@ fn api_secrets_with_tags(pool: sqlx::SqlitePool) {
         std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
         pool,
         age::x25519::Identity::generate(),
+        None,
         None,
     )
     .await;
