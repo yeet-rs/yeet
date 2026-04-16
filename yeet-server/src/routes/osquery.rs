@@ -146,6 +146,7 @@ pub async fn config(
     .fetch_one(&mut *conn)
     .await
     else {
+        log::warn!("Unknown node: {node_key}");
         return empty_response;
     };
 
@@ -161,10 +162,7 @@ pub async fn log(
     let remote_log = serde_json::from_value::<osquery_tls::RemoteLoggingRequest>(request.clone());
 
     let remote_log = match remote_log {
-        Ok(remote_log) => {
-            log::info!("Deserialized RemoteLogging without issues");
-            remote_log
-        }
+        Ok(remote_log) => remote_log,
         Err(err) => {
             log::error!(
                 "Could not deserialize RemoteLog:\n{}\nreceived:\n{}",
@@ -212,6 +210,7 @@ pub(crate) fn row_to_column(rows: Vec<IndexMap<String, String>>) -> IndexMap<Str
 fn get_node_key(key: Option<String>) -> Option<Uuid> {
     let node_key = key.and_then(|key| key.parse().ok());
     let Some(node_key) = node_key else {
+        log::warn!("Did not send a node_key in a request that requires a node key");
         return None;
     };
     Some(node_key)

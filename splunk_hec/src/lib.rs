@@ -84,35 +84,69 @@ pub enum SplunkMessageType {
         fields: RowMetadata,
     },
     StatusLog {
-        /// host_identifier
-        hostname: String,
-        ///  unix timestamp when the log was sent. TODO: windows?
-        unix_time: i64,
-        /// file where the error came from
-        filename: String,
-        /// line where on the file the error occured
-        line: u32,
-        /// log message
-        message: String,
-        /// severity of the log
-        severity: i32,
-        /// osquery version
-        version: String,
+        event: StatusLogData,
     },
     ResultLog {
-        /// host_identifier
-        hostname: String,
-        ///  unix timestamp when the log was sent. TODO: windows?
-        unix_time: i64,
-        ///  This is an indicator for all results, true if osquery attempted to log numerics as numbers, otherwise false indicates they were logged as strings: bool.
-        numerics: bool,
-        ///  used with event format. if the epoch changes the node will send the full table agai: n
-        epoch: i64,
-        ///  which pack the log originated from
-        pack_name: String,
-        ///  one of removed, added, snapshot
-        log: osquery_tls::EventLogAction,
+        event: ResultLogData,
     },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StatusLogData {
+    /// host_identifier
+    hostname: String,
+    ///  unix timestamp when the log was sent. TODO: windows?
+    unix_time: i64,
+    /// file where the error came from
+    filename: String,
+    /// line where on the file the error occured
+    line: u32,
+    /// log message
+    message: String,
+    /// severity of the log
+    severity: i32,
+    /// osquery version
+    version: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ResultLogData {
+    /// host_identifier
+    hostname: String,
+    ///  unix timestamp when the log was sent. TODO: windows?
+    unix_time: i64,
+    ///  This is an indicator for all results, true if osquery attempted to log numerics as numbers, otherwise false indicates they were logged as strings: bool.
+    numerics: bool,
+    ///  used with event format. if the epoch changes the node will send the full table agai: n
+    epoch: i64,
+    ///  which pack the log originated from
+    pack_name: String,
+    ///  one of removed, added, snapshot
+    #[serde(flatten)]
+    log: osquery_tls::EventLogAction,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RowMetadata {
+    /// Corresponding `QueryJob`
+    sid: SearchID,
+    /// osqueryd `host_identifier`
+    hostname: String,
+    /// "`SQLite`" (osquery) Status of the response. If it is non 0 `response` will be empty
+    status: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct QueryMetadata {
+    sid: SearchID,
+    /// List of target nodes (osqueryd `host_identifier`)
+    /// If hostnames are not unique or consistent in your environment, you can launch osqueryd with `--host_identifier=uuid`
+    nodes: Vec<String>,
+    /// Yeet user that created the query
+    user: String,
+    /// actual query that is sent to the nodes
+    query: String, // Yeet version
+                   // version: String,
 }
 
 impl SplunkMessageType {
@@ -163,13 +197,15 @@ impl SplunkMessageType {
         version: String,
     ) -> Self {
         Self::StatusLog {
-            hostname,
-            unix_time,
-            filename,
-            line,
-            message,
-            severity,
-            version,
+            event: StatusLogData {
+                hostname,
+                unix_time,
+                filename,
+                line,
+                message,
+                severity,
+                version,
+            },
         }
     }
     #[must_use]
@@ -182,35 +218,14 @@ impl SplunkMessageType {
         log: osquery_tls::EventLogAction,
     ) -> Self {
         Self::ResultLog {
-            hostname,
-            unix_time,
-            numerics,
-            epoch,
-            pack_name,
-            log,
+            event: ResultLogData {
+                hostname,
+                unix_time,
+                numerics,
+                epoch,
+                pack_name,
+                log,
+            },
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RowMetadata {
-    /// Corresponding `QueryJob`
-    sid: SearchID,
-    /// osqueryd `host_identifier`
-    hostname: String,
-    /// "`SQLite`" (osquery) Status of the response. If it is non 0 `response` will be empty
-    status: i64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct QueryMetadata {
-    sid: SearchID,
-    /// List of target nodes (osqueryd `host_identifier`)
-    /// If hostnames are not unique or consistent in your environment, you can launch osqueryd with `--host_identifier=uuid`
-    nodes: Vec<String>,
-    /// Yeet user that created the query
-    user: String,
-    /// actual query that is sent to the nodes
-    query: String, // Yeet version
-                   // version: String,
 }
