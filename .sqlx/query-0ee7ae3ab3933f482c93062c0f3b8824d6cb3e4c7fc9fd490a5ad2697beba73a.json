@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        DELETE FROM osquery_status_log\n        WHERE splunk_status = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "0ee7ae3ab3933f482c93062c0f3b8824d6cb3e4c7fc9fd490a5ad2697beba73a"
+}

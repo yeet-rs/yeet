@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            orl.id,\n            osn.host_identifier,\n            orl.unix_time,\n            orl.numerics as \"numerics: bool\",\n            orl.epoch,\n            orl.pack_name,\n            orl.log,\n            orl.received_time as \"received_time: jiff_sqlx::Timestamp\"\n\n        FROM osquery_result_log orl\n        JOIN osquery_nodes osn on orl.node_id = osn.id\n        WHERE orl.splunk_status = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "host_identifier",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "unix_time",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "numerics: bool",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "epoch",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "pack_name",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "log",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "received_time: jiff_sqlx::Timestamp",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6f6922d3fc5091d5c84e2bf6ca3f47243a36eb063aef88fcfc196e5564c36da0"
+}

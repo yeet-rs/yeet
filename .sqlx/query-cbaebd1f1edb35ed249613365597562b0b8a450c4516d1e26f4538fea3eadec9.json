@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            osl.id,\n            osn.host_identifier,\n            osl.unix_time,\n            osl.filename,\n            osl.line,\n            osl.message,\n            osl.severity,\n            osl.version,\n            osl.received_time as \"received_time: jiff_sqlx::Timestamp\"\n\n        FROM osquery_status_log osl\n        JOIN osquery_nodes osn on osl.node_id = osn.id\n        WHERE osl.splunk_status = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "host_identifier",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "unix_time",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "filename",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "line",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "message",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "severity",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "version",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "received_time: jiff_sqlx::Timestamp",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cbaebd1f1edb35ed249613365597562b0b8a450c4516d1e26f4538fea3eadec9"
+}

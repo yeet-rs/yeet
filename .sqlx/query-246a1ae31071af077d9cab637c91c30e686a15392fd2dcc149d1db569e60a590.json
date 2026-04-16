@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO osquery_status_log\n                (node_id, splunk_status, calendar_time, received_time, unix_time, filename, line, message, severity, version)\n            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "246a1ae31071af077d9cab637c91c30e686a15392fd2dcc149d1db569e60a590"
+}
