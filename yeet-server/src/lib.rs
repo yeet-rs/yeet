@@ -133,14 +133,6 @@ pub async fn launch<I: Into<std::net::IpAddr>>(
 }
 
 fn routes(state: YeetState) -> axum::Router {
-    let _tracer = tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .or_else(|_| tracing_subscriber::EnvFilter::try_new("yeetd=error,tower_http=warn"))
-                .expect("Could not init tracing logger"),
-        )
-        .try_init();
-
     axum::Router::new()
         // Public
         .route("/verification/add", post(verify::add_verification_attempt))
@@ -224,6 +216,7 @@ fn get_osquery_packs(path: PathBuf) -> Result<IndexMap<String, serde_json::Value
     let mut packs = IndexMap::new();
     for path in path.read_dir()? {
         let path = path?;
+        log::info!("Scanning {} for packs", path.file_name().display());
         let Ok(pack) = serde_json::from_reader::<_, serde_json::Value>(File::open(path.path())?)
         else {
             log::warn!(
@@ -241,7 +234,21 @@ fn get_osquery_packs(path: PathBuf) -> Result<IndexMap<String, serde_json::Value
             .map(|str| str.to_owned())
             .unwrap_or("unnamedPack".to_owned());
 
+        log::info!("Loaded pack {}:", file_name);
+        log::info!("Queries:");
+        if let Some(queries) = pack["queries"].as_object() {
+            for query in queries.keys() {
+                log::info!("- {query}")
+            }
+        } else {
+            log::warn!("Pack {} had no queries", file_name);
+        }
+        log::debug!("Pack content:\n{:?}", serde_json::to_string_pretty(&pack));
         packs.insert(file_name, pack);
+    }
+
+    if packs.is_empty() {
+        log::warn!("Could not find any packs in {}", path.display());
     }
 
     let interval = env::var("YEET_INTERNAL_PACK_INTERVAL").unwrap_or("86400".to_owned());

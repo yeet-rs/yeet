@@ -16,7 +16,6 @@ in
   packages = with pkgs; [
     openssl
     pkgs-unstable.rustup # because else we cannot use cargo +nightly fmt
-    openssl
     gcc
     pkg-config
     sqlx-cli

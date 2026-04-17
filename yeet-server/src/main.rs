@@ -19,6 +19,14 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
     reason = "allow in server main"
 )]
 async fn main() {
+    let _tracer = tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .or_else(|_| tracing_subscriber::EnvFilter::try_new("yeetd=error,tower_http=warn"))
+                .expect("Could not init tracing logger"),
+        )
+        .try_init();
+
     let port = env::var("YEET_PORT")
         .map(|port| port.parse().unwrap())
         .unwrap_or(4337);
