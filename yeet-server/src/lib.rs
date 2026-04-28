@@ -166,6 +166,10 @@ fn routes(state: YeetState) -> axum::Router {
         .route("/secret/server_key", get(secret::get_server_age_key)) // locked
         // Public
         .route("/secret", post(secret::get_secret)) // locked
+        // === Artifacts
+        // .route("/artifact", post(artifact::create))
+        // .route("/artifact", get(artifact::list))
+        // .route("/artifact/{id}", post(artifact::retrieve))
         // === Keys
         .route("/key/delete", delete(key::delete_key))
         // === User
