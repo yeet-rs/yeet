@@ -51,13 +51,6 @@ async fn create(config: &Config) -> Result<(), Report> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
-    let recipient: age::x25519::Recipient = {
-        let recipient = api::server_age_key(&url, secret_key).await?;
-        recipient
-            .parse()
-            .map_err(|err| rootcause::report!("Could not parse the server recipient key: {err}"))?
-    };
-
     let name = inquire::Text::new("What should the name of the secret be?").prompt()?;
 
     let secret = {
@@ -69,10 +62,8 @@ async fn create(config: &Config) -> Result<(), Report> {
                 })
             })
             .prompt()?;
-        let bytes = read_to_string(path)?;
-
-        age::encrypt(&recipient, bytes.trim().as_bytes())
-    }?;
+        read_to_string(path)?.trim().as_bytes()
+    };
 
     api::create_secret(&url, secret_key, &name, &secret).await?;
     log::info!("Secret {name} created!");

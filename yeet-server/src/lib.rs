@@ -12,6 +12,7 @@ use std::{
 use axum::routing::{delete, get, post, put};
 
 mod routes {
+    pub mod artifact;
     pub mod health;
     pub mod host;
     pub mod key;
@@ -23,6 +24,7 @@ mod routes {
     pub mod verify;
 }
 mod db {
+    pub mod artifact;
     pub mod hosts;
     pub mod keys;
     pub mod osquery;
@@ -38,7 +40,7 @@ mod splunk_sender;
 use axum_server::tls_rustls::RustlsConfig;
 use ed25519_dalek::VerifyingKey;
 use indexmap::IndexMap;
-pub(crate) use routes::{health, host, key, secret, system, verify};
+pub(crate) use routes::{artifact, health, host, key, secret, system, verify};
 
 #[derive(Clone)]
 struct YeetState {
@@ -167,9 +169,12 @@ fn routes(state: YeetState) -> axum::Router {
         // Public
         .route("/secret", post(secret::get_secret)) // locked
         // === Artifacts
-        // .route("/artifact", post(artifact::create))
-        // .route("/artifact", get(artifact::list))
-        // .route("/artifact/{id}", post(artifact::retrieve))
+        .route("/artifact/store/{name}", post(artifact::store))
+        .route("/artifact", get(artifact::list))
+        // returns the latest artifact data
+        .route("/artifact/name/{name}", post(artifact::get_latest))
+        // retrieve any artifact
+        .route("/artifact/id/{id}", post(artifact::get_artifact))
         // === Keys
         .route("/key/delete", delete(key::delete_key))
         // === User

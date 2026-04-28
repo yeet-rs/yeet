@@ -30,11 +30,32 @@ pub struct GetSecretRequest {
     pub secret: String,
 }
 
-request! (
-    create_secret(name: &str, secret: &[u8]),
-    post("/secret/add/{name}") -> SecretName,
-    body: secret
-);
+pub async fn create_secret<K: SigningKey + Sync>(
+    url: &Url,
+    key: &K,
+    name: &str,
+    secret: &[u8],
+) -> Result<SecretName, ResponseError> {
+    let recipient: age::x25519::Recipient = {
+        let recipient = server_age_key(&url, key).await?;
+
+        recipient
+            .parse()
+            .map_err(|error: &'static str| ResponseError::IdentityError { error })?
+    };
+    let secret = age::encrypt(&recipient, secret)?;
+
+    let response = reqwest::Client::new()
+        .post(url.join(&format!("/secret/add/{name}"))?)
+        .json(&secret)
+        .sign(&sig_param(key)?, key)
+        .await?
+        .send()
+        .await?
+        .error_for_json::<SecretName>()
+        .await?;
+    Ok(response)
+}
 
 request! (
     rename_secret(id: SecretID, new_name: &str),

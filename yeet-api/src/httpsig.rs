@@ -81,7 +81,11 @@ error_set::error_set! {
         #[display("Could not sign the request: {0}")]
         SignatureError(SignatureError),
         #[display("Could not decrypt the secret: {0}")]
-        AgeError(age::DecryptError),
+        DecryptError(age::DecryptError),
+        #[display("Could not encrypt the secret: {0}")]
+        EncryptError(age::EncryptError),
+        #[display("Could not parse the provided identity: {error}")]
+        IdentityError{error: &'static str},
     }
 }
 

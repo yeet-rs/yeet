@@ -240,16 +240,10 @@ fn api_e2e_with_credentials(pool: sqlx::SqlitePool) {
 
     // Ok now maybe we want to create a secret for the host
     // first we have to get the encryption key of the server
-    let server_key = api::server_age_key(&url, &key).await.unwrap();
-    let server_key = age::x25519::Recipient::from_str(&server_key).unwrap();
-    let _ups = api::create_secret(
-        &url,
-        &key,
-        "mysecret",
-        &age::encrypt(&server_key, b"secretstuff").unwrap(),
-    )
-    .await
-    .unwrap();
+
+    let _ups = api::create_secret(&url, &key, "mysecret", b"secretstuff")
+        .await
+        .unwrap();
 
     // the client tries to get the secret but fails because he is not authorized
     // but first the client needs to generate a recipient key
@@ -679,16 +673,13 @@ fn api_secrets_with_tags(pool: sqlx::SqlitePool) {
     assert!(hosts.len() == 1);
 
     // our normal_admin can't create new secrets
-    let server_key = api::server_age_key(&url, &key).await.unwrap();
-    let server_key = age::x25519::Recipient::from_str(&server_key).unwrap();
-    let encrypted = age::encrypt(&server_key, b"secret").unwrap();
 
-    api::create_secret(&url, &key, "supersecret", &encrypted)
+    api::create_secret(&url, &key, "supersecret", b"secret")
         .await
         .unwrap_err();
 
     // so we have to create it for him
-    let secret = api::create_secret(&url, &admin_key, "supersecret", &encrypted)
+    let secret = api::create_secret(&url, &admin_key, "supersecret", b"secret")
         .await
         .unwrap();
 
