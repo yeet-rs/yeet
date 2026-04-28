@@ -1,7 +1,9 @@
 use ed25519_dalek::VerifyingKey;
+use http::StatusCode;
+use httpsig_hyper::prelude::SigningKey;
 use serde::{Deserialize, Serialize};
 
-use crate::request;
+use crate::{ReqwestSig as _, ResponseError, request, sig_param};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct VerificationAttempt {
@@ -21,7 +23,15 @@ request! (
     body: hostname
 );
 
-request! (
-    is_host_verified(),
-    get("/verification/check") -> StatusCode
-);
+pub async fn is_host_verified<K: SigningKey + Sync>(
+    url: &url::Url,
+    key: &K,
+) -> Result<StatusCode, ResponseError> {
+    Ok(reqwest::Client::new()
+        .get(url.join("/verification/check")?)
+        .sign(&sig_param(key)?, key)
+        .await?
+        .send()
+        .await?
+        .status())
+}
