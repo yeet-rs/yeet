@@ -3,6 +3,7 @@
 use std::io::{IsTerminal as _, Write as _};
 
 use clap::Parser as _;
+use colored::Colorize;
 use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
@@ -94,25 +95,25 @@ async fn main() -> Result<(), Report> {
         .merge(Env::prefixed("YEET_"))
         .extract()?;
 
-    match args.command {
-        Commands::Nodes => cli::osquery::show_nodes(&config).await?,
-        Commands::Query { query } => cli::osquery::query(&config, query).await?,
-        Commands::Secret(args) => cli::secret::handle_command(args, &config).await?,
-        Commands::Secrets => cli::secret::list(&config).await?,
-        Commands::User(args) => cli::user::handle_command(args, &config).await?,
-        Commands::Users => cli::user::list_users(&config).await?,
-        Commands::Tag(args) => cli::tag::handle_command(args, &config).await?,
-        Commands::Host(args) => cli::host::handle_command(args, &config).await?,
-        Commands::Hosts { full } => cli::host::hosts(&config, full).await?,
-        Commands::Tags => cli::tag::list_tags(&config).await?,
+    let command = match args.command {
+        Commands::Nodes => cli::osquery::show_nodes(&config).await,
+        Commands::Query { query } => cli::osquery::query(&config, query).await,
+        Commands::Secret(args) => cli::secret::handle_command(args, &config).await,
+        Commands::Secrets => cli::secret::list(&config).await,
+        Commands::User(args) => cli::user::handle_command(args, &config).await,
+        Commands::Users => cli::user::list_users(&config).await,
+        Commands::Tag(args) => cli::tag::handle_command(args, &config).await,
+        Commands::Host(args) => cli::host::handle_command(args, &config).await,
+        Commands::Hosts { full } => cli::host::hosts(&config, full).await,
+        Commands::Tags => cli::tag::list_tags(&config).await,
         Commands::Detach {
             version,
             darwin,
             path,
-        } => cli::detach::detach(version, path, darwin).await?,
-        Commands::Attach => cli::detach::attach().await?,
-        Commands::Approve => cli::approve::approve(&config).await?,
-        Commands::Notify => notification::notify()?,
+        } => cli::detach::detach(version, path, darwin).await,
+        Commands::Attach => cli::detach::attach().await,
+        Commands::Approve => cli::approve::approve(&config).await,
+        Commands::Notify => notification::notify(),
         Commands::Agent {
             server,
             sleep,
@@ -125,18 +126,37 @@ async fn main() -> Result<(), Report> {
                 facter,
                 key,
             };
-            agent::agent(&config, sleep, facter).await?;
+            agent::agent(&config, sleep, facter).await
         }
-        Commands::Status { json } => status::status(json).await?,
+        Commands::Status { json } => status::status(json).await,
         Commands::Publish {
             path,
             host,
             darwin,
             variant,
-        } => {
-            cli::publish::publish(&config, path, host, variant, darwin).await?;
+        } => cli::publish::publish(&config, path, host, variant, darwin).await,
+        Commands::Server(args) => server_cli::handle_server_commands(args, &config).await,
+    };
+
+    match command {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            let url = cli::common::get_server_url(&config).await?;
+
+            if api::is_healthy(&url).await {
+                log::info!(
+                    "{} {}",
+                    url.domain().unwrap_or_default().bold().underline(),
+                    "is up".green().bold()
+                );
+            } else {
+                log::info!(
+                    "{} {}",
+                    url.domain().unwrap_or_default().bold().underline(),
+                    "is not reachable".red().bold()
+                );
+            }
+            Err(err)
         }
-        Commands::Server(args) => server_cli::handle_server_commands(args, &config).await?,
     }
-    Ok(())
 }

@@ -12,6 +12,7 @@ use std::{
 use axum::routing::{delete, get, post, put};
 
 mod routes {
+    pub mod health;
     pub mod host;
     pub mod key;
     pub mod osquery;
@@ -37,7 +38,7 @@ mod splunk_sender;
 use axum_server::tls_rustls::RustlsConfig;
 use ed25519_dalek::VerifyingKey;
 use indexmap::IndexMap;
-pub(crate) use routes::{host, key, secret, system, verify};
+pub(crate) use routes::{health, host, key, secret, system, verify};
 
 #[derive(Clone)]
 struct YeetState {
@@ -200,6 +201,8 @@ fn routes(state: YeetState) -> axum::Router {
         // === Osquery
         .route("/osquery/nodes", get(osquery::list_nodes))
         .route("/osquery/query/create", post(osquery::create_query))
+        // === health endpoint
+        .route("/health", get(health::health))
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(state)
 }
