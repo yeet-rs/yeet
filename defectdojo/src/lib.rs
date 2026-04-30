@@ -1,4 +1,5 @@
 pub mod assets;
+pub mod engagement;
 pub mod organziation;
 
 pub(crate) type Result<T> = core::result::Result<T, Error>;
@@ -50,6 +51,12 @@ macro_rules! api_id {
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", self.0)
+            }
+        }
+
+        impl From<u32> for $name {
+            fn from(value: u32) -> Self {
+                $name(value)
             }
         }
     };

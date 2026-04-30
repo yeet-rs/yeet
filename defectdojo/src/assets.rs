@@ -1,10 +1,12 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use serde_json::Value;
 
+use crate::organziation::OrganizationID;
+
 crate::api_id!(AssetID);
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Asset {
     pub id: AssetID,
     pub findings_count: i64,
@@ -46,7 +48,7 @@ impl Asset {
         #[builder(start_fn)] client: &crate::Client,
         name: String,
         description: String,
-        organization: u32,
+        #[builder(into)] organization: OrganizationID,
     ) -> crate::Result<Asset> {
         Ok(client
             .client
@@ -89,33 +91,31 @@ impl Asset {
     }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use crate::assets::Asset;
+#[cfg(test)]
+mod test {
+    use crate::assets::Asset;
 
-//     static TOKEN: &'static str = env!("DEFECTDOJO_TOKEN");
-//     static URL: &'static str = env!("DEFECTDOJO_URL");
+    static TOKEN: Option<&'static str> = option_env!("DEFECTDOJO_TOKEN");
+    static URL: Option<&'static str> = option_env!("DEFECTDOJO_URL");
 
-//     #[tokio::test]
-//     async fn create_asset() {
-//         let client = crate::Client::new(URL.parse().unwrap(), TOKEN).unwrap();
+    #[tokio::test]
+    async fn create_asset() {
+        let client = crate::Client::new(URL.unwrap().parse().unwrap(), TOKEN.unwrap()).unwrap();
 
-//         let asset = Asset::create(&client)
-//             .name("yeet_asset")
-//             .description("hello_from_yeet")
-//             .organization(3)
-//             .send()
-//             .await
-//             .unwrap();
+        let asset = Asset::create(&client)
+            .name("yeet_asset")
+            .description("hello_from_yeet")
+            .organization(3)
+            .send()
+            .await
+            .unwrap();
 
-//         let asset: crate::SearchResult<Asset> = Asset::find(&client)
-//             .name("yeet_asset")
-//             .send()
-//             .await
-//             .unwrap();
+        let asset: crate::SearchResult<Asset> = Asset::find(&client)
+            .name("yeet_asset")
+            .send()
+            .await
+            .unwrap();
 
-//         asset.results[0].delete(&client).await.unwrap();
-
-//         dbg!(asset);
-//     }
-// }
+        asset.results[0].delete(&client).await.unwrap();
+    }
+}
