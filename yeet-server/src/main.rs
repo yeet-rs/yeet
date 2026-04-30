@@ -80,13 +80,14 @@ async fn main() {
             break 'defectdojo None;
         };
         let token = env::var("YEET_DEFECTDOJO_TOKEN").expect("`YEET_DEFECTDOJO_TOKEN` must be set");
-        let organization_name = env::var("YEET_DEFECTDOJO_ORGANIZATION")
+        let organization = env::var("YEET_DEFECTDOJO_ORGANIZATION")
+            .map(|org| u32::from_str(&org).unwrap().into())
             .expect("`YEET_DEFECTDOJO_ORGANIZATION` must be set");
         let client =
             defectdojo::Client::new(server, &token).expect("Could not build defectdojo client");
         Some(yeetd::defectdojo::Config {
             client,
-            organization_name,
+            organization,
         })
     };
 

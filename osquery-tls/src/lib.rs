@@ -6,8 +6,7 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EnrollmentRequest {
     pub enroll_secret: Option<String>,
     /// Determined by the `--host_identifier` flag
@@ -17,7 +16,7 @@ pub struct EnrollmentRequest {
     pub platform_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EnrollmentHostDetails {
     pub os_version: HashMap<String, String>,
     pub osquery_info: HashMap<String, String>,

@@ -1,24 +1,81 @@
-// /// Node `host_identifier` -> defectojo asset id
-// pub defectdojo_assets: HashMap<String, u32>,
+use std::collections::HashMap;
 
 pub struct Config {
     pub client: defectdojo::Client,
-    pub organization_name: String,
+    pub organization: defectdojo::OrganizationID,
 }
 
-pub enum Action {
-    AddNode(api::NodeID),
+pub(crate) enum Action {
+    CreateNode(String),
 }
 
-pub async fn run(
+pub(crate) async fn run(
     config: Config,
     mut receiver: tokio::sync::mpsc::Receiver<Action>,
     pool: sqlx::SqlitePool,
 ) -> Result<(), sqlx::Error> {
+    let mut assets = collect_existing_assets(&mut *pool.acquire().await?, &config).await?;
     while let Some(action) = receiver.recv().await {
         match action {
-            Action::AddNode(node_id) => todo!(),
+            Action::CreateNode(node) => {
+                if assets.contains_key(&node) {
+                    let id = create_asset(&config, node.clone()).await.unwrap();
+                    assets.insert(node, id);
+                } else {
+                    log::warn!(
+                        "Node {node} was requested to be create in defectdojo altough it was alredy created"
+                    )
+                }
+            }
         }
     }
     Ok(())
+}
+
+async fn collect_existing_assets(
+    conn: &mut sqlx::SqliteConnection,
+    config: &Config,
+    // todo mixed error
+) -> Result<HashMap<String, defectdojo::AssetID>, sqlx::Error> {
+    log::info!("Collecting all defectdojo assets");
+    let nodes = sqlx::query_scalar!(r#"SELECT host_identifier FROM osquery_nodes"#)
+        .fetch_all(conn)
+        .await?;
+
+    let mut assets = HashMap::new();
+
+    for node in nodes {
+        let search_result: defectdojo::SearchResult<defectdojo::Asset> =
+            // TODO unwrap
+            defectdojo::Asset::find(&config.client)
+                .name(&node)
+                .send()
+                .await
+                .unwrap();
+        if search_result.count > 1 {
+            // TODO panic
+            panic!("Search returned more than one asset.");
+        }
+
+        match search_result.results.first() {
+            Some(asset) => assets.insert(node, asset.id),
+            // TODO unwrap
+            None => assets.insert(node.clone(), create_asset(config, node).await.unwrap()),
+        };
+    }
+
+    Ok(assets)
+}
+
+async fn create_asset(
+    config: &Config,
+    name: String,
+) -> Result<defectdojo::AssetID, defectdojo::Error> {
+    let asset = defectdojo::Asset::create(&config.client)
+        .organization(config.organization)
+        .description("value")
+        .name(name)
+        .send()
+        .await?;
+    Ok(asset.id)
 }
