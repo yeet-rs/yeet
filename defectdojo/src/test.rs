@@ -108,6 +108,7 @@ mod test {
     static TOKEN: Option<&'static str> = option_env!("DEFECTDOJO_TOKEN");
     static URL: Option<&'static str> = option_env!("DEFECTDOJO_URL");
 
+    #[ignore]
     #[tokio::test]
     async fn create_test() {
         let client = crate::Client::new(URL.unwrap().parse().unwrap(), TOKEN.unwrap()).unwrap();

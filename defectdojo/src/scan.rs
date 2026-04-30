@@ -81,6 +81,8 @@ mod test {
     static URL: Option<&'static str> = option_env!("DEFECTDOJO_URL");
 
     #[tokio::test]
+    #[ignore]
+
     async fn import() {
         let client = crate::Client::new(URL.unwrap().parse().unwrap(), TOKEN.unwrap()).unwrap();
         // let test_type = TestType::find(&client).active(true).send().await.unwrap();

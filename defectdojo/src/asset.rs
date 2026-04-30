@@ -99,10 +99,12 @@ mod test {
     static URL: Option<&'static str> = option_env!("DEFECTDOJO_URL");
 
     #[tokio::test]
+    #[ignore]
+
     async fn create_asset() {
         let client = crate::Client::new(URL.unwrap().parse().unwrap(), TOKEN.unwrap()).unwrap();
 
-        let asset = Asset::create(&client)
+        let _asset = Asset::create(&client)
             .name("yeet_asset")
             .description("hello_from_yeet")
             .organization(3)

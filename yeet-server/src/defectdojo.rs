@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
 pub struct Config {
     pub client: defectdojo::Client,
     pub organization: defectdojo::OrganizationID,
 }
 
-pub(crate) enum Action {
+pub enum Action {
     CreateNode(String),
 }
 
-pub(crate) async fn run(
+pub async fn run(
     config: Config,
     mut receiver: tokio::sync::mpsc::Receiver<Action>,
     pool: sqlx::SqlitePool,
@@ -19,12 +20,12 @@ pub(crate) async fn run(
         match action {
             Action::CreateNode(node) => {
                 if assets.contains_key(&node) {
-                    let id = create_asset(&config, node.clone()).await.unwrap();
-                    assets.insert(node, id);
-                } else {
                     log::warn!(
                         "Node {node} was requested to be create in defectdojo altough it was alredy created"
                     )
+                } else {
+                    let id = create_asset(&config, node.clone()).await.unwrap();
+                    assets.insert(node, id);
                 }
             }
         }
@@ -69,12 +70,13 @@ async fn collect_existing_assets(
 
 async fn create_asset(
     config: &Config,
-    name: String,
+    node: String,
 ) -> Result<defectdojo::AssetID, defectdojo::Error> {
+    log::info!("Creating `{node}` in defectdojo");
     let asset = defectdojo::Asset::create(&config.client)
         .organization(config.organization)
         .description("value")
-        .name(name)
+        .name(node)
         .send()
         .await?;
     Ok(asset.id)

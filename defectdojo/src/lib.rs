@@ -14,6 +14,8 @@ pub use test::*;
 
 pub(crate) type Result<T> = core::result::Result<T, Error>;
 
+#[derive(Debug, Clone)]
+
 pub struct Client {
     url: url::Url,
     client: reqwest::Client,
