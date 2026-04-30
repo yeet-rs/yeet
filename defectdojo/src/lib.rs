@@ -1,6 +1,7 @@
 pub mod assets;
 pub mod engagement;
 pub mod organziation;
+pub mod test;
 
 pub(crate) type Result<T> = core::result::Result<T, Error>;
 
@@ -25,10 +26,41 @@ impl Client {
 #[derive(Default, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SearchResult<T> {
     pub count: u32,
-    pub next: serde_json::Value,
-    pub prefetch: serde_json::Value,
-    pub previous: serde_json::Value,
+    pub next: Option<url::Url>,
+    pub prefetch: Option<serde_json::Value>,
+    pub previous: Option<url::Url>,
     pub results: Vec<T>,
+}
+
+impl<T: DeserializeOwned> SearchResult<T> {
+    pub async fn next(&self, client: &Client) -> Result<SearchResult<T>> {
+        let Some(next) = &self.next else {
+            return Err(Error::NoNextOnSearch);
+        };
+
+        Ok(client
+            .client
+            .get(next.clone())
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
+    pub async fn previous(&self, client: &Client) -> Result<SearchResult<T>> {
+        let Some(previous) = &self.previous else {
+            return Err(Error::NoPreviousOnSearch);
+        };
+
+        Ok(client
+            .client
+            .get(previous.clone())
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
 }
 
 macro_rules! api_id {
@@ -63,9 +95,14 @@ macro_rules! api_id {
 }
 
 pub(crate) use api_id;
+use serde::de::DeserializeOwned;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("Search result has no next search")]
+    NoNextOnSearch,
+    #[error("Search result has no previous search")]
+    NoPreviousOnSearch,
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]
