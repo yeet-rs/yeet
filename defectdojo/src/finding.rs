@@ -151,6 +151,22 @@ impl Finding {
             .json()
             .await?)
     }
+
+    #[builder(finish_fn = "send", on(String, into))]
+    pub async fn find(
+        #[builder(start_fn)] client: &crate::Client,
+        #[builder(into)] id: Option<FindingID>,
+    ) -> crate::Result<crate::SearchResult<Finding>> {
+        Ok(client
+            .client
+            .get(client.url.join("/api/v2/findings/")?)
+            .query(&[("id", id)])
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?)
+    }
 }
 
 #[cfg(test)]

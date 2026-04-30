@@ -2,6 +2,7 @@ pub mod assets;
 pub mod engagement;
 pub mod finding;
 pub mod organziation;
+pub mod scan;
 pub mod test;
 
 pub(crate) type Result<T> = core::result::Result<T, Error>;
