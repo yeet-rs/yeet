@@ -6123,6 +6123,7 @@ dependencies = [
  "axum-test",
  "axum_thiserror",
  "curve25519-dalek",
+ "defectdojo",
  "ed25519-dalek",
  "error_set",
  "futures",

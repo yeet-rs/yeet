@@ -93,7 +93,7 @@ impl Asset {
 
 #[cfg(test)]
 mod test {
-    use crate::assets::Asset;
+    use crate::asset::Asset;
 
     static TOKEN: Option<&'static str> = option_env!("DEFECTDOJO_TOKEN");
     static URL: Option<&'static str> = option_env!("DEFECTDOJO_URL");

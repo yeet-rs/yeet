@@ -1,9 +1,16 @@
-pub mod assets;
-pub mod engagement;
-pub mod finding;
-pub mod organziation;
-pub mod scan;
-pub mod test;
+mod asset;
+mod engagement;
+mod finding;
+mod organziation;
+mod scan;
+mod test;
+
+pub use asset::*;
+pub use engagement::*;
+pub use finding::*;
+pub use organziation::*;
+pub use scan::*;
+pub use test::*;
 
 pub(crate) type Result<T> = core::result::Result<T, Error>;
 

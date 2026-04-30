@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::assets::AssetID;
+use crate::asset::AssetID;
 
 crate::api_id!(EngagementID);
 

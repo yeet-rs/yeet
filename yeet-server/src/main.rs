@@ -74,6 +74,22 @@ async fn main() {
         ))
     };
 
+    let defectdojo = 'defectdojo: {
+        let Ok(server) = env::var("YEET_DEFECTDOJO_URL").map(|url| url.parse().unwrap()) else {
+            log::error!("`YEET_DEFECTDOJO_URL` not set. Not using defectdojo");
+            break 'defectdojo None;
+        };
+        let token = env::var("YEET_DEFECTDOJO_TOKEN").expect("`YEET_DEFECTDOJO_TOKEN` must be set");
+        let organization_name = env::var("YEET_DEFECTDOJO_ORGANIZATION")
+            .expect("`YEET_DEFECTDOJO_ORGANIZATION` must be set");
+        let client =
+            defectdojo::Client::new(server, &token).expect("Could not build defectdojo client");
+        Some(yeetd::defectdojo::Config {
+            client,
+            organization_name,
+        })
+    };
+
     let packs = {
         let env = env::var("YEET_OSQUERY_PACKS").ok();
         env.map(|env| Path::new(&env).to_path_buf())
@@ -88,6 +104,16 @@ async fn main() {
         .await
         .expect("Can't connect to yeet.db");
 
-    let handle = yeetd::launch(port, host, pool, age_key, Some(tls), splunk, packs).await;
+    let handle = yeetd::launch(
+        port,
+        host,
+        pool,
+        age_key,
+        Some(tls),
+        splunk,
+        packs,
+        defectdojo,
+    )
+    .await;
     handle.await.expect("axum quit");
 }
