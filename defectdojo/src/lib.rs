@@ -1,5 +1,6 @@
 pub mod assets;
 pub mod engagement;
+pub mod finding;
 pub mod organziation;
 pub mod test;
 

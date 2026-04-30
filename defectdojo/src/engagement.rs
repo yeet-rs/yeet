@@ -92,8 +92,8 @@ mod test {
         let engagement = Engagement::create(&client)
             .asset(26)
             .target_start("2026-04-30")
-            .target_end("2100-01-01")
-            .name("hi-there")
+            .target_end("2026-04-30")
+            .name("next-one")
             .send()
             .await
             .unwrap();
