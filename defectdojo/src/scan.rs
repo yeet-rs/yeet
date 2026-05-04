@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{engagement::EngagementID, test::TestID};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Scan {}
+pub struct Scan;
 
 #[bon::bon]
 impl Scan {

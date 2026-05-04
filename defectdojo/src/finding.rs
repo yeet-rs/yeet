@@ -6,6 +6,7 @@ use crate::test::{TestID, TestTypeID};
 crate::api_id!(FindingID);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[expect(clippy::struct_excessive_bools)]
 pub struct Finding {
     pub active: bool,
     pub component_name: Value,
@@ -104,6 +105,7 @@ pub enum Severity {
     Critical,
 }
 impl Severity {
+    #[must_use]
     pub fn as_defectdojo_numerical(&self) -> &'static str {
         match self {
             Severity::Info => "S4",

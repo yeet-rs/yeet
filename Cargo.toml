@@ -13,7 +13,7 @@ panic = "abort"
 opt-level = 3
 
 [workspace.package]
-version = "0.10.0"
+version = "0.11.0"
 categories = ["Configuration"]
 edition = "2024"
 repository = "https://github.com/yeet-rs/yeet"
@@ -104,3 +104,4 @@ pattern_type_mismatch = "allow" # I am too dumb for this
 verbose_file_reads = "allow"
 doc_paragraphs_missing_punctuation = "allow"
 field_scoped_visibility_modifiers = "allow"
+error_impl_error = "allow"

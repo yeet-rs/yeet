@@ -15,18 +15,16 @@ pub use test::*;
 pub(crate) type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
-
 pub struct Client {
     url: url::Url,
     client: reqwest::Client,
 }
 
 impl Client {
-    #[must_use]
     pub fn new(url: reqwest::Url, token: &str) -> Result<Self> {
         let mut headers = reqwest::header::HeaderMap::new();
 
-        headers.insert("Authorization", format!("Token {}", token).parse()?);
+        headers.insert("Authorization", format!("Token {token}").parse()?);
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .build()?;

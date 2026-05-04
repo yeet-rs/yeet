@@ -6,6 +6,7 @@ use crate::engagement::EngagementID;
 crate::api_id!(TestTypeID);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[expect(clippy::struct_excessive_bools)]
 pub struct TestType {
     pub active: bool,
     pub dynamic_tool: bool,

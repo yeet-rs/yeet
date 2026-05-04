@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-
 use serde_json::Value;
 
 use crate::organziation::OrganizationID;
@@ -7,6 +6,7 @@ use crate::organziation::OrganizationID;
 crate::api_id!(AssetID);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[expect(clippy::struct_excessive_bools)]
 pub struct Asset {
     pub id: AssetID,
     pub findings_count: i64,

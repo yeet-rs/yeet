@@ -27,12 +27,11 @@ async fn main() {
         )
         .try_init();
 
-    let port = env::var("YEET_PORT")
-        .map(|port| port.parse().unwrap())
-        .unwrap_or(4337);
-    let host = env::var("YEET_HOST")
-        .map(|host| host.parse().unwrap())
-        .unwrap_or(std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST));
+    let port = env::var("YEET_PORT").map_or(4337, |port| port.parse().unwrap());
+    let host = env::var("YEET_HOST").map_or(
+        std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
+        |host| host.parse().unwrap(),
+    );
 
     let age_key = {
         if let Ok(content) = read_to_string("age.key") {

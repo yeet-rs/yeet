@@ -62,6 +62,8 @@ pub struct AppState {
     keyids: HashMap<String, VerifyingKey>,
 }
 
+// TODO: too_many_arguments
+#[expect(clippy::too_many_arguments)]
 #[expect(clippy::missing_panics_doc)]
 pub async fn launch<I: Into<std::net::IpAddr>>(
     port: u16,

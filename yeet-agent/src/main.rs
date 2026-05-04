@@ -3,7 +3,7 @@
 use std::io::{IsTerminal as _, Write as _};
 
 use clap::Parser as _;
-use colored::Colorize;
+use colored::Colorize as _;
 use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
@@ -138,7 +138,7 @@ async fn main() -> Result<(), Report> {
     };
 
     match command {
-        Ok(_) => Ok(()),
+        Ok(()) => Ok(()),
         Err(err) => {
             let url = cli::common::get_server_url(&config).await?;
 

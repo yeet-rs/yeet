@@ -6,6 +6,7 @@ use crate::asset::AssetID;
 crate::api_id!(EngagementID);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[expect(clippy::struct_excessive_bools)]
 pub struct Engagement {
     pub id: EngagementID,
     pub active: bool,
