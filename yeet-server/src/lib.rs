@@ -31,6 +31,7 @@ mod db {
     pub mod user;
     pub mod verification;
 }
+pub mod defectdojo;
 mod error;
 mod httpsig;
 mod splunk_sender;
@@ -44,7 +45,8 @@ pub(crate) use routes::{health, host, key, secret, system, verify};
 struct YeetState {
     pub pool: sqlx::SqlitePool,
     pub age_key: Arc<age::x25519::Identity>,
-    pub sender: Option<tokio::sync::mpsc::Sender<()>>,
+    pub splunk_sender: Option<tokio::sync::mpsc::Sender<()>>,
+    pub defectdojo_sender: Option<tokio::sync::mpsc::Sender<defectdojo::Action>>,
     pub osquery_packs: IndexMap<String, serde_json::Value>,
 }
 
@@ -60,6 +62,8 @@ pub struct AppState {
     keyids: HashMap<String, VerifyingKey>,
 }
 
+// TODO: too_many_arguments
+#[expect(clippy::too_many_arguments)]
 #[expect(clippy::missing_panics_doc)]
 pub async fn launch<I: Into<std::net::IpAddr>>(
     port: u16,
@@ -69,6 +73,7 @@ pub async fn launch<I: Into<std::net::IpAddr>>(
     tls: Option<RustlsConfig>,
     splunk: Option<splunk_hec::SplunkConfig>,
     osquery_packs: Option<PathBuf>,
+    defectdojo: Option<defectdojo::Config>,
 ) -> tokio::task::JoinHandle<()> {
     #[expect(clippy::unwrap_used)]
     {
@@ -96,7 +101,7 @@ pub async fn launch<I: Into<std::net::IpAddr>>(
 
     let age_key = Arc::new(age_key);
 
-    let sender = if let Some(splunk) = splunk {
+    let splunk_sender = if let Some(splunk) = splunk {
         let (tx, rx) = tokio::sync::mpsc::channel(5);
         let pool = pool.clone();
         let _detached = tokio::spawn(async move { splunk_sender::run(splunk, rx, pool).await });
@@ -104,6 +109,16 @@ pub async fn launch<I: Into<std::net::IpAddr>>(
     } else {
         None
     };
+
+    let defectdojo_sender = if let Some(defectdojo) = defectdojo {
+        let (tx, rx) = tokio::sync::mpsc::channel(5);
+        let pool = pool.clone();
+        let _detached = tokio::spawn(async move { defectdojo::run(defectdojo, rx, pool).await });
+        Some(tx)
+    } else {
+        None
+    };
+
     let osquery_packs = osquery_packs
         .map(|path| get_osquery_packs(&path).expect("Could not retrive packs"))
         .unwrap_or_default();
@@ -111,12 +126,13 @@ pub async fn launch<I: Into<std::net::IpAddr>>(
     let state = YeetState {
         pool,
         age_key,
-        sender,
+        splunk_sender,
+        defectdojo_sender,
         osquery_packs,
     };
 
     // wake the splunk sender immediately so that he can send all logs
-    wake_splunk(state.sender.as_ref()).await;
+    wake_splunk(state.splunk_sender.as_ref()).await;
 
     tokio::spawn(async move {
         if let Some(tls) = tls {
@@ -211,6 +227,16 @@ pub(crate) async fn wake_splunk(sender: Option<&tokio::sync::mpsc::Sender<()>>) 
     if let Some(sender) = sender {
         // TODO: log if we could not notify
         let _ignore = sender.send_timeout((), Duration::from_secs(1)).await;
+    }
+}
+
+pub(crate) async fn wake_defectdojo(
+    sender: Option<&tokio::sync::mpsc::Sender<defectdojo::Action>>,
+    action: defectdojo::Action,
+) {
+    if let Some(sender) = sender {
+        // TODO: log if we could not notify
+        let _ignore = sender.send_timeout(action, Duration::from_secs(1)).await;
     }
 }
 

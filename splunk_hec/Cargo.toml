@@ -19,8 +19,6 @@ jiff.workspace = true
 log.workspace = true
 osquery-tls.workspace = true
 
-[dev-dependencies]
-tokio = { version = "1.49", features = ["full"] }
 
 [lints]
 workspace = true

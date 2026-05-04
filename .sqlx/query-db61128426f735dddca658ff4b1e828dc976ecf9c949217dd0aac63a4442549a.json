@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT host_identifier FROM osquery_nodes",
+  "describe": {
+    "columns": [
+      {
+        "name": "host_identifier",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "db61128426f735dddca658ff4b1e828dc976ecf9c949217dd0aac63a4442549a"
+}

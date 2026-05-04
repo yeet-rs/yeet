@@ -27,12 +27,11 @@ async fn main() {
         )
         .try_init();
 
-    let port = env::var("YEET_PORT")
-        .map(|port| port.parse().unwrap())
-        .unwrap_or(4337);
-    let host = env::var("YEET_HOST")
-        .map(|host| host.parse().unwrap())
-        .unwrap_or(std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST));
+    let port = env::var("YEET_PORT").map_or(4337, |port| port.parse().unwrap());
+    let host = env::var("YEET_HOST").map_or(
+        std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
+        |host| host.parse().unwrap(),
+    );
 
     let age_key = {
         if let Ok(content) = read_to_string("age.key") {
@@ -74,6 +73,23 @@ async fn main() {
         ))
     };
 
+    let defectdojo = 'defectdojo: {
+        let Ok(server) = env::var("YEET_DEFECTDOJO_URL").map(|url| url.parse().unwrap()) else {
+            log::error!("`YEET_DEFECTDOJO_URL` not set. Not using defectdojo");
+            break 'defectdojo None;
+        };
+        let token = env::var("YEET_DEFECTDOJO_TOKEN").expect("`YEET_DEFECTDOJO_TOKEN` must be set");
+        let organization = env::var("YEET_DEFECTDOJO_ORGANIZATION")
+            .map(|org| u32::from_str(&org).unwrap().into())
+            .expect("`YEET_DEFECTDOJO_ORGANIZATION` must be set");
+        let client =
+            defectdojo::Client::new(server, &token).expect("Could not build defectdojo client");
+        Some(yeetd::defectdojo::Config {
+            client,
+            organization,
+        })
+    };
+
     let packs = {
         let env = env::var("YEET_OSQUERY_PACKS").ok();
         env.map(|env| Path::new(&env).to_path_buf())
@@ -88,6 +104,16 @@ async fn main() {
         .await
         .expect("Can't connect to yeet.db");
 
-    let handle = yeetd::launch(port, host, pool, age_key, Some(tls), splunk, packs).await;
+    let handle = yeetd::launch(
+        port,
+        host,
+        pool,
+        age_key,
+        Some(tls),
+        splunk,
+        packs,
+        defectdojo,
+    )
+    .await;
     handle.await.expect("axum quit");
 }
