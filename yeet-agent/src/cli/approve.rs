@@ -4,9 +4,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use color_eyre::Result;
 use inquire::validator::Validation;
 use log::info;
-use rootcause::Report;
 
 use crate::{
     cli::{self, common},
@@ -14,7 +14,7 @@ use crate::{
     sig::ssh,
 };
 
-pub async fn approve(config: &Config) -> Result<(), Report> {
+pub async fn approve(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 

@@ -1,20 +1,23 @@
 use std::{env, fs::File, io::BufReader};
 
+use color_eyre::{
+    Result,
+    eyre::{Context as _, bail, eyre},
+};
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::SecretKey;
 use inquire::validator::Validation;
-use rootcause::{Report, bail, prelude::ResultExt as _};
 use ssh2_config::{ParseRule, SshConfig};
 
 /// Get key from `~/.ssh/config` or ask the user which key should be used
-pub fn key_by_url(url: &url::Url) -> Result<SecretKey, Report> {
+pub fn key_by_url(url: &url::Url) -> Result<SecretKey> {
     let url = url
         .domain()
-        .ok_or(rootcause::report!("Provided URL has no domain part"))?;
+        .ok_or(eyre!("Provided URL has no domain part"))?;
     Ok(key_from_ssh_config(url).or_else(|err| get_key_manual().context(err))?)
 }
 
-fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey, Report> {
+fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey> {
     // read the ~/.ssh/config
     let config = {
         let mut reader = BufReader::new(
@@ -75,7 +78,7 @@ fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey, Report> {
     Ok(api::get_secret_key(identity_file)?)
 }
 
-pub fn get_key_manual() -> Result<SecretKey, Report> {
+pub fn get_key_manual() -> Result<SecretKey> {
     let key = inquire::Text::new("Yeet Admin Key:")
         .with_validator(|path: &str| {
             Ok(match api::get_secret_key(path) {
@@ -87,7 +90,7 @@ pub fn get_key_manual() -> Result<SecretKey, Report> {
     Ok(api::get_secret_key(key)?)
 }
 
-pub fn get_pub_key_manual() -> Result<VerifyingKey, Report> {
+pub fn get_pub_key_manual() -> Result<VerifyingKey> {
     let key = inquire::Text::new("Yeet Admin Key:")
         .with_validator(|path: &str| {
             Ok(match api::get_verify_key(path) {

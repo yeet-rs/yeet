@@ -4,10 +4,10 @@ use std::{
 };
 
 use clap::{Args, Subcommand};
+use color_eyre::Result;
 use colored::Colorize as _;
 use inquire::validator::Validation;
 use log::info;
-use rootcause::Report;
 
 use crate::{cli::common, cli_args::Config, section, sig::ssh};
 
@@ -35,7 +35,7 @@ pub enum SecretCommands {
     RemoveTag,
 }
 
-pub async fn handle_command(args: SecretArgs, config: &Config) -> Result<(), rootcause::Report> {
+pub async fn handle_command(args: SecretArgs, config: &Config) -> Result<()> {
     match args.command {
         SecretCommands::Create => create(config).await,
         SecretCommands::Rename => rename(config).await,
@@ -47,7 +47,7 @@ pub async fn handle_command(args: SecretArgs, config: &Config) -> Result<(), roo
     }
 }
 
-async fn create(config: &Config) -> Result<(), Report> {
+async fn create(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -73,7 +73,7 @@ async fn create(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn rename(config: &Config) -> Result<(), Report> {
+async fn rename(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -92,7 +92,7 @@ async fn rename(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn remove(config: &Config) -> Result<(), Report> {
+async fn remove(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -121,7 +121,7 @@ async fn remove(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-pub async fn allow(config: &Config) -> Result<(), Report> {
+pub async fn allow(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -163,7 +163,7 @@ pub async fn allow(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn deny(config: &Config) -> Result<(), Report> {
+async fn deny(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -216,7 +216,7 @@ async fn deny(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-pub async fn list(config: &Config) -> Result<(), Report> {
+pub async fn list(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -272,7 +272,7 @@ pub async fn list(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn tag(config: &Config) -> Result<(), Report> {
+async fn tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -323,7 +323,7 @@ async fn tag(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn remove_tag(config: &Config) -> Result<(), Report> {
+async fn remove_tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 

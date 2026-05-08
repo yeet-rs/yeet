@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
+use color_eyre::Result;
 use colored::Colorize as _;
 use log::info;
-use rootcause::Report;
 
 use crate::{
     cli::common,
@@ -28,7 +28,7 @@ pub enum HostCommands {
     RemoveTag,
 }
 
-pub async fn handle_command(args: HostArgs, config: &Config) -> Result<(), rootcause::Report> {
+pub async fn handle_command(args: HostArgs, config: &Config) -> Result<()> {
     match args.command {
         HostCommands::Remove => remove(config).await,
         HostCommands::Rename => rename(config).await,
@@ -37,7 +37,7 @@ pub async fn handle_command(args: HostArgs, config: &Config) -> Result<(), rootc
     }
 }
 
-pub async fn remove(config: &Config) -> Result<(), Report> {
+pub async fn remove(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -88,7 +88,7 @@ pub async fn remove(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-pub async fn rename(config: &Config) -> Result<(), Report> {
+pub async fn rename(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -135,7 +135,7 @@ pub async fn rename(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-pub async fn hosts(config: &Config, full: bool) -> Result<(), Report> {
+pub async fn hosts(config: &Config, full: bool) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -166,7 +166,7 @@ pub async fn hosts(config: &Config, full: bool) -> Result<(), Report> {
     Ok(())
 }
 
-async fn tag(config: &Config) -> Result<(), Report> {
+async fn tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -215,7 +215,7 @@ async fn tag(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn remove_tag(config: &Config) -> Result<(), Report> {
+async fn remove_tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 

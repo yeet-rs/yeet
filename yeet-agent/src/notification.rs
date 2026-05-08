@@ -1,10 +1,10 @@
 use std::fs;
 
-use rootcause::Report;
+use color_eyre::eyre::Result;
 use tokio::process::Command;
 use yeet::nix;
 
-pub fn notify() -> Result<(), Report> {
+pub fn notify() -> Result<()> {
     let variant = nix::nixos_variant_name()?;
 
     notify_rust::Notification::new()
@@ -15,7 +15,7 @@ pub fn notify() -> Result<(), Report> {
     Ok(())
 }
 
-pub fn notify_all() -> Result<(), Report> {
+pub fn notify_all() -> Result<()> {
     let user_dirs = {
         let dirs = fs::read_dir("/run/user")?;
         dirs.flatten()

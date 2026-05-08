@@ -1,8 +1,8 @@
 use std::ffi::OsStr;
 
 use api::ErrorForJson as _;
+use color_eyre::eyre::{Result, bail};
 use reqwest::Client;
-use rootcause::{Report, bail};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use url::Url;
@@ -19,7 +19,7 @@ pub struct CachixInfo {
     pub uri: String,
 }
 
-pub async fn get_cachix_info<S: AsRef<str>>(cache: S) -> Result<CachixInfo, Report> {
+pub async fn get_cachix_info<S: AsRef<str>>(cache: S) -> Result<CachixInfo> {
     Ok(Client::new()
         .get(Url::parse("https://app.cachix.org/api/v1/cache/")?.join(cache.as_ref())?)
         .send()
@@ -28,7 +28,7 @@ pub async fn get_cachix_info<S: AsRef<str>>(cache: S) -> Result<CachixInfo, Repo
         .await?)
 }
 
-pub async fn push_paths<I, S, C>(closures: I, cache: C) -> Result<(), Report>
+pub async fn push_paths<I, S, C>(closures: I, cache: C) -> Result<()>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,

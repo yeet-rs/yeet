@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
+use color_eyre::{Result, eyre::Context as _};
 use colored::Colorize as _;
 use jiff::tz::TimeZone;
-use rootcause::{Report, prelude::ResultExt as _};
 use serde::{Deserialize, Serialize};
 use yeet::nix;
 
@@ -15,7 +15,7 @@ use crate::{
 shadow_rs::shadow!(build);
 
 #[expect(clippy::print_stdout)]
-pub async fn status(json: bool) -> Result<(), Report> {
+pub async fn status(json: bool) -> Result<()> {
     let yeet = yeet_info().await?;
     let system = system_info()?;
     if json {
@@ -97,7 +97,7 @@ impl DisplaySection for YeetInfo {
     }
 }
 
-async fn yeet_info() -> Result<YeetInfo, Report> {
+async fn yeet_info() -> Result<YeetInfo> {
     let daemon_status = match varlink::status().await {
         Ok(status) => Some(status),
         Err(err) => {
@@ -165,7 +165,7 @@ impl DisplaySection for SystemInfo {
     }
 }
 
-fn system_info() -> Result<SystemInfo, Report> {
+fn system_info() -> Result<SystemInfo> {
     let nixos_version = nix::nixos_version().context("Could not fetch nixos version")?;
     let nixos_generations =
         nix::nixos_generations().context("Could not fetch nixos generations")?;

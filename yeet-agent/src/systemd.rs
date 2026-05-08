@@ -1,11 +1,11 @@
 use std::process::{Command, Stdio};
 
-use rootcause::{Report, prelude::ResultExt as _};
+use color_eyre::eyre::{Context as _, Result};
 
 pub fn systemd_status_value(
     value: impl AsRef<str>,
     service: impl AsRef<str>,
-) -> Result<Option<String>, Report> {
+) -> Result<Option<String>> {
     let output = Command::new("systemctl")
         .arg("status")
         .arg("--no-pager")
