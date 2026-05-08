@@ -3,6 +3,7 @@
 use std::io::{IsTerminal as _, Write as _};
 
 use clap::Parser as _;
+use color_eyre::{Section, eyre::Context};
 use colored::Colorize as _;
 use figment::{
     Figment,
@@ -116,20 +117,20 @@ async fn main() -> color_eyre::Result<()> {
         Err(err) => {
             let url = cli::common::get_server_url(&config).await?;
 
-            if api::is_healthy(&url).await {
-                log::info!(
+            let server_health = if api::is_healthy(&url).await {
+                format!(
                     "{} {}",
                     url.domain().unwrap_or_default().bold().underline(),
                     "is up".green().bold()
-                );
+                )
             } else {
-                log::info!(
+                format!(
                     "{} {}",
                     url.domain().unwrap_or_default().bold().underline(),
                     "is not reachable".red().bold()
-                );
-            }
-            Err(err)
+                )
+            };
+            Err(err).note(server_health)
         }
     }
 }
