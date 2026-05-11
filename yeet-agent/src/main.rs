@@ -1,19 +1,22 @@
 //! # Yeet Agent
 
-use std::io::{IsTerminal as _, Write as _};
-
 use clap::Parser as _;
-use color_eyre::{Section, eyre::Context};
+use color_eyre::Section;
 use colored::Colorize as _;
 use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
 };
 
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_sdk::trace::SdkTracerProvider;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 use crate::cli_args::{AgentConfig, Commands, Config, Yeet};
 
 mod agent;
 mod cli_args;
+
 mod section;
 mod server_cli;
 mod sig {
@@ -41,20 +44,21 @@ mod version;
 
 #[tokio::main(flavor = "local")]
 async fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-
-    let mut log_builder =
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
-
-    if std::io::stderr().is_terminal() {
-        log_builder.format(|buf, record| {
-            write!(buf, "{}", buf.default_level_style(record.level()))?;
-            write!(buf, "{}", record.level())?;
-            write!(buf, "{:#}", buf.default_level_style(record.level()))?;
-            writeln!(buf, ": {}", record.args())
-        });
+    let provider = init_tracer();
+    let result = run().await;
+    // this is required because `color_eyre` holds a ref to the current span
+    if let Err(e) = result {
+        tracing::error!(error = ?e);
     }
-    log_builder.init();
+    tokio::task::yield_now().await;
+    provider.force_flush()?;
+    provider.shutdown()?;
+    Ok(())
+}
+
+#[tracing::instrument(err)]
+async fn run() -> color_eyre::Result<()> {
+    color_eyre::install()?;
 
     let xdg_dirs = xdg::BaseDirectories::with_prefix("yeet");
     let args = Yeet::try_parse()?;
@@ -130,7 +134,27 @@ async fn main() -> color_eyre::Result<()> {
                     "is not reachable".red().bold()
                 )
             };
+
             Err(err).note(server_health)
         }
     }
+}
+
+fn init_tracer() -> SdkTracerProvider {
+    let exporter = opentelemetry_otlp::SpanExporter::builder().build().unwrap();
+
+    let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+        // .with_resource(resource())
+        .with_batch_exporter(exporter)
+        .build();
+
+    let tracer = provider.tracer("yeet");
+
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_error::ErrorLayer::default())
+        .with(tracing_subscriber::fmt::layer().with_target(false))
+        .with(tracing_opentelemetry::OpenTelemetryLayer::new(tracer))
+        .init();
+    provider
 }

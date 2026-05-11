@@ -27,6 +27,7 @@ pub async fn handle_command(args: ArtifactArgs, config: &Config) -> Result<()> {
     }
 }
 #[expect(clippy::print_stdout)]
+#[tracing::instrument(skip(config), err)]
 async fn show(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -45,6 +46,7 @@ async fn show(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 pub async fn artifacts(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;

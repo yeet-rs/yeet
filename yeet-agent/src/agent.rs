@@ -35,6 +35,7 @@ static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 ///    create a new verification request
 ///    pull the verify endpoint in a time intervall
 /// 2. Continuosly pull the system endpoint and execute based on the provided
+#[tracing::instrument(err)]
 pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<()> {
     let key = get_secret_key(&config.key)?;
     let pub_key = get_verify_key(&config.key)?;
@@ -64,6 +65,7 @@ pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<()>
     Ok(())
 }
 
+#[tracing::instrument(err)]
 async fn agent_loop(
     config: &AgentConfig,
     key: &SecretKey,
@@ -121,6 +123,7 @@ async fn agent_loop(
     }
 }
 
+#[tracing::instrument(err, skip(key))]
 async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> Result<()> {
     match action {
         api::AgentAction::Nothing | api::AgentAction::Detach => {}
@@ -131,6 +134,7 @@ async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> R
     Ok(())
 }
 
+#[tracing::instrument(err, ret)]
 fn trusted_public_keys() -> Result<Vec<String>> {
     let file = File::open("/etc/nix/nix.conf")?;
     Ok(BufReader::new(file)
@@ -146,6 +150,7 @@ fn trusted_public_keys() -> Result<Vec<String>> {
         .collect())
 }
 
+#[tracing::instrument(err, skip(key))]
 async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
     download(version, url, key).await?;
     let current_gen = read_link("/etc/yeet/secret");
@@ -177,6 +182,7 @@ async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> R
     Ok(())
 }
 
+#[tracing::instrument(err, fields(base = %base.as_ref().display()))]
 fn remove_all_dirs_unless<P: AsRef<Path>>(base: P, dirname: &OsStr) -> Result<()> {
     for dir in read_dir(base)? {
         if let Ok(dir) = dir
@@ -188,13 +194,14 @@ fn remove_all_dirs_unless<P: AsRef<Path>>(base: P, dirname: &OsStr) -> Result<()
 
     Ok(())
 }
-
+#[tracing::instrument(err)]
 pub fn switch_to(store_path: &api::StorePath) -> Result<()> {
     activate(store_path)?;
     notification::notify_all()?;
     Ok(())
 }
 
+#[tracing::instrument(err, skip(key))]
 async fn download(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
     info!("Downloading {}", version.store_path);
     let mut keys = trusted_public_keys()?;
@@ -257,6 +264,7 @@ async fn download(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) ->
     Ok(())
 }
 
+#[tracing::instrument(err, skip(key))]
 async fn get_secrets(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
     // find out which secrets are required for this derivation
     let nix_secrets: api::Secrets = {
@@ -315,6 +323,7 @@ async fn get_secrets(version: &api::RemoteStorePath, url: &Url, key: &SecretKey)
     Ok(())
 }
 
+#[tracing::instrument(err, skip(secrets))]
 fn create_generation(generation: &Path, secrets: Vec<(api::Secret, Vec<u8>)>) -> Result<()> {
     fs::create_dir_all(generation)?;
     fs::set_permissions(generation, fs::Permissions::from_mode(0o751))?;
@@ -347,6 +356,7 @@ fn create_generation(generation: &Path, secrets: Vec<(api::Secret, Vec<u8>)>) ->
     Ok(())
 }
 
+#[tracing::instrument(err)]
 fn set_system_profile(store_path: &api::StorePath) -> Result<()> {
     info!("Setting system profile to {store_path}");
     let profile = Command::new("nix-env")
@@ -364,6 +374,7 @@ fn set_system_profile(store_path: &api::StorePath) -> Result<()> {
 }
 
 #[cfg(target_os = "macos")]
+#[tracing::instrument(err)]
 fn activate(store_path: &api::StorePath) -> Result<()> {
     set_system_profile(store_path)?;
     info!("Activating {}", store_path);
@@ -374,6 +385,7 @@ fn activate(store_path: &api::StorePath) -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
+#[tracing::instrument(err)]
 fn activate(store_path: &api::StorePath) -> Result<()> {
     info!("Activating {store_path}");
     set_system_profile(store_path)?;

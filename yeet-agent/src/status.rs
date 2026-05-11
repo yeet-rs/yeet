@@ -15,6 +15,7 @@ use crate::{
 shadow_rs::shadow!(build);
 
 #[expect(clippy::print_stdout)]
+#[tracing::instrument(err)]
 pub async fn status(json: bool) -> Result<()> {
     let yeet = yeet_info().await?;
     let system = system_info()?;
@@ -32,7 +33,7 @@ struct Status {
     yeet: YeetInfo,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct YeetInfo {
     pub systemd_status: String,
     pub daemon_status: Option<varlink::DaemonStatus>,
@@ -97,6 +98,7 @@ impl DisplaySection for YeetInfo {
     }
 }
 
+#[tracing::instrument(err, ret)]
 async fn yeet_info() -> Result<YeetInfo> {
     let daemon_status = match varlink::status().await {
         Ok(status) => Some(status),
@@ -115,7 +117,7 @@ async fn yeet_info() -> Result<YeetInfo> {
     })
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct SystemInfo {
     pub kernel: String,
     pub nixos_version: String,
@@ -165,6 +167,7 @@ impl DisplaySection for SystemInfo {
     }
 }
 
+#[tracing::instrument(err, ret)]
 fn system_info() -> Result<SystemInfo> {
     let nixos_version = nix::nixos_version().context("Could not fetch nixos version")?;
     let nixos_generations =

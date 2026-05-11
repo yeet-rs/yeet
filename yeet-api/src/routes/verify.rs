@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ReqwestSig as _, ResponseError, request, sig_param};
 
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct VerificationAttempt {
     pub key: VerifyingKey,
     pub nixos_facter: Option<String>,

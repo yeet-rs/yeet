@@ -45,7 +45,14 @@ tabled.workspace = true
 colored.workspace = true
 log.workspace = true
 color-eyre = "0.6.5"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-error = "0.2.1"
 
+opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
+tracing-opentelemetry.workspace = true
+opentelemetry-otlp.workspace = true
 # TODO: ssh-agent-client-rs = "1.1.2"
 
 [build-dependencies]

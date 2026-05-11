@@ -40,6 +40,7 @@ pub async fn handle_command(args: UserArgs, config: &Config) -> Result<()> {
     }
 }
 
+#[tracing::instrument(skip(config), err)]
 async fn create_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -77,6 +78,7 @@ async fn create_user(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 async fn delete_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -109,6 +111,7 @@ This action is not reversable",
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 async fn rename_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -128,6 +131,7 @@ async fn rename_user(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 async fn tag_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -175,6 +179,7 @@ async fn tag_user(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 async fn remove_tag_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -226,6 +231,7 @@ async fn remove_tag_user(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 pub async fn list_users(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;

@@ -37,6 +37,7 @@ pub async fn handle_command(args: HostArgs, config: &Config) -> Result<()> {
     }
 }
 
+#[tracing::instrument(skip(config), err)]
 pub async fn remove(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -88,6 +89,7 @@ pub async fn remove(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 pub async fn rename(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -135,6 +137,7 @@ pub async fn rename(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 pub async fn hosts(config: &Config, full: bool) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -166,6 +169,7 @@ pub async fn hosts(config: &Config, full: bool) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 async fn tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -215,6 +219,7 @@ async fn tag(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 async fn remove_tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;

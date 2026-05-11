@@ -10,6 +10,7 @@ use inquire::validator::Validation;
 use ssh2_config::{ParseRule, SshConfig};
 
 /// Get key from `~/.ssh/config` or ask the user which key should be used
+#[tracing::instrument(fields(%url = url))]
 pub fn key_by_url(url: &url::Url) -> Result<SecretKey> {
     let url = url
         .domain()
@@ -17,6 +18,7 @@ pub fn key_by_url(url: &url::Url) -> Result<SecretKey> {
     Ok(key_from_ssh_config(url).or_else(|err| get_key_manual().context(err))?)
 }
 
+#[tracing::instrument(fields(%url = url.as_ref()))]
 fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey> {
     // read the ~/.ssh/config
     let config = {
@@ -75,9 +77,12 @@ fn key_from_ssh_config(url: impl AsRef<str>) -> Result<SecretKey> {
         identity_files.pop().unwrap()
     };
 
+    tracing::debug!(key_path = %identity_file.display());
+
     Ok(api::get_secret_key(identity_file)?)
 }
 
+#[tracing::instrument]
 pub fn get_key_manual() -> Result<SecretKey> {
     let key = inquire::Text::new("Yeet Admin Key:")
         .with_validator(|path: &str| {
@@ -87,9 +92,11 @@ pub fn get_key_manual() -> Result<SecretKey> {
             })
         })
         .prompt()?;
+    tracing::debug!(key_path = key);
     Ok(api::get_secret_key(key)?)
 }
 
+#[tracing::instrument]
 pub fn get_pub_key_manual() -> Result<VerifyingKey> {
     let key = inquire::Text::new("Yeet Admin Key:")
         .with_validator(|path: &str| {
@@ -99,5 +106,6 @@ pub fn get_pub_key_manual() -> Result<VerifyingKey> {
             })
         })
         .prompt()?;
+    tracing::debug!(key_path = key);
     Ok(api::get_verify_key(key)?)
 }

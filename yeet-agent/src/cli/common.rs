@@ -2,6 +2,7 @@ use color_eyre::{Result, eyre::eyre};
 
 use crate::{cli_args::Config, varlink};
 
+#[tracing::instrument(skip(config), err)]
 pub async fn get_server_url(config: &Config) -> Result<url::Url> {
     let agent_url = {
         let agent_config = varlink::config().await;

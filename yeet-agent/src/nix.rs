@@ -11,6 +11,7 @@ use inquire::{list_option::ListOption, validator::Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[tracing::instrument(err, fields(program = %program.as_ref()))]
 pub fn cmd_exists<T: AsRef<str>>(program: T) -> io::Result<()> {
     let mut cmd = Command::new("sh");
 
@@ -45,6 +46,7 @@ fn nom_or_nix() -> String {
 // WARNING: currently is just shelling out. In future we need to valide if
 // the system is in the flake or not
 // TODO: split build and run into different parts
+#[tracing::instrument(err)]
 pub fn run_vm(flake_path: &Path, system: &str) -> Result<()> {
     let flake_path = flake_path.canonicalize()?; // Maybe check if its a dir and if it contains a flake.nix
     let flake_path = flake_path.to_string_lossy();
@@ -71,6 +73,7 @@ pub fn run_vm(flake_path: &Path, system: &str) -> Result<()> {
 
 // TODO: build multiple hosts at once
 // TODO: limit output
+#[tracing::instrument(err)]
 pub fn build_hosts(
     flake_path: &str,
     hosts: Vec<String>,
@@ -110,6 +113,7 @@ pub fn build_hosts(
     Ok(closures)
 }
 
+#[tracing::instrument(err, ret)]
 pub fn facter() -> Result<String> {
     let exit = Command::new("nixos-facter")
         .args(["-o", "facter.json"])
@@ -126,6 +130,7 @@ pub fn facter() -> Result<String> {
     Ok(facter)
 }
 
+#[tracing::instrument(err, ret)]
 pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     let flavor = if darwin {
         "darwinConfigurations"
@@ -154,6 +159,7 @@ pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
+#[tracing::instrument(err, ret)]
 pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     let detected_hosts = list_hosts(flake_path, darwin)?;
     Ok(
@@ -168,12 +174,13 @@ pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     )
 }
 
+#[tracing::instrument(err, ret)]
 pub fn get_host(flake_path: &str, darwin: bool) -> Result<String> {
     let detected_hosts = list_hosts(flake_path, darwin)?;
     Ok(inquire::Select::new("Which host would you like to build>", detected_hosts).prompt()?)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct NixOSVersion {
     pub configuration_revision: String,
@@ -181,6 +188,7 @@ pub struct NixOSVersion {
     pub nixpkgs_revision: String,
 }
 
+#[tracing::instrument(err, ret)]
 pub fn nixos_version() -> Result<NixOSVersion> {
     let output = Command::new("nixos-version")
         .arg("--json")
@@ -192,7 +200,7 @@ pub fn nixos_version() -> Result<NixOSVersion> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct NixOSGeneration {
     pub generation: u32,
@@ -218,6 +226,7 @@ impl Default for NixOSGeneration {
     }
 }
 
+#[tracing::instrument(err, ret)]
 pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
     let output = Command::new("nixos-rebuild")
         .arg("list-generations")
@@ -230,6 +239,7 @@ pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
+#[tracing::instrument(err, ret)]
 pub fn nixos_variant_name() -> Result<String> {
     let output = Command::new("grep")
         .arg("^VARIANT=")

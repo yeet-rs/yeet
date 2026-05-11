@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::request;
 
 crate::db_id!(UserID);
-#[derive(Serialize, Deserialize, PartialEq, Eq)]
-
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct CreateUser {
     pub key: VerifyingKey,
     pub level: AuthLevel,

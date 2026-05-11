@@ -13,7 +13,7 @@ use crate::{
     cli_args::Config,
     sig::ssh,
 };
-
+#[tracing::instrument(skip(config), err)]
 pub async fn approve(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;

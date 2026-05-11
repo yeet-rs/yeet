@@ -30,6 +30,7 @@ request! (
     get("/artifact") -> Vec<Artifact>
 );
 
+#[tracing::instrument(skip(key, artifact), fields(url = %url))]
 pub async fn store_artifact<K: SigningKey + Sync>(
     url: &url::Url,
     key: &K,
@@ -57,6 +58,7 @@ pub async fn store_artifact<K: SigningKey + Sync>(
 }
 
 /// this should only ever be called as a `host`
+#[tracing::instrument(skip(key), fields(url = %url))]
 pub async fn get_artifact_by_name<K: SigningKey + Sync>(
     url: &url::Url,
     key: &K,
@@ -81,6 +83,7 @@ pub async fn get_artifact_by_name<K: SigningKey + Sync>(
     }
 }
 
+#[tracing::instrument(skip(key), fields(url = %url))]
 pub async fn get_artifact_by_id<K: SigningKey + Sync>(
     url: &url::Url,
     key: &K,

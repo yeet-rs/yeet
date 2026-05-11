@@ -39,6 +39,7 @@ pub trait YeetProxy {
     async fn attach(&mut self) -> zlink::Result<Result<(), YeetDaemonError>>;
 }
 
+#[tracing::instrument(err, ret)]
 pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
     log::debug!("Connecting to {SOCKET_PATH}");
     Ok(unix::connect(SOCKET_PATH)
@@ -47,6 +48,7 @@ pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
         ?)
 }
 
+#[tracing::instrument(err, ret)]
 pub async fn status() -> Result<DaemonStatus, VarlinkError> {
     let mut client = client().await?;
     client
@@ -58,6 +60,7 @@ pub async fn status() -> Result<DaemonStatus, VarlinkError> {
         .map_err(VarlinkError::DaemonError)
 }
 
+#[tracing::instrument(err, ret)]
 pub async fn config() -> Result<AgentConfig, VarlinkError> {
     let mut client = client().await?;
     Ok(client
@@ -69,6 +72,7 @@ pub async fn config() -> Result<AgentConfig, VarlinkError> {
         .expect("Config can never Error because it does not return a result"))
 }
 
+#[tracing::instrument(err)]
 pub async fn detach(version: api::StorePath) -> Result<(), VarlinkError> {
     let mut client = client().await?;
     client
@@ -80,6 +84,7 @@ pub async fn detach(version: api::StorePath) -> Result<(), VarlinkError> {
         .map_err(VarlinkError::DaemonError)
 }
 
+#[tracing::instrument(err)]
 pub async fn attach() -> Result<(), VarlinkError> {
     let mut client = client().await?;
     client
@@ -246,11 +251,13 @@ where
     }
 }
 
+#[tracing::instrument(err)]
 pub async fn start_service(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
     YeetVarlinkService::start(config, key).await
 }
 
 impl YeetVarlinkService {
+    #[tracing::instrument(err)]
     pub async fn start(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
         let listener = {
             let _err = remove_file(SOCKET_PATH).await;

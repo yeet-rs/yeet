@@ -4,6 +4,7 @@ use color_eyre::eyre::Result;
 use tokio::process::Command;
 use yeet::nix;
 
+#[tracing::instrument(err)]
 pub fn notify() -> Result<()> {
     let variant = nix::nixos_variant_name()?;
 
@@ -15,6 +16,7 @@ pub fn notify() -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(err)]
 pub fn notify_all() -> Result<()> {
     let user_dirs = {
         let dirs = fs::read_dir("/run/user")?;

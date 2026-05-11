@@ -6,6 +6,7 @@ use yeet::nix;
 
 use crate::{varlink, varlink::YeetDaemonError};
 
+#[tracing::instrument(err)]
 pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool) -> Result<()> {
     let confirm = inquire::Confirm::new(
         "Are you sure you want to detach? This will leave your system in a detached state until you re-attach your system",
@@ -62,6 +63,7 @@ pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool
     Ok(())
 }
 
+#[tracing::instrument(err)]
 pub async fn attach() -> Result<()> {
     let confirm = inquire::Confirm::new("Are you sure you want to attach to the server? This will switch to the server specified version").with_default(false).prompt()?;
     if !confirm {

@@ -1,4 +1,4 @@
-use std::{env::current_dir, path::PathBuf};
+use std::{env::current_dir, fmt::Debug, path::PathBuf};
 
 use build::CLAP_LONG_VERSION;
 use clap::{Args, Parser, Subcommand};
@@ -41,6 +41,16 @@ pub struct Config {
     pub url: Option<Url>,
     pub cachix: Option<String>,
     pub cachix_key: Option<String>,
+}
+
+impl Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("url", &self.url)
+            .field("cachix", &self.cachix)
+            .field("cachix_key", &"***")
+            .finish()
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

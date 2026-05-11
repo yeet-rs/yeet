@@ -44,7 +44,14 @@ splunk_hec = {path = "./splunk_hec"}
 log = "0.4"
 
 tokio = { version = "1.49", features = ["full"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
+opentelemetry = "0.32.0"
+opentelemetry_sdk = "0.32.0"
+opentelemetry-stdout = "0.32.0"
+tracing-opentelemetry = "0.33"
+opentelemetry-otlp = "0.32"
 
 
 [workspace.lints.rust]

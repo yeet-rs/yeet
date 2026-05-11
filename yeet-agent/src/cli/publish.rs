@@ -9,6 +9,7 @@ use yeet::{cachix, nix};
 
 use crate::{cli::common, cli_args::Config, sig::ssh};
 
+#[tracing::instrument(skip(config), err)]
 pub async fn publish(
     config: &Config,
     path: PathBuf,

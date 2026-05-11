@@ -8,6 +8,7 @@ use crate::{
     sig::ssh,
 };
 
+#[tracing::instrument(skip(config), err)]
 pub async fn show_nodes(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -28,6 +29,7 @@ pub async fn show_nodes(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
 pub async fn query(config: &Config, sql: String) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;

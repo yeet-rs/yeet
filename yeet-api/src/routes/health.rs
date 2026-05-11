@@ -1,3 +1,4 @@
+#[tracing::instrument(fields(url = %url))]
 pub async fn is_healthy(url: &url::Url) -> bool {
     let Ok(url) = url.join("/health") else {
         return false;
