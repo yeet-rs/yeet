@@ -41,6 +41,7 @@ Fleet management that scales, from home lab to enterprise setup. Manage devices 
 
 ## Features
 
+- osquery remote API support
 - Flakes, npins or custom: Use the Nix format you want
 - Beautiful interactive CLI
 - Host uptime tracking
@@ -51,11 +52,14 @@ Fleet management that scales, from home lab to enterprise setup. Manage devices 
 
 ### Coming Soon
 
-- ARM support: not tested yet
-- MacOS support: possible but not as good yet
-- Racing exporter
-- Encrypted netrc
+- OTEL Tracing
+- TPM bound client keys
+- Client update history
 - Certificate pinning
+- SLA update times
+- OIDC login
+- MacOS support: possible but not as good yet
+- ARM support: not tested yet
 
 ## Installing
 
