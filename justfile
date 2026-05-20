@@ -50,3 +50,10 @@ db-reset:
     rm yeet.db
     sqlx database create
     sqlx migrate run
+
+migrate:
+    sqlx migrate run
+
+prep:
+    cargo sqlx prepare --workspace
+    nix run github:NixOS/nixpkgs/nixos-unstable#crate2nix -- generate

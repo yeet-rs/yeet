@@ -12,12 +12,13 @@ crate::db_id!(QueryID);
 pub struct Node {
     pub id: NodeID,
     pub host_identifier: String,
-    pub platform_name: String,
-    pub osquery_version: String,
-    pub os_version: String,
-    pub cpu_arch: String,
-    pub platform: String,
-    pub hardware_serial: String,
+    pub platform_name: Option<String>,
+    pub osquery_version: Option<String>,
+    pub os_version: Option<String>,
+    pub cpu_arch: Option<String>,
+    pub platform: Option<String>,
+    pub hardware_serial: Option<String>,
+    pub last_ping: jiff::Timestamp,
 }
 
 impl PartialEq for Node {
@@ -42,10 +43,32 @@ impl Ord for Node {
 impl Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}:", self.host_identifier)?;
-        write!(f, " {}", self.platform_name)?;
-        write!(f, " {}", self.os_version)?;
-        write!(f, " - {}", self.cpu_arch)?;
-        write!(f, " osquery_version: {}", self.osquery_version)
+        if let Some(platform_name) = &self.platform_name {
+            write!(f, " {}", platform_name)?;
+        }
+
+        if let Some(os_version) = &self.os_version {
+            write!(f, " {}", os_version)?;
+        }
+
+        if let Some(cpu_arch) = &self.cpu_arch {
+            write!(f, " - {}", cpu_arch)?;
+        }
+
+        if let Some(osquery_version) = &self.osquery_version {
+            write!(f, " @ {}", osquery_version)?;
+        }
+
+        write!(
+            f,
+            " {}",
+            crate::time_diff(
+                self.last_ping,
+                jiff::Unit::Second,
+                30_f64,
+                jiff::Unit::Second
+            )
+        )
     }
 }
 

@@ -28,7 +28,8 @@ pub async fn list_nodes(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::No
             os_version,
             cpu_arch,
             platform,
-            hardware_serial
+            hardware_serial,
+            last_ping AS "last_ping!: jiff_sqlx::Timestamp"
         FROM osquery_nodes"#
     )
     .map(|row| api::Node {
@@ -40,6 +41,7 @@ pub async fn list_nodes(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::No
         cpu_arch: row.cpu_arch,
         platform: row.platform,
         hardware_serial: row.hardware_serial,
+        last_ping: row.last_ping.to_jiff(),
     })
     .fetch_all(&mut *conn)
     .await?;
@@ -153,13 +155,15 @@ pub async fn enroll_node<I: age::Identity>(
     }
 
     let node_key = uuid::Uuid::now_v7();
+    let now = jiff::Timestamp::now().to_sqlx();
 
     sqlx::query!(
-        r#"INSERT INTO osquery_nodes (node_key, host_identifier, platform_type)
-           VALUES ($1,$2,$3)"#,
+        r#"INSERT INTO osquery_nodes (node_key, host_identifier, platform_type, last_ping)
+           VALUES ($1,$2,$3,$4)"#,
         node_key,
         enroll_request.host_identifier,
         enroll_request.platform_type,
+        now
     )
     .execute(conn)
     .await?;
@@ -173,6 +177,21 @@ error_set::error_set! {
     }
 }
 
+pub async fn ping(conn: &mut sqlx::SqliteConnection, id: api::NodeID) -> Result<(), sqlx::Error> {
+    let now = jiff::Timestamp::now().to_sqlx();
+    sqlx::query!(
+        r#"
+        UPDATE osquery_nodes
+        SET last_ping = $1
+        WHERE id = $2"#,
+        now,
+        id
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
 /// Return all queries that a node has to still execute
 pub async fn dqueries_for_node(
     conn: &mut sqlx::SqliteConnection,
@@ -181,6 +200,8 @@ pub async fn dqueries_for_node(
     let node_id = sqlx::query_scalar!(r#"SELECT id FROM osquery_nodes WHERE node_key = $1"#, node)
         .fetch_one(&mut *conn)
         .await?;
+
+    ping(conn, api::NodeID::new(node_id)).await?;
 
     let queries = sqlx::query!(
         r#"
@@ -212,6 +233,8 @@ pub async fn write_dquery_response(
     let node_id = sqlx::query_scalar!(r#"SELECT id FROM osquery_nodes WHERE node_key = $1"#, node)
         .fetch_one(&mut *tx)
         .await?;
+
+    ping(&mut *tx, api::NodeID::new(node_id)).await?;
 
     // TODO: sqlx in operator
     for (query_id, response) in queries {
@@ -264,6 +287,8 @@ async fn store_status_log(
         .fetch_one(&mut *conn)
         .await?;
 
+    ping(conn, api::NodeID::new(node_id)).await?;
+
     // TODO: sqlx in operator
     for status in statuses {
         let now = jiff::Timestamp::now().to_sqlx();
@@ -297,6 +322,8 @@ async fn store_result_log(
     let node_id = sqlx::query_scalar!(r#"SELECT id FROM osquery_nodes WHERE node_key = $1"#, node)
         .fetch_one(&mut *conn)
         .await?;
+
+    ping(conn, api::NodeID::new(node_id)).await?;
 
     // TODO: sqlx in operator
     for result in results {

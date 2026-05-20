@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE osquery_nodes\n        SET last_ping = $1\n        WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "dfd1daf5df9b8ef4c81203bc03aa565f90b6add5aec77578bcfffb5c4ff2fdb0"
+}
