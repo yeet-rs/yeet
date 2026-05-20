@@ -6,11 +6,12 @@ use std::{
     process::{Command, Stdio},
 };
 
+use color_eyre::eyre::{Context as _, Result, bail, eyre};
 use inquire::{list_option::ListOption, validator::Validation};
-use rootcause::{Report, bail, prelude::ResultExt as _, report};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[tracing::instrument(err, fields(program = %program.as_ref()))]
 pub fn cmd_exists<T: AsRef<str>>(program: T) -> io::Result<()> {
     let mut cmd = Command::new("sh");
 
@@ -45,7 +46,8 @@ fn nom_or_nix() -> String {
 // WARNING: currently is just shelling out. In future we need to valide if
 // the system is in the flake or not
 // TODO: split build and run into different parts
-pub fn run_vm(flake_path: &Path, system: &str) -> Result<(), Report> {
+#[tracing::instrument(err)]
+pub fn run_vm(flake_path: &Path, system: &str) -> Result<()> {
     let flake_path = flake_path.canonicalize()?; // Maybe check if its a dir and if it contains a flake.nix
     let flake_path = flake_path.to_string_lossy();
     #[cfg(target_arch = "x86_64")]
@@ -71,12 +73,13 @@ pub fn run_vm(flake_path: &Path, system: &str) -> Result<(), Report> {
 
 // TODO: build multiple hosts at once
 // TODO: limit output
+#[tracing::instrument(err)]
 pub fn build_hosts(
     flake_path: &str,
     hosts: Vec<String>,
     darwin: bool,
     variant: Option<String>,
-) -> Result<HashMap<String, String>, Report> {
+) -> Result<HashMap<String, String>> {
     let mut closures = HashMap::with_capacity(hosts.len());
 
     let env = {
@@ -103,13 +106,15 @@ pub fn build_hosts(
         #[expect(clippy::indexing_slicing)] // yeah ik
         let closure = build[0]["outputs"]["out"]
             .as_str()
-            .ok_or(report!("Build output did not contain a valid closure"))?;
+            .ok_or(eyre!("Build output did not contain a valid closure"))?;
+
         closures.insert(host.clone(), closure.to_owned());
     }
     Ok(closures)
 }
 
-pub fn facter() -> Result<String, Report> {
+#[tracing::instrument(err, ret)]
+pub fn facter() -> Result<String> {
     let exit = Command::new("nixos-facter")
         .args(["-o", "facter.json"])
         .spawn()
@@ -125,7 +130,8 @@ pub fn facter() -> Result<String, Report> {
     Ok(facter)
 }
 
-pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>, Report> {
+#[tracing::instrument(err, ret)]
+pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     let flavor = if darwin {
         "darwinConfigurations"
     } else {
@@ -153,7 +159,8 @@ pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>, Report>
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>, Report> {
+#[tracing::instrument(err, ret)]
+pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     let detected_hosts = list_hosts(flake_path, darwin)?;
     Ok(
         inquire::MultiSelect::new("Which host(s) would you like to publish>", detected_hosts)
@@ -167,12 +174,13 @@ pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>, Report> 
     )
 }
 
-pub fn get_host(flake_path: &str, darwin: bool) -> Result<String, Report> {
+#[tracing::instrument(err, ret)]
+pub fn get_host(flake_path: &str, darwin: bool) -> Result<String> {
     let detected_hosts = list_hosts(flake_path, darwin)?;
     Ok(inquire::Select::new("Which host would you like to build>", detected_hosts).prompt()?)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct NixOSVersion {
     pub configuration_revision: String,
@@ -180,7 +188,8 @@ pub struct NixOSVersion {
     pub nixpkgs_revision: String,
 }
 
-pub fn nixos_version() -> Result<NixOSVersion, Report> {
+#[tracing::instrument(err, ret)]
+pub fn nixos_version() -> Result<NixOSVersion> {
     let output = Command::new("nixos-version")
         .arg("--json")
         .stdout(Stdio::piped())
@@ -191,7 +200,7 @@ pub fn nixos_version() -> Result<NixOSVersion, Report> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct NixOSGeneration {
     pub generation: u32,
@@ -217,7 +226,8 @@ impl Default for NixOSGeneration {
     }
 }
 
-pub fn nixos_generations() -> Result<Vec<NixOSGeneration>, Report> {
+#[tracing::instrument(err, ret)]
+pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
     let output = Command::new("nixos-rebuild")
         .arg("list-generations")
         .arg("--json")
@@ -229,7 +239,8 @@ pub fn nixos_generations() -> Result<Vec<NixOSGeneration>, Report> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-pub fn nixos_variant_name() -> Result<String, Report> {
+#[tracing::instrument(err, ret)]
+pub fn nixos_variant_name() -> Result<String> {
     let output = Command::new("grep")
         .arg("^VARIANT=")
         .arg("/etc/os-release")

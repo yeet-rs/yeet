@@ -1,22 +1,26 @@
 use std::path::PathBuf;
 
+use color_eyre::{
+    Result,
+    eyre::{Context as _, bail, eyre},
+};
 use log::info;
-use rootcause::{Report, bail, prelude::ResultExt as _, report};
 use yeet::{cachix, nix};
 
 use crate::{cli::common, cli_args::Config, sig::ssh};
 
+#[tracing::instrument(skip(config), err)]
 pub async fn publish(
     config: &Config,
     path: PathBuf,
     host: Vec<String>,
     variant: Option<String>,
     darwin: bool,
-) -> Result<(), Report> {
+) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
-    let cachix = config.cachix.clone().ok_or(report!(
+    let cachix = config.cachix.clone().ok_or(eyre!(
         "Cachix cache name required. Set it in config or via the --cachix flag"
     ))?;
 
@@ -30,7 +34,7 @@ pub async fn publish(
             .public_signing_keys
             .first()
             .cloned()
-            .ok_or(report!("Cachix cache has no public signing keys"))?
+            .ok_or(eyre!("Cachix cache has no public signing keys"))?
     };
 
     let host = if host.is_empty() {

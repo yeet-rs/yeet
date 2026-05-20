@@ -19,6 +19,7 @@ macro_rules! section {
 pub(crate) use section;
 
 #[expect(clippy::print_stdout, clippy::unwrap_used)]
+#[tracing::instrument(level = "trace")]
 pub fn print_sections(sections: &[Section]) {
     let width = sections
         .iter()

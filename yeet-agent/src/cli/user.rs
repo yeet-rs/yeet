@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
+use color_eyre::Result;
 use colored::Colorize as _;
 use log::info;
-use rootcause::Report;
 
 use crate::{
     cli::common,
@@ -30,7 +30,7 @@ pub enum UserCommands {
     RemoveTag,
 }
 
-pub async fn handle_command(args: UserArgs, config: &Config) -> Result<(), rootcause::Report> {
+pub async fn handle_command(args: UserArgs, config: &Config) -> Result<()> {
     match args.command {
         UserCommands::Create => create_user(config).await,
         UserCommands::Delete => delete_user(config).await,
@@ -40,7 +40,8 @@ pub async fn handle_command(args: UserArgs, config: &Config) -> Result<(), rootc
     }
 }
 
-async fn create_user(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+async fn create_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -77,7 +78,8 @@ async fn create_user(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn delete_user(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+async fn delete_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -109,7 +111,8 @@ This action is not reversable",
     Ok(())
 }
 
-async fn rename_user(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+async fn rename_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -128,7 +131,8 @@ async fn rename_user(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn tag_user(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+async fn tag_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -175,7 +179,8 @@ async fn tag_user(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn remove_tag_user(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+async fn remove_tag_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -226,7 +231,8 @@ async fn remove_tag_user(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-pub async fn list_users(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+pub async fn list_users(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 

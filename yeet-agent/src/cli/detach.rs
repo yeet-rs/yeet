@@ -1,16 +1,13 @@
 use std::path::PathBuf;
 
+use color_eyre::{Result, Section as _, eyre::eyre};
 use log::info;
-use rootcause::{Report, report};
 use yeet::nix;
 
 use crate::{varlink, varlink::YeetDaemonError};
 
-pub async fn detach(
-    version: Option<api::StorePath>,
-    path: PathBuf,
-    darwin: bool,
-) -> Result<(), Report> {
+#[tracing::instrument(err)]
+pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool) -> Result<()> {
     let confirm = inquire::Confirm::new(
         "Are you sure you want to detach? This will leave your system in a detached state until you re-attach your system",
     )
@@ -47,23 +44,17 @@ pub async fn detach(
             info!("Detached successfully");
         }
         Err(varlink::VarlinkError::Report(report)) => {
-            return Err(report.into());
+            return Err(report);
         }
         Err(varlink::VarlinkError::DaemonError(err)) => match err {
             YeetDaemonError::NoConnectionToServer { error } => {
-                return Err(report!("Could not connect to yeet server")
-                    .context(error)
-                    .into_dynamic());
+                return Err(eyre!("Could not connect to yeet server").note(error));
             }
             YeetDaemonError::CredentialError { error } => {
-                return Err(report!("There was an error retrieving process permissions")
-                    .context(error)
-                    .into_dynamic());
+                return Err(eyre!("There was an error retrieving process permissions").note(error));
             }
             YeetDaemonError::PolkitError { error } => {
-                return Err(report!("There was an error during polikit auth")
-                    .context(error)
-                    .into_dynamic());
+                return Err(eyre!("There was an error during polikit auth").note(error));
             }
             #[expect(clippy::unreachable, reason = "Can only happen on varlink status")]
             YeetDaemonError::NoCurrentSystem => unreachable!(),
@@ -72,7 +63,8 @@ pub async fn detach(
     Ok(())
 }
 
-pub async fn attach() -> Result<(), Report> {
+#[tracing::instrument(err)]
+pub async fn attach() -> Result<()> {
     let confirm = inquire::Confirm::new("Are you sure you want to attach to the server? This will switch to the server specified version").with_default(false).prompt()?;
     if !confirm {
         info!("Aborting...");

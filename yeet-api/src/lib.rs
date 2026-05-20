@@ -111,6 +111,7 @@ macro_rules! request {
         $method:ident($path:expr) -> StatusCode,
         body: $body:expr
     ) => {
+        #[tracing::instrument(skip(key), fields(url = %url),ret(level = tracing::Level::TRACE),err)]
         pub async fn $fn_name<K: httpsig_hyper::prelude::SigningKey + Sync>(
             url: &url::Url,
             key: &K,
@@ -134,6 +135,7 @@ macro_rules! request {
         $fn_name:ident($($param:ident: $param_ty:ty),* $(,)?),
         $method:ident($path:expr) -> StatusCode
     ) => {
+        #[tracing::instrument(skip(key), fields(url = %url),ret(level = tracing::Level::TRACE),err)]
         pub async fn $fn_name<K: httpsig_hyper::prelude::SigningKey + Sync>(
             url: &url::Url,
             key: &K,
@@ -157,6 +159,7 @@ macro_rules! request {
         $method:ident($path:expr) -> $ret:ty,
         body: $body:expr
     ) => {
+        #[tracing::instrument(skip(key), fields(url = %url),ret(level = tracing::Level::TRACE),err)]
         pub async fn $fn_name<K: httpsig_hyper::prelude::SigningKey + Sync>(
             url: &url::Url,
             key: &K,
@@ -180,6 +183,7 @@ macro_rules! request {
         $fn_name:ident($($param:ident: $param_ty:ty),* $(,)?),
         $method:ident($path:expr) -> $ret:ty
     ) => {
+        #[tracing::instrument(skip(key), fields(url = %url),ret(level = tracing::Level::TRACE),err)]
         pub async fn $fn_name<K: httpsig_hyper::prelude::SigningKey + Sync>(
             url: &url::Url,
             key: &K,

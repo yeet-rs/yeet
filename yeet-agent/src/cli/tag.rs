@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
+use color_eyre::Result;
 use colored::Colorize as _;
 use log::info;
-use rootcause::Report;
 
 use crate::{
     cli::common,
@@ -26,7 +26,7 @@ pub enum TagCommands {
     Rename,
 }
 
-pub async fn handle_command(args: TagArgs, config: &Config) -> Result<(), rootcause::Report> {
+pub async fn handle_command(args: TagArgs, config: &Config) -> Result<()> {
     match args.command {
         TagCommands::Create => create_tag(config).await,
         TagCommands::Delete => delete_tag(config).await,
@@ -34,7 +34,8 @@ pub async fn handle_command(args: TagArgs, config: &Config) -> Result<(), rootca
     }
 }
 
-async fn create_tag(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+async fn create_tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -46,7 +47,8 @@ async fn create_tag(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-async fn delete_tag(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+async fn delete_tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -78,7 +80,8 @@ This action is not reversable",
     Ok(())
 }
 
-async fn rename_tag(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+async fn rename_tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -97,7 +100,8 @@ async fn rename_tag(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-pub async fn list_tags(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+pub async fn list_tags(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 

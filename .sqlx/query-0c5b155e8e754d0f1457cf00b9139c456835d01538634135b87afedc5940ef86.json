@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO verification_attempts (id, verifying_key, timestamp, nixos_facter)\n            VALUES ( $1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "0c5b155e8e754d0f1457cf00b9139c456835d01538634135b87afedc5940ef86"
+}

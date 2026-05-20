@@ -30,6 +30,7 @@ pub struct GetSecretRequest {
     pub secret: String,
 }
 
+#[tracing::instrument(skip(key, secret), fields(url = %url))]
 pub async fn create_secret<K: SigningKey + Sync>(
     url: &Url,
     key: &K,
@@ -88,6 +89,7 @@ request! (
 );
 
 /// This has to do more that a normal fetch so we implement i manually
+#[tracing::instrument(skip(key))]
 pub async fn get_secret<K: SigningKey + Sync>(
     url: &Url,
     key: &K,

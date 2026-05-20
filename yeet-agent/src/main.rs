@@ -1,24 +1,21 @@
 //! # Yeet Agent
 
-use std::io::{IsTerminal as _, Write as _};
-
 use clap::Parser as _;
+use color_eyre::Section as _;
 use colored::Colorize as _;
 use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
 };
-use rootcause::{
-    Report, ReportRef,
-    handlers::{ContextFormattingStyle, FormattingFunction},
-    hooks::{Hooks, context_formatter::ContextFormatterHook},
-    markers::{Dynamic, Local, Uncloneable},
-};
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_sdk::trace::SdkTracerProvider;
+use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 use crate::cli_args::{AgentConfig, Commands, Config, Yeet};
 
 mod agent;
 mod cli_args;
+
 mod section;
 mod server_cli;
 mod sig {
@@ -44,44 +41,23 @@ mod systemd;
 mod varlink;
 mod version;
 
-struct ClapDisplayHook;
-
-impl ContextFormatterHook<clap::Error> for ClapDisplayHook {
-    fn preferred_context_formatting_style(
-        &self,
-        _report: ReportRef<'_, Dynamic, Uncloneable, Local>,
-        _report_formatting_function: FormattingFunction,
-    ) -> ContextFormattingStyle {
-        ContextFormattingStyle {
-            function: FormattingFunction::Display,
-            follow_source: false,
-            follow_source_depth: None,
-        }
+#[tokio::main(flavor = "local")]
+async fn main() -> color_eyre::Result<()> {
+    let provider = init_tracer();
+    let result = run().await;
+    // this is required because `color_eyre` holds a ref to the current span
+    if let Err(err) = result {
+        tracing::error!(error = ?err);
     }
+    tokio::task::yield_now().await;
+    provider.force_flush()?;
+    provider.shutdown()?;
+    Ok(())
 }
 
-#[tokio::main(flavor = "local")]
-async fn main() -> Result<(), Report> {
-    Hooks::new()
-        .context_formatter::<clap::Error, _>(ClapDisplayHook)
-        .report_formatter(
-            rootcause::hooks::builtin_hooks::report_formatter::DefaultReportFormatter::ASCII,
-        )
-        .install()
-        .expect("failed to install hooks");
-
-    let mut log_builder =
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
-
-    if std::io::stderr().is_terminal() {
-        log_builder.format(|buf, record| {
-            write!(buf, "{}", buf.default_level_style(record.level()))?;
-            write!(buf, "{}", record.level())?;
-            write!(buf, "{:#}", buf.default_level_style(record.level()))?;
-            writeln!(buf, ": {}", record.args())
-        });
-    }
-    log_builder.init();
+#[tracing::instrument(err)]
+async fn run() -> color_eyre::Result<()> {
+    color_eyre::install()?;
 
     let xdg_dirs = xdg::BaseDirectories::with_prefix("yeet");
     let args = Yeet::try_parse()?;
@@ -144,20 +120,42 @@ async fn main() -> Result<(), Report> {
         Err(err) => {
             let url = cli::common::get_server_url(&config).await?;
 
-            if api::is_healthy(&url).await {
-                log::info!(
+            let server_health = if api::is_healthy(&url).await {
+                format!(
                     "{} {}",
                     url.domain().unwrap_or_default().bold().underline(),
                     "is up".green().bold()
-                );
+                )
             } else {
-                log::info!(
+                format!(
                     "{} {}",
                     url.domain().unwrap_or_default().bold().underline(),
                     "is not reachable".red().bold()
-                );
-            }
-            Err(err)
+                )
+            };
+
+            Err(err).note(server_health)
         }
     }
+}
+
+fn init_tracer() -> SdkTracerProvider {
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .build()
+        .expect("Could not build SpanExporter");
+
+    let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+        // .with_resource(resource())
+        .with_batch_exporter(exporter)
+        .build();
+
+    let tracer = provider.tracer("yeet");
+
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_error::ErrorLayer::default())
+        .with(tracing_subscriber::fmt::layer().with_target(false))
+        .with(tracing_opentelemetry::OpenTelemetryLayer::new(tracer))
+        .init();
+    provider
 }

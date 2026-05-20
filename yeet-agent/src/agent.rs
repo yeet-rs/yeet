@@ -13,10 +13,13 @@ use std::{
 
 use api::{get_secret_key, get_verify_key};
 use backon::{ConstantBuilder, Retryable as _};
+use color_eyre::{
+    Result, Section as _,
+    eyre::{Context as _, bail, eyre},
+};
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::SecretKey;
 use log::{error, info};
-use rootcause::{Report, bail, prelude::ResultExt as _, report};
 use tempfile::NamedTempFile;
 use tokio::time;
 use url::Url;
@@ -32,7 +35,8 @@ static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 ///    create a new verification request
 ///    pull the verify endpoint in a time intervall
 /// 2. Continuosly pull the system endpoint and execute based on the provided
-pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<(), Report> {
+#[tracing::instrument(err)]
+pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<()> {
     let key = get_secret_key(&config.key)?;
     let pub_key = get_verify_key(&config.key)?;
 
@@ -53,7 +57,7 @@ pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<(),
                 .without_max_times()
                 .with_delay(Duration::from_secs(sleep)),
         )
-        .notify(|err: &Report, dur: Duration| {
+        .notify(|err: &color_eyre::Report, dur: Duration| {
             error!("{err} - retrying in {dur:?}");
         })
         .await?;
@@ -61,13 +65,14 @@ pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<(),
     Ok(())
 }
 
+#[tracing::instrument(err)]
 async fn agent_loop(
     config: &AgentConfig,
     key: &SecretKey,
     pub_key: VerifyingKey,
     sleep: u64,
     facter: bool,
-) -> Result<(), Report> {
+) -> Result<()> {
     let verified = api::is_host_verified(&config.server, key) //TODO unwrap
         .await?
         .is_success();
@@ -118,7 +123,8 @@ async fn agent_loop(
     }
 }
 
-async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> Result<(), Report> {
+#[tracing::instrument(err, skip(key))]
+async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> Result<()> {
     match action {
         api::AgentAction::Nothing | api::AgentAction::Detach => {}
         api::AgentAction::SwitchTo(remote_store_path) => {
@@ -128,7 +134,8 @@ async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> R
     Ok(())
 }
 
-fn trusted_public_keys() -> Result<Vec<String>, Report> {
+#[tracing::instrument(err, ret)]
+fn trusted_public_keys() -> Result<Vec<String>> {
     let file = File::open("/etc/nix/nix.conf")?;
     Ok(BufReader::new(file)
         .lines()
@@ -143,7 +150,8 @@ fn trusted_public_keys() -> Result<Vec<String>, Report> {
         .collect())
 }
 
-async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<(), Report> {
+#[tracing::instrument(err, skip(key))]
+async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
     download(version, url, key).await?;
     let current_gen = read_link("/etc/yeet/secret");
     get_secrets(version, url, key).await?;
@@ -174,10 +182,8 @@ async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> R
     Ok(())
 }
 
-fn remove_all_dirs_unless<P: AsRef<Path>>(
-    base: P,
-    dirname: &OsStr,
-) -> Result<(), rootcause::Report> {
+#[tracing::instrument(err, fields(base = %base.as_ref().display()))]
+fn remove_all_dirs_unless<P: AsRef<Path>>(base: P, dirname: &OsStr) -> Result<()> {
     for dir in read_dir(base)? {
         if let Ok(dir) = dir
             && dir.file_name() != dirname
@@ -188,18 +194,15 @@ fn remove_all_dirs_unless<P: AsRef<Path>>(
 
     Ok(())
 }
-
-pub fn switch_to(store_path: &api::StorePath) -> Result<(), Report> {
+#[tracing::instrument(err)]
+pub fn switch_to(store_path: &api::StorePath) -> Result<()> {
     activate(store_path)?;
     notification::notify_all()?;
     Ok(())
 }
 
-async fn download(
-    version: &api::RemoteStorePath,
-    url: &Url,
-    key: &SecretKey,
-) -> Result<(), Report> {
+#[tracing::instrument(err, skip(key))]
+async fn download(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
     info!("Downloading {}", version.store_path);
     let mut keys = trusted_public_keys()?;
     keys.push(version.public_key.clone());
@@ -247,26 +250,22 @@ async fn download(
     let download = command.output()?;
 
     if !download.status.success() {
-        return Err(report!("{}", String::from_utf8(download.stderr)?)
-            .context("Could not realize new version")
-            .attach(format!(
+        return Err(eyre!("{}", String::from_utf8(download.stderr)?)
+            .note("Could not realize new version")
+            .note(format!(
                 "Command: {}",
                 command
                     .get_args()
                     .map(|ostr| ostr.to_string_lossy())
                     .collect::<Vec<_>>()
                     .join(" ")
-            ))
-            .into_dynamic());
+            )));
     }
     Ok(())
 }
 
-async fn get_secrets(
-    version: &api::RemoteStorePath,
-    url: &Url,
-    key: &SecretKey,
-) -> Result<(), Report> {
+#[tracing::instrument(err, skip(key))]
+async fn get_secrets(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
     // find out which secrets are required for this derivation
     let nix_secrets: api::Secrets = {
         let path = Path::new(&version.store_path).join("yeet-secrets.json");
@@ -285,7 +284,7 @@ async fn get_secrets(
     for (secret, definition) in nix_secrets {
         log::info!("Fetching secret {secret}");
         let Some(secret) = api::get_secret(url, key, secret.clone()).await? else {
-            rootcause::bail!("Secret {secret} not found! Unable to switch to derivation");
+            bail!("Secret {secret} not found! Unable to switch to derivation");
         };
         secrets.push((definition, secret));
     }
@@ -310,7 +309,7 @@ async fn get_secrets(
     let genration_result = create_generation(&generation, secrets);
     if genration_result.is_err() {
         if let Err(result) =
-            remove_dir_all(&generation).attach(generation.to_string_lossy().to_string())
+            remove_dir_all(&generation).note(generation.to_string_lossy().to_string())
         {
             log::error!("could not remove generation: {result:?}");
         }
@@ -324,10 +323,8 @@ async fn get_secrets(
     Ok(())
 }
 
-fn create_generation(
-    generation: &Path,
-    secrets: Vec<(api::Secret, Vec<u8>)>,
-) -> Result<(), rootcause::Report> {
+#[tracing::instrument(err, skip(secrets))]
+fn create_generation(generation: &Path, secrets: Vec<(api::Secret, Vec<u8>)>) -> Result<()> {
     fs::create_dir_all(generation)?;
     fs::set_permissions(generation, fs::Permissions::from_mode(0o751))?;
 
@@ -335,7 +332,7 @@ fn create_generation(
         let file_name = {
             let file_name = Path::new(&secret.name)
                 .file_name()
-                .ok_or(rootcause::report!("Invalid secret name: {}", secret.name))?;
+                .ok_or(eyre!("Invalid secret name: {}", secret.name))?;
             generation.join(file_name)
         };
         let mut secret_file = File::create_new(&file_name)?;
@@ -353,13 +350,14 @@ fn create_generation(
             Some(secret.owner.parse()?),
             Some(secret.owner.parse()?),
         )
-        .attach(format!("File to chown: {}", file_name.to_string_lossy()))?;
+        .note(format!("File to chown: {}", file_name.to_string_lossy()))?;
     }
 
     Ok(())
 }
 
-fn set_system_profile(store_path: &api::StorePath) -> Result<(), Report> {
+#[tracing::instrument(err)]
+fn set_system_profile(store_path: &api::StorePath) -> Result<()> {
     info!("Setting system profile to {store_path}");
     let profile = Command::new("nix-env")
         .args([
@@ -376,7 +374,8 @@ fn set_system_profile(store_path: &api::StorePath) -> Result<(), Report> {
 }
 
 #[cfg(target_os = "macos")]
-fn activate(store_path: &api::StorePath) -> Result<(), Report> {
+#[tracing::instrument(err)]
+fn activate(store_path: &api::StorePath) -> Result<()> {
     set_system_profile(store_path)?;
     info!("Activating {}", store_path);
     Command::new(Path::new(&store_path).join("activate"))
@@ -386,7 +385,8 @@ fn activate(store_path: &api::StorePath) -> Result<(), Report> {
 }
 
 #[cfg(target_os = "linux")]
-fn activate(store_path: &api::StorePath) -> Result<(), Report> {
+#[tracing::instrument(err)]
+fn activate(store_path: &api::StorePath) -> Result<()> {
     info!("Activating {store_path}");
     set_system_profile(store_path)?;
     Command::new(Path::new(&store_path).join("bin/switch-to-configuration"))

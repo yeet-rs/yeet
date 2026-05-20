@@ -5,10 +5,13 @@ use std::{
 };
 
 use api::AgentAction;
+use color_eyre::{
+    Section as _,
+    eyre::{Context as _, Result, eyre},
+};
 use httpsig_hyper::prelude::SecretKey;
 use log::info;
 use nix::unistd::Group;
-use rootcause::{Report, compat::ReportAsError, prelude::ResultExt as _};
 use serde::{Deserialize, Serialize};
 use tokio::fs::{self, remove_file};
 use url::Url;
@@ -36,58 +39,67 @@ pub trait YeetProxy {
     async fn attach(&mut self) -> zlink::Result<Result<(), YeetDaemonError>>;
 }
 
+#[tracing::instrument(err, ret)]
 pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
     log::debug!("Connecting to {SOCKET_PATH}");
     Ok(unix::connect(SOCKET_PATH)
         .await
         .context("Trying to set up the varlink connection\nMake sure you are in the `yeet` group and the daemon is running")
-        .map_err(ReportAsError::from)?)
+        ?)
 }
 
+#[tracing::instrument(err, ret)]
 pub async fn status() -> Result<DaemonStatus, VarlinkError> {
     let mut client = client().await?;
     client
         .status()
         .await
-        .context("Could not communicate with the varlink daemon. Are you running the same version?")
-        .map_err(ReportAsError::from)?
+        .context(
+            "Could not communicate with the varlink daemon. Are you running the same version?",
+        )?
         .map_err(VarlinkError::DaemonError)
 }
 
+#[tracing::instrument(err, ret)]
 pub async fn config() -> Result<AgentConfig, VarlinkError> {
     let mut client = client().await?;
     Ok(client
         .config()
         .await
-        .context("Could not communicate with the varlink daemon. Are you running the same version?")
-        .map_err(ReportAsError::from)?
+        .context(
+            "Could not communicate with the varlink daemon. Are you running the same version?",
+        )?
         .expect("Config can never Error because it does not return a result"))
 }
 
+#[tracing::instrument(err)]
 pub async fn detach(version: api::StorePath) -> Result<(), VarlinkError> {
     let mut client = client().await?;
     client
         .detach(version)
         .await
-        .context("Could not communicate with the varlink daemon. Are you running the same version?")
-        .map_err(ReportAsError::from)?
+        .context(
+            "Could not communicate with the varlink daemon. Are you running the same version?",
+        )?
         .map_err(VarlinkError::DaemonError)
 }
 
+#[tracing::instrument(err)]
 pub async fn attach() -> Result<(), VarlinkError> {
     let mut client = client().await?;
     client
         .attach()
         .await
-        .context("Could not communicate with the varlink daemon. Are you running the same version?")
-        .map_err(ReportAsError::from)?
+        .context(
+            "Could not communicate with the varlink daemon. Are you running the same version?",
+        )?
         .map_err(VarlinkError::DaemonError)
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum VarlinkError {
     #[error(transparent)]
-    Report(#[from] ReportAsError<&'static str>),
+    Report(#[from] color_eyre::Report),
     #[error("Defined error from Daemon:\n{0:?}")]
     DaemonError(YeetDaemonError),
 }
@@ -239,12 +251,14 @@ where
     }
 }
 
-pub async fn start_service(config: cli_args::AgentConfig, key: SecretKey) -> Result<(), Report> {
+#[tracing::instrument(err)]
+pub async fn start_service(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
     YeetVarlinkService::start(config, key).await
 }
 
 impl YeetVarlinkService {
-    pub async fn start(config: cli_args::AgentConfig, key: SecretKey) -> Result<(), Report> {
+    #[tracing::instrument(err)]
+    pub async fn start(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
         let listener = {
             let _err = remove_file(SOCKET_PATH).await;
             #[expect(clippy::unwrap_used)]
@@ -252,7 +266,7 @@ impl YeetVarlinkService {
                 .await
                 .context("Ensuring the Socket dir is available")?;
             let listener =
-                zlink::unix::bind(SOCKET_PATH).attach(format!("SOCKET_PATH: {SOCKET_PATH}"))?;
+                zlink::unix::bind(SOCKET_PATH).note(format!("SOCKET_PATH: {SOCKET_PATH}"))?;
 
             setup_socket_permissions(SOCKET_PATH, "yeet").await?;
 
@@ -289,10 +303,10 @@ pub enum DaemonMode {
     NetworkError,
 }
 
-async fn setup_socket_permissions(path: &str, group_name: &str) -> Result<(), Report> {
+async fn setup_socket_permissions(path: &str, group_name: &str) -> Result<()> {
     let group = Group::from_name(group_name)
         .context("Error while trying to look up `yeet` group on the system")?
-        .ok_or(rootcause::report!("`yeet` Group does not exist on system"))?;
+        .ok_or(eyre!("`yeet` Group does not exist on system"))?;
 
     lchown(path, None, Some(group.gid.as_raw()))
         .context("Trying to set varlink socket connection")?;

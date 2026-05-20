@@ -1,4 +1,5 @@
 use clap::{Args, Subcommand};
+use color_eyre::Result;
 use colored::Colorize as _;
 
 use crate::{
@@ -20,13 +21,13 @@ pub enum ArtifactCommands {
     Show,
 }
 
-pub async fn handle_command(args: ArtifactArgs, config: &Config) -> Result<(), rootcause::Report> {
+pub async fn handle_command(args: ArtifactArgs, config: &Config) -> Result<()> {
     match args.command {
         ArtifactCommands::Show => show(config).await,
     }
 }
-#[expect(clippy::print_stdout)]
-async fn show(config: &Config) -> Result<(), rootcause::Report> {
+#[tracing::instrument(skip(config), err)]
+async fn show(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 
@@ -44,7 +45,8 @@ async fn show(config: &Config) -> Result<(), rootcause::Report> {
     Ok(())
 }
 
-pub async fn artifacts(config: &Config) -> Result<(), rootcause::Report> {
+#[tracing::instrument(skip(config), err)]
+pub async fn artifacts(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
 

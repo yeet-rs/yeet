@@ -1,5 +1,5 @@
+use color_eyre::Result;
 use colored::Colorize as _;
-use rootcause::Report;
 
 use crate::{
     cli::common,
@@ -8,7 +8,8 @@ use crate::{
     sig::ssh,
 };
 
-pub async fn show_nodes(config: &Config) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+pub async fn show_nodes(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
 
@@ -28,7 +29,8 @@ pub async fn show_nodes(config: &Config) -> Result<(), Report> {
     Ok(())
 }
 
-pub async fn query(config: &Config, sql: String) -> Result<(), Report> {
+#[tracing::instrument(skip(config), err)]
+pub async fn query(config: &Config, sql: String) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
     let mut nodes = api::list_nodes(&url, key).await?;

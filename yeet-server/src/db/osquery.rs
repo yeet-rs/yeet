@@ -122,10 +122,7 @@ pub async fn enroll_node<I: age::Identity>(
                 .await?;
 
         if enroll_secrets.is_empty() {
-            log::warn!(
-                "A Node tried to enroll with a empty node_key:\n{:#?}",
-                enroll_request
-            );
+            log::warn!("A Node tried to enroll with a empty node_key:\n{enroll_request:#?}");
             return Err(EnrollError::SecretNotSet);
         }
 
@@ -139,7 +136,7 @@ pub async fn enroll_node<I: age::Identity>(
         }
         // if we have not found a match we need to exit
         if !secret_match {
-            log::warn!("No matching secrets found for node:\n{:#?}", enroll_request);
+            log::warn!("No matching secrets found for node:\n{enroll_request:#?}");
             return Err(EnrollError::SecretMismatch);
         }
     }
@@ -234,7 +231,7 @@ pub async fn write_dquery_response(
         .fetch_one(&mut *tx)
         .await?;
 
-    ping(&mut *tx, api::NodeID::new(node_id)).await?;
+    ping(&mut tx, api::NodeID::new(node_id)).await?;
 
     // TODO: sqlx in operator
     for (query_id, response) in queries {
