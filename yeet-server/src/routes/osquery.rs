@@ -160,7 +160,7 @@ pub async fn config(
     Json(serde_json::json!({
         "packs": state.osquery_packs,
         "schedule_epoch": jiff::Timestamp::now()
-            .round(jiff::Unit::Day)
+            .round(jiff::TimestampRound::new().smallest(jiff::Unit::Hour).increment(24))
             .map(|time|time.as_millisecond())
             .unwrap_or(0)
     }))
