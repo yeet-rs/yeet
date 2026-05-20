@@ -60,7 +60,7 @@ impl ContextFormatterHook<clap::Error> for ClapDisplayHook {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "local")]
 async fn main() -> Result<(), Report> {
     Hooks::new()
         .context_formatter::<clap::Error, _>(ClapDisplayHook)
