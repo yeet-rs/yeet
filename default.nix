@@ -67,11 +67,11 @@ rec {
   };
   nixosModules = {
     yeet = {
-      imports = [ ./modules/nixos/yeet.nix ];
+      imports = [ ./nix/modules/nixos/yeet.nix ];
       services.yeet.package = lib.mkDefault packages.yeet;
     };
     yeetd = {
-      imports = [ ./modules/nixos/yeetd.nix ];
+      imports = [ ./nix/modules/nixos/yeetd.nix ];
       services.yeetd.package = lib.mkDefault packages.yeet;
     };
   };

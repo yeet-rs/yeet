@@ -23,6 +23,7 @@ request! (
     body: hostname
 );
 
+#[tracing::instrument(skip(key), fields(url = %url))]
 pub async fn is_host_verified<K: SigningKey + Sync>(
     url: &url::Url,
     key: &K,

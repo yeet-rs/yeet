@@ -25,7 +25,7 @@ serve:
 certs:
     openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 365 \
         -nodes -subj "/CN=hostname" \
-        -addext "subjectAltName=DNS:hostname" \
+        -addext "subjectAltName=DNS:hostname,IP:10.0.2.2" \
         -addext "basicConstraints=CA:FALSE"
 
     ssh-keygen -t ed25519 -f yeet-admin.key -N ''
@@ -66,3 +66,10 @@ test:
     cargo test -p yeetd
     cargo test -p yeet-api
     cargo test -p yeet
+
+agent:
+    #!/usr/bin/env bash
+    if [ ! -f "cert.pem" ]; then
+        just certs
+    fi
+    nix run config.system.build.vm --file ./nix/test/agent.nix -I "nixos-config=./nix/test/agent.nix"

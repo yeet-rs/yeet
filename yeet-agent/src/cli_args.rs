@@ -74,10 +74,6 @@ pub enum Commands {
         query: String,
     },
     Agent {
-        /// URL of the Yeet Server
-        #[arg(long)]
-        server: Url,
-
         /// Path to ed25519 key which is used for authentication
         #[arg(long)]
         key: PathBuf,

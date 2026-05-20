@@ -1,7 +1,7 @@
 //! # Yeet Agent
 
 use clap::Parser as _;
-use color_eyre::Section as _;
+use color_eyre::{Section as _, eyre::eyre};
 use colored::Colorize as _;
 use figment::{
     Figment,
@@ -91,14 +91,12 @@ async fn run() -> color_eyre::Result<()> {
         Commands::Attach => cli::detach::attach().await,
         Commands::Approve => cli::approve::approve(&config).await,
         Commands::Notify => notification::notify(),
-        Commands::Agent {
-            server,
-            sleep,
-            facter,
-            key,
-        } => {
+        Commands::Agent { sleep, facter, key } => {
             let config = AgentConfig {
-                server,
+                server: config
+                    .url
+                    .clone()
+                    .ok_or(eyre!("--url required for the agent to start"))?,
                 sleep,
                 facter,
                 key,
@@ -123,13 +121,13 @@ async fn run() -> color_eyre::Result<()> {
             let server_health = if api::is_healthy(&url).await {
                 format!(
                     "{} {}",
-                    url.domain().unwrap_or_default().bold().underline(),
+                    url.to_string().bold().underline(),
                     "is up".green().bold()
                 )
             } else {
                 format!(
                     "{} {}",
-                    url.domain().unwrap_or_default().bold().underline(),
+                    url.to_string().bold().underline(),
                     "is not reachable".red().bold()
                 )
             };

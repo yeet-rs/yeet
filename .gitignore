@@ -34,3 +34,5 @@ yeet.db
 # codecov
 *.html
 *.profraw
+
+nixos.qcow2

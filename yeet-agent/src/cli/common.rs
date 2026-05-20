@@ -16,5 +16,5 @@ pub async fn get_server_url(config: &Config) -> Result<url::Url> {
         .url
         .clone()
         .or(agent_url)
-        .ok_or(eyre!("`--url` required for publish"))
+        .ok_or(eyre!("`--url` required to connect to the server"))
 }

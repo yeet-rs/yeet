@@ -143,8 +143,6 @@ in
       path = [ config.nix.package ];
       wantedBy = [ "multi-user.target" ];
 
-      environment.USER = "root";
-
       # don't stop the service if the unit disappears
       unitConfig.X-StopOnRemoval = false;
 
@@ -155,7 +153,7 @@ in
         RestartSec = 5;
         RuntimeDirectory = "yeet";
         ExecStart = ''
-          ${lib.getExe cfg.package} agent --sleep ${toString cfg.sleep} --server ${cfg.server} --key ${cfg.key} ${lib.optionalString cfg.facter "--facter"}
+          ${lib.getExe cfg.package} --url ${cfg.server} agent --sleep ${toString cfg.sleep} --key ${cfg.key} ${lib.optionalString cfg.facter "--facter"}
         '';
       };
     };
