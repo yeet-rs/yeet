@@ -44,7 +44,7 @@ pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool
             info!("Detached successfully");
         }
         Err(varlink::VarlinkError::Report(report)) => {
-            return Err(report.into());
+            return Err(report);
         }
         Err(varlink::VarlinkError::DaemonError(err)) => match err {
             YeetDaemonError::NoConnectionToServer { error } => {

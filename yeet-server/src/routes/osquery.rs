@@ -161,8 +161,7 @@ pub async fn config(
         "packs": state.osquery_packs,
         "schedule_epoch": jiff::Timestamp::now()
             .round(jiff::TimestampRound::new().smallest(jiff::Unit::Hour).increment(24))
-            .map(|time|time.as_millisecond())
-            .unwrap_or(0)
+            .map_or(0, jiff::Timestamp::as_millisecond)
     }))
 }
 

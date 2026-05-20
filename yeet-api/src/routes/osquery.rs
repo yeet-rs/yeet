@@ -44,19 +44,19 @@ impl Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}:", self.host_identifier)?;
         if let Some(platform_name) = &self.platform_name {
-            write!(f, " {}", platform_name)?;
+            write!(f, " {platform_name}")?;
         }
 
         if let Some(os_version) = &self.os_version {
-            write!(f, " {}", os_version)?;
+            write!(f, " {os_version}")?;
         }
 
         if let Some(cpu_arch) = &self.cpu_arch {
-            write!(f, " - {}", cpu_arch)?;
+            write!(f, " - {cpu_arch}")?;
         }
 
         if let Some(osquery_version) = &self.osquery_version {
-            write!(f, " @ {}", osquery_version)?;
+            write!(f, " @ {osquery_version}")?;
         }
 
         write!(

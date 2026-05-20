@@ -6,7 +6,7 @@ use std::{
 
 use api::AgentAction;
 use color_eyre::{
-    Section,
+    Section as _,
     eyre::{Context as _, Result, eyre},
 };
 use httpsig_hyper::prelude::SecretKey;

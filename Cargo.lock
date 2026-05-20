@@ -4474,7 +4474,7 @@ dependencies = [
 
 [[package]]
 name = "splunk_hec"
-version = "0.12.6"
+version = "0.13.0"
 dependencies = [
  "indexmap",
  "jiff",
@@ -6255,7 +6255,7 @@ checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
 name = "yeet"
-version = "0.12.6"
+version = "0.13.0"
 dependencies = [
  "age",
  "backon",
@@ -6301,7 +6301,7 @@ dependencies = [
 
 [[package]]
 name = "yeet-api"
-version = "0.12.6"
+version = "0.13.0"
 dependencies = [
  "age",
  "ahash",
@@ -6327,7 +6327,7 @@ dependencies = [
 
 [[package]]
 name = "yeetd"
-version = "0.12.6"
+version = "0.13.0"
 dependencies = [
  "age",
  "axum 0.8.9",

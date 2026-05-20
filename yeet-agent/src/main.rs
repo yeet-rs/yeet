@@ -1,16 +1,15 @@
 //! # Yeet Agent
 
 use clap::Parser as _;
-use color_eyre::Section;
+use color_eyre::Section as _;
 use colored::Colorize as _;
 use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
 };
-
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_sdk::trace::SdkTracerProvider;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 use crate::cli_args::{AgentConfig, Commands, Config, Yeet};
 
@@ -47,8 +46,8 @@ async fn main() -> color_eyre::Result<()> {
     let provider = init_tracer();
     let result = run().await;
     // this is required because `color_eyre` holds a ref to the current span
-    if let Err(e) = result {
-        tracing::error!(error = ?e);
+    if let Err(err) = result {
+        tracing::error!(error = ?err);
     }
     tokio::task::yield_now().await;
     provider.force_flush()?;
@@ -141,7 +140,9 @@ async fn run() -> color_eyre::Result<()> {
 }
 
 fn init_tracer() -> SdkTracerProvider {
-    let exporter = opentelemetry_otlp::SpanExporter::builder().build().unwrap();
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .build()
+        .expect("Could not build SpanExporter");
 
     let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
         // .with_resource(resource())

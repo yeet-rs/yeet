@@ -26,7 +26,6 @@ pub async fn handle_command(args: ArtifactArgs, config: &Config) -> Result<()> {
         ArtifactCommands::Show => show(config).await,
     }
 }
-#[expect(clippy::print_stdout)]
 #[tracing::instrument(skip(config), err)]
 async fn show(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;

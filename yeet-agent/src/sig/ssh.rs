@@ -15,7 +15,7 @@ pub fn key_by_url(url: &url::Url) -> Result<SecretKey> {
     let url = url
         .domain()
         .ok_or(eyre!("Provided URL has no domain part"))?;
-    Ok(key_from_ssh_config(url).or_else(|err| get_key_manual().context(err))?)
+    key_from_ssh_config(url).or_else(|err| get_key_manual().context(err))
 }
 
 #[tracing::instrument(fields(%url = url.as_ref()))]

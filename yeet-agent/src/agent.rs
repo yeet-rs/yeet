@@ -14,7 +14,7 @@ use std::{
 use api::{get_secret_key, get_verify_key};
 use backon::{ConstantBuilder, Retryable as _};
 use color_eyre::{
-    Result, Section,
+    Result, Section as _,
     eyre::{Context as _, bail, eyre},
 };
 use ed25519_dalek::VerifyingKey;
