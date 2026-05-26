@@ -85,6 +85,7 @@ pub async fn list_users(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::Us
         r#"
         SELECT
             u.id as "id!: api::UserID",
+            u.oidc_id as "oidc_id",
             k.verifying_key as "key!",
             u.username as "username!",
             u.level as "level!: api::AuthLevel",
@@ -103,6 +104,7 @@ pub async fn list_users(conn: &mut sqlx::SqliteConnection) -> Result<Vec<api::Us
     )
     .map(|row| api::User {
         id: row.id,
+        oidc_id: row.oidc_id,
         key: VerifyingKey::from_bytes(&row.key.try_into().expect("we only store valid keys"))
             .expect("we only store valid keys"),
         username: row.username,

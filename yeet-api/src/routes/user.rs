@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::request;
 
 crate::db_id!(UserID);
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct CreateUser {
     pub key: VerifyingKey,
@@ -37,6 +38,7 @@ impl std::fmt::Display for AuthLevel {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {
     pub id: UserID,
+    pub oidc_id: Option<String>,
     pub key: VerifyingKey,
     pub username: String,
     pub level: AuthLevel,

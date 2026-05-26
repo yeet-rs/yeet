@@ -15,6 +15,8 @@ mod routes {
     pub mod health;
     pub mod host;
     pub mod key;
+    pub mod login;
+    pub mod oauth;
     pub mod osquery;
     pub mod secret;
     pub mod system;
@@ -33,10 +35,15 @@ mod db {
     pub mod verification;
 }
 pub mod defectdojo_sender;
+
+mod auth;
+pub mod defectdojo;
+
 mod error;
 mod httpsig;
 mod splunk_sender;
 
+use axum_login::tower_sessions::{Expiry, cookie::SameSite};
 use axum_server::tls_rustls::RustlsConfig;
 use figment::Figment;
 use indexmap::IndexMap;
@@ -53,7 +60,7 @@ struct YeetState {
 
 use serde::{Deserialize, Serialize};
 
-use crate::routes::{osquery, tag, user};
+use crate::routes::{login, oauth, osquery, tag, user};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Flags {
@@ -261,7 +268,50 @@ pub async fn launch(config: Config) -> tokio::task::JoinHandle<()> {
 }
 
 fn routes(state: YeetState) -> axum::Router {
+    let session_store = tower_sessions::MemoryStore::default();
+    let session_layer = tower_sessions::SessionManagerLayer::new(session_store)
+        .with_secure(false)
+        // .with_expiry(Expiry::OnInactivity(Duration::days(1)))
+        .with_same_site(SameSite::Lax); // Ensure we send the cookie from the OAuth redirect.
+
+    let client_id = env::var("YEET_CLIENT_ID")
+        .map(openidconnect::ClientId::new)
+        .expect("YEET_CLIENT_ID should be provided.");
+    let client_secret = env::var("YEET_CLIENT_SECRET")
+        .map(openidconnect::ClientSecret::new)
+        .ok();
+    let issuer_url = env::var("YEET_ISSUER_URL")
+        .map(openidconnect::IssuerUrl::new)
+        .expect("YEET_ISSUER_URL should be provided")
+        .expect("YEET_ISSUER_URL should be in a valid format");
+
+    let redirect_url = env::var("YEET_REDIRECT_URL")
+        .map(openidconnect::RedirectUrl::new)
+        .expect("YEET_REDIRECT_URL should be provided")
+        .expect("YEET_REDIRECT_URL should be a valid URL");
+    let backend = auth::UserBackend::new(
+        state.pool.clone(),
+        client_id,
+        client_secret,
+        issuer_url,
+        redirect_url,
+    );
+
+    let auth_layer = axum_login::AuthManagerLayerBuilder::new(backend, session_layer).build();
+
     axum::Router::new()
+        // auth
+        .route(
+            "/protected",
+            get(|| async { "Gotta be logged in to see me!" }),
+        )
+        .route_layer(axum_login::login_required!(
+            auth::UserBackend,
+            login_url = "/login"
+        ))
+        .route("/login", get(login::login))
+        .route("/oauth/callback", get(oauth::callback))
+        .route("/logout", get(login::logout))
         // Public
         .route("/verification/add", post(verify::add_verification_attempt))
         // `api::auth::Host::Accept`
@@ -338,6 +388,7 @@ fn routes(state: YeetState) -> axum::Router {
         // === health endpoint
         .route("/health", get(health::health))
         .layer(tower_http::trace::TraceLayer::new_for_http())
+        .layer(auth_layer)
         .with_state(state)
 }
 

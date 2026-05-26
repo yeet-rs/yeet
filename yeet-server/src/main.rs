@@ -6,9 +6,15 @@ use age::secrecy::ExposeSecret as _;
 use color_eyre::eyre::eyre;
 
 #[tokio::main]
+
 async fn main() -> color_eyre::Result<()> {
     let provider = init_tracer();
     color_eyre::install()?;
+
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
+
 
     let flags: yeetd::Flags = yeetd::Flags::figment().extract()?;
 

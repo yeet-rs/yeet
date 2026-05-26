@@ -98,6 +98,9 @@ macro_rules! db_id {
             pub fn new(id: i64) -> Self {
                 Self(id)
             }
+            // pub fn as_bytes(&self) -> &[u8] {
+            //     self.0.as
+            // }
         }
     };
 }
