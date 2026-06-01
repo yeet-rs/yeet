@@ -37,7 +37,6 @@ mod db {
 pub mod defectdojo_sender;
 
 mod auth;
-pub mod defectdojo;
 
 mod error;
 mod httpsig;
@@ -47,6 +46,7 @@ use axum_login::tower_sessions::{Expiry, cookie::SameSite};
 use axum_server::tls_rustls::RustlsConfig;
 use figment::Figment;
 use indexmap::IndexMap;
+use openidconnect as oidc;
 pub(crate) use routes::{artifact, health, host, key, secret, system, verify};
 
 #[derive(Clone)]
@@ -74,6 +74,8 @@ pub struct Flags {
     pub defect_dojo_flags: Option<DefectDojoFlags>,
     #[serde(flatten)]
     pub osquery_flags: Option<OsqueryFlags>,
+    #[serde(flatten)]
+    pub oidc_flags: Option<OIDCFlags>,
 }
 
 impl Default for Flags {
@@ -84,6 +86,7 @@ impl Default for Flags {
             cert_key: "key.pem".into(),
             defect_dojo_flags: None,
             osquery_flags: None,
+            oidc_flags: None,
         }
     }
 }
@@ -92,7 +95,8 @@ error_set::error_set! {
     ConfigError := {
         IO(std::io::Error),
         DefectDojo(defectdojo::Error),
-        SQLX(sqlx::Error)
+        SQLX(sqlx::Error),
+        OIDC(OIDCError)
     }
 }
 
@@ -151,6 +155,11 @@ impl Flags {
                 .await?
         };
 
+        let oidc_auth = match self.oidc_flags {
+            Some(flags) => Some(oidc_auth(pool.clone(), flags).await?),
+            None => None,
+        };
+
         Ok(Config {
             addr: self.addr,
             pool,
@@ -159,6 +168,7 @@ impl Flags {
             splunk,
             osquery_packs,
             defectdojo,
+            oidc_auth,
         })
     }
 }
@@ -198,6 +208,18 @@ pub struct OsqueryFlags {
     pub osquery_packs: PathBuf,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OIDCFlags {
+    /// The oauth provider identifies us with this id (public)
+    pub client_id: oidc::ClientId,
+    /// Used to authenticate to the oauth procider
+    pub client_secret: Option<oidc::ClientSecret>,
+    /// This is where we are gonna send the user to login
+    pub issuer_url: oidc::IssuerUrl,
+    /// this should point to an url that resolves to ${yeet}/oauth/callback
+    pub redirect_url: oidc::RedirectUrl,
+}
+
 pub struct Config {
     pub addr: SocketAddr,
     pub pool: sqlx::SqlitePool,
@@ -206,6 +228,8 @@ pub struct Config {
     pub splunk: Option<splunk_hec::SplunkConfig>,
     pub osquery_packs: IndexMap<String, serde_json::Value>,
     pub defectdojo: Option<defectdojo_sender::Config>,
+    pub oidc_auth:
+        Option<axum_login::AuthManagerLayer<auth::UserBackend, tower_sessions::MemoryStore>>,
 }
 
 // TODO: too_many_arguments
@@ -255,51 +279,61 @@ pub async fn launch(config: Config) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         if let Some(tls) = config.tls {
             axum_server::bind_rustls(config.addr, tls)
-                .serve(routes(state).into_make_service())
+                .serve(routes(state, config.oidc_auth).into_make_service())
                 .await
                 .expect("Could not start axum");
         } else {
             axum_server::bind(config.addr)
-                .serve(routes(state).into_make_service())
+                .serve(routes(state, config.oidc_auth).into_make_service())
                 .await
                 .expect("Could not start axum");
         }
     })
 }
 
-fn routes(state: YeetState) -> axum::Router {
+error_set::error_set! {
+    OIDCError := {
+        Reqwest(oidc::reqwest::Error),
+        Discovery(oidc::DiscoveryError<oidc::HttpClientError<oidc::reqwest::Error>>)
+    }
+}
+
+async fn oidc_auth(
+    pool: sqlx::SqlitePool,
+    flags: OIDCFlags,
+) -> Result<axum_login::AuthManagerLayer<auth::UserBackend, tower_sessions::MemoryStore>, OIDCError>
+{
     let session_store = tower_sessions::MemoryStore::default();
     let session_layer = tower_sessions::SessionManagerLayer::new(session_store)
-        .with_secure(false)
-        // .with_expiry(Expiry::OnInactivity(Duration::days(1)))
-        .with_same_site(SameSite::Lax); // Ensure we send the cookie from the OAuth redirect.
+        .with_secure(true)
+        .with_expiry(Expiry::OnSessionEnd)
+        .with_same_site(SameSite::Lax);
 
-    let client_id = env::var("YEET_CLIENT_ID")
-        .map(openidconnect::ClientId::new)
-        .expect("YEET_CLIENT_ID should be provided.");
-    let client_secret = env::var("YEET_CLIENT_SECRET")
-        .map(openidconnect::ClientSecret::new)
-        .ok();
-    let issuer_url = env::var("YEET_ISSUER_URL")
-        .map(openidconnect::IssuerUrl::new)
-        .expect("YEET_ISSUER_URL should be provided")
-        .expect("YEET_ISSUER_URL should be in a valid format");
-
-    let redirect_url = env::var("YEET_REDIRECT_URL")
-        .map(openidconnect::RedirectUrl::new)
-        .expect("YEET_REDIRECT_URL should be provided")
-        .expect("YEET_REDIRECT_URL should be a valid URL");
+    let provider_metadata = oidc::ProviderMetadataWithLogout::discover_async(
+        flags.issuer_url,
+        &oidc::reqwest::ClientBuilder::new()
+            .redirect(oidc::reqwest::redirect::Policy::none())
+            .build()?,
+    )
+    .await?;
     let backend = auth::UserBackend::new(
-        state.pool.clone(),
-        client_id,
-        client_secret,
-        issuer_url,
-        redirect_url,
+        pool,
+        flags.client_id,
+        flags.client_secret,
+        provider_metadata,
+        flags.redirect_url,
     );
 
-    let auth_layer = axum_login::AuthManagerLayerBuilder::new(backend, session_layer).build();
+    Ok(axum_login::AuthManagerLayerBuilder::new(backend, session_layer).build())
+}
 
-    axum::Router::new()
+fn routes(
+    state: YeetState,
+    oidc_layer: Option<
+        axum_login::AuthManagerLayer<auth::UserBackend, tower_sessions::MemoryStore>,
+    >,
+) -> axum::Router {
+    let mut routes = axum::Router::new()
         // auth
         .route(
             "/protected",
@@ -387,9 +421,11 @@ fn routes(state: YeetState) -> axum::Router {
         .route("/osquery/query/create", post(osquery::create_query))
         // === health endpoint
         .route("/health", get(health::health))
-        .layer(tower_http::trace::TraceLayer::new_for_http())
-        .layer(auth_layer)
-        .with_state(state)
+        .layer(tower_http::trace::TraceLayer::new_for_http());
+    if let Some(oidc_layer) = oidc_layer {
+        routes = routes.layer(oidc_layer);
+    }
+    routes.with_state(state)
 }
 
 pub(crate) async fn wake_splunk(sender: Option<&tokio::sync::mpsc::Sender<()>>) {

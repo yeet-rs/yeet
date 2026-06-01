@@ -1,11 +1,11 @@
 use axum_login::{AuthUser, AuthnBackend, UserId};
 use openidconnect::{
     AccessTokenHash, AuthorizationCode, ClaimsVerificationError, ClientId, ClientSecret,
-    ConfigurationError, CsrfToken, HttpClientError, IssuerUrl, Nonce, OAuth2TokenResponse,
-    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RequestTokenError,
-    SignatureVerificationError, SigningError, StandardErrorResponse, TokenResponse,
-    core::{CoreAuthenticationFlow, CoreClient, CoreErrorResponseType, CoreProviderMetadata},
-    reqwest::{self, Client},
+    ConfigurationError, CsrfToken, HttpClientError, Nonce, OAuth2TokenResponse as _, PkceCodeChallenge,
+    PkceCodeVerifier, ProviderMetadataWithLogout, RedirectUrl, RequestTokenError,
+    SignatureVerificationError, SigningError, StandardErrorResponse, TokenResponse as _,
+    core::{CoreAuthenticationFlow, CoreClient, CoreErrorResponseType},
+    reqwest::{self},
     url::Url,
 };
 use serde::{Deserialize, Serialize};
@@ -71,11 +71,13 @@ pub struct UserBackend {
     client_id: ClientId,
     /// This has to be kept secret
     client_secret: Option<ClientSecret>,
-    /// this is where we are gonna send the user to login
-    issuer_url: IssuerUrl,
     /// this should point to an url that resolves to /oauth/callback
     redirect_url: RedirectUrl,
-    http_client: Client,
+    http_client: reqwest::Client,
+
+    provider_metadata: ProviderMetadataWithLogout,
+    // this is where we are gonna send the user to login
+    // issuer_url: IssuerUrl,
 }
 
 impl UserBackend {
@@ -83,7 +85,7 @@ impl UserBackend {
         db: SqlitePool,
         client_id: ClientId,
         client_secret: Option<ClientSecret>,
-        issuer_url: IssuerUrl,
+        provider_metadata: ProviderMetadataWithLogout,
         redirect_url: RedirectUrl,
     ) -> Self {
         let http_client = reqwest::ClientBuilder::new()
@@ -96,21 +98,16 @@ impl UserBackend {
             db,
             client_id,
             client_secret,
-            issuer_url,
             redirect_url,
             http_client,
+            provider_metadata,
         }
     }
 
     ///Fetch the openid document to create a new auth url
-    pub async fn authorize_url(&self) -> (Url, CsrfToken, Nonce, PkceCodeVerifier) {
-        let provider_metadata =
-            CoreProviderMetadata::discover_async(self.issuer_url.clone(), &self.http_client)
-                .await
-                .expect("Unable to get the core provider metadata");
-
+    pub fn authorize_url(&self) -> (Url, CsrfToken, Nonce, PkceCodeVerifier) {
         let client = CoreClient::from_provider_metadata(
-            provider_metadata,
+            self.provider_metadata.clone(),
             self.client_id.clone(),
             self.client_secret.clone(),
         )
@@ -143,18 +140,12 @@ impl AuthnBackend for UserBackend {
         // Ensure the CSRF state has not been tampered with.
         if creds.old_state.secret() != creds.new_state.secret() {
             return Ok(None);
-        };
-
-        // Retrieve the provider's metadata
-        let provider_metadata =
-            CoreProviderMetadata::discover_async(self.issuer_url.clone(), &self.http_client)
-                .await
-                .expect("Unable to get the core provider metadata");
+        }
 
         // Create the OpenID client from the provider's metadata, client_id,
         // client_secret and redirect_url
         let client = CoreClient::from_provider_metadata(
-            provider_metadata,
+            self.provider_metadata.clone(),
             self.client_id.clone(),
             self.client_secret.clone(),
         )

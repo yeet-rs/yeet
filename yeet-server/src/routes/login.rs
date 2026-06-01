@@ -24,7 +24,7 @@ pub async fn login(
     session: Session,
     Query(NextUrl { next }): Query<NextUrl>,
 ) -> impl IntoResponse {
-    let (auth_url, csrf_state, nonce, pkce_verifier) = user_session.backend.authorize_url().await;
+    let (auth_url, csrf_state, nonce, pkce_verifier) = user_session.backend.authorize_url();
 
     // associate the openid auth attempt with the user session
 
@@ -52,6 +52,7 @@ pub async fn login(
 }
 
 pub async fn logout(mut user_session: UserSession) -> impl IntoResponse {
+    user_session.backend.
     match user_session.logout().await {
         Ok(_) => Redirect::to("/").into_response(),
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
