@@ -87,7 +87,14 @@ impl Display for Host {
                 30_f64,
                 jiff::Unit::Second
             )
-        )
+        )?;
+        let tags = self
+            .tags
+            .iter()
+            .map(|tag| format!("#{}", tag.name))
+            .collect::<Vec<_>>()
+            .join(" ");
+        write!(f, " {}", tags.blue())
     }
 }
 
