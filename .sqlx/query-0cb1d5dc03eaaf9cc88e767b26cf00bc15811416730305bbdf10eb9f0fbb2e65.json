@@ -6,32 +6,68 @@
       {
         "name": "id",
         "ordinal": 0,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_dq_responses",
+            "name": "id"
+          }
+        }
       },
       {
         "name": "query_id",
         "ordinal": 1,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_dq_responses",
+            "name": "query_id"
+          }
+        }
       },
       {
         "name": "status",
         "ordinal": 2,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_dq_responses",
+            "name": "status"
+          }
+        }
       },
       {
         "name": "host_identifier",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "host_identifier"
+          }
+        }
       },
       {
         "name": "response_time: jiff_sqlx::Timestamp",
         "ordinal": 4,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_dq_responses",
+            "name": "response_time"
+          }
+        }
       },
       {
         "name": "response",
         "ordinal": 5,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_dq_responses",
+            "name": "response"
+          }
+        }
       }
     ],
     "parameters": {

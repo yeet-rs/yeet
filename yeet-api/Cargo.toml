@@ -17,7 +17,7 @@ hazard = ["dep:sqlx"]
 
 [dependencies]
 ahash = { version = "0.8.12", features = ["std"] }
-sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"], optional = true }
+sqlx = { workspace = true, optional = true }
 
 osquery-tls.workspace = true
 reqwest.workspace = true

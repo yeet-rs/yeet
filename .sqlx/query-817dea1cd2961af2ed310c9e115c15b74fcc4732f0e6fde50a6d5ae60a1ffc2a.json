@@ -6,7 +6,13 @@
       {
         "name": "node_key: uuid::Uuid",
         "ordinal": 0,
-        "type_info": "Null"
+        "type_info": "Null",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "node_key"
+          }
+        }
       }
     ],
     "parameters": {

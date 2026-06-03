@@ -6,19 +6,18 @@ use yeet_api::{self as api};
 
 #[sqlx::test]
 async fn artifacts(pool: sqlx::SqlitePool) {
-    let _handle = yeetd::launch(
-        4337,
-        std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
+    let _handle = yeetd::launch(yeetd::Config {
+        addr: "[::1]:4334".parse().unwrap(),
         pool,
-        age::x25519::Identity::generate(),
-        None,
-        None,
-        None,
-        None,
-    )
+        age_key: age::x25519::Identity::generate(),
+        tls: None,
+        splunk: None,
+        osquery_packs: indexmap::IndexMap::default(),
+        defectdojo: None,
+    })
     .await;
 
-    let url = url::Url::from_str("http://localhost:4337").unwrap();
+    let url = url::Url::from_str("http://localhost:4334").unwrap();
 
     // first we need to add our admin credentials.
     // The api will allow us to add it when no credentials are specified yet

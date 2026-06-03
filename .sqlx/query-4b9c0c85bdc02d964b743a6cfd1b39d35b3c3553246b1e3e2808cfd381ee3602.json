@@ -6,47 +6,101 @@
       {
         "name": "id",
         "ordinal": 0,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "id"
+          }
+        }
       },
       {
         "name": "host_identifier",
         "ordinal": 1,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "host_identifier"
+          }
+        }
       },
       {
         "name": "platform_name",
         "ordinal": 2,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "platform_name"
+          }
+        }
       },
       {
         "name": "osquery_version",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "osquery_version"
+          }
+        }
       },
       {
         "name": "os_version",
         "ordinal": 4,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "os_version"
+          }
+        }
       },
       {
         "name": "cpu_arch",
         "ordinal": 5,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "cpu_arch"
+          }
+        }
       },
       {
         "name": "platform",
         "ordinal": 6,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "platform"
+          }
+        }
       },
       {
         "name": "hardware_serial",
         "ordinal": 7,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "hardware_serial"
+          }
+        }
       },
       {
         "name": "last_ping!: jiff_sqlx::Timestamp",
         "ordinal": 8,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "last_ping"
+          }
+        }
       }
     ],
     "parameters": {

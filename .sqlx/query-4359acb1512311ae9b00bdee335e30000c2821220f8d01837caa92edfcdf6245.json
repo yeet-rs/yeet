@@ -6,27 +6,52 @@
       {
         "name": "id",
         "ordinal": 0,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_dq_queries",
+            "name": "id"
+          }
+        }
       },
       {
         "name": "query",
         "ordinal": 1,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_dq_queries",
+            "name": "query"
+          }
+        }
       },
       {
         "name": "username",
         "ordinal": 2,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
       },
       {
         "name": "creation_time: jiff_sqlx::Timestamp",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_dq_queries",
+            "name": "creation_time"
+          }
+        }
       },
       {
         "name": "nodes!: Json<Vec<String>>",
         "ordinal": 4,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": "Expression"
       }
     ],
     "parameters": {

@@ -6,47 +6,101 @@
       {
         "name": "id",
         "ordinal": 0,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_result_log",
+            "name": "id"
+          }
+        }
       },
       {
         "name": "host_identifier",
         "ordinal": 1,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_nodes",
+            "name": "host_identifier"
+          }
+        }
       },
       {
         "name": "unix_time",
         "ordinal": 2,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_result_log",
+            "name": "unix_time"
+          }
+        }
       },
       {
         "name": "numerics: bool",
         "ordinal": 3,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_result_log",
+            "name": "numerics"
+          }
+        }
       },
       {
         "name": "epoch",
         "ordinal": 4,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_result_log",
+            "name": "epoch"
+          }
+        }
       },
       {
         "name": "pack_name",
         "ordinal": 5,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_result_log",
+            "name": "pack_name"
+          }
+        }
       },
       {
         "name": "log",
         "ordinal": 6,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_result_log",
+            "name": "log"
+          }
+        }
       },
       {
         "name": "counter",
         "ordinal": 7,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "osquery_result_log",
+            "name": "counter"
+          }
+        }
       },
       {
         "name": "received_time: jiff_sqlx::Timestamp",
         "ordinal": 8,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "osquery_result_log",
+            "name": "received_time"
+          }
+        }
       }
     ],
     "parameters": {

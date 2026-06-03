@@ -17,7 +17,6 @@ clap = { version = "4.5", features = ["derive","string"] }
 env_logger = "0.11"
 tokio = { version = "1.49", features = ["full"] } # TODO: maybe switch to smoll?
 
-figment = { version = "0.10", features = ["toml", "env"] }
 xdg = "3.0.0"
 similar = { version = "2.7.0", features = ["unicode"] }
 backon = "1.6.0"
@@ -31,6 +30,7 @@ ssh2-config = "0.7"
 zbus_polkit = "5.0.0"
 zbus = "5.13.2"
 
+figment.workspace = true
 age.workspace = true
 httpsig-hyper.workspace = true
 reqwest.workspace = true
@@ -44,10 +44,10 @@ url.workspace = true
 tabled.workspace = true
 colored.workspace = true
 log.workspace = true
-color-eyre = "0.6.5"
+color-eyre.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-tracing-error = "0.2.1"
+tracing-error.workspace = true
 
 opentelemetry.workspace = true
 opentelemetry_sdk.workspace = true

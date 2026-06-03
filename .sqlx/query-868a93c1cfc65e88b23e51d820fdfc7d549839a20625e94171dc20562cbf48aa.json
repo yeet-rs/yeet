@@ -6,7 +6,13 @@
       {
         "name": "id: api::HostID",
         "ordinal": 0,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artifacts",
+            "name": "host_id"
+          }
+        }
       }
     ],
     "parameters": {
