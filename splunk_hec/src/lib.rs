@@ -154,10 +154,10 @@ impl SplunkMessageType {
     #[must_use]
     pub fn sourcetype(&self) -> String {
         match self {
-            SplunkMessageType::QueryJob { .. } => "osquery_query_log".to_owned(),
-            SplunkMessageType::QueryRow { .. } => "osquery_response".to_owned(),
-            SplunkMessageType::StatusLog { .. } => "osquery_status_log".to_owned(),
-            SplunkMessageType::ResultLog { .. } => "osquery_result".to_owned(),
+            SplunkMessageType::QueryJob { .. } => "osquery_dq_job".to_owned(),
+            SplunkMessageType::QueryRow { .. } => "osquery_dq_response".to_owned(),
+            SplunkMessageType::StatusLog { .. } => "osquery_status".to_owned(),
+            SplunkMessageType::ResultLog { .. } => "osquery_sq_response".to_owned(),
         }
     }
     #[must_use]
