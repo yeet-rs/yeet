@@ -34,6 +34,8 @@ age.workspace = true
 indexmap = { version = "2.13.0", features = ["serde"] }
 colored.workspace = true
 tracing.workspace = true
+rand = "0.10.1"
+base64 = "0.22.1"
 
 [dev-dependencies]
 axum-test.workspace = true
