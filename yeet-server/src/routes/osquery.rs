@@ -57,7 +57,7 @@ pub async fn enroll(
 
     wake_defectdojo(
         state.defectdojo_sender.as_ref(),
-        crate::defectdojo::Action::CreateNode(request.host_identifier),
+        crate::defectdojo_sender::Action::CreateNode(request.host_identifier),
     )
     .await;
 

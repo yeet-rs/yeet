@@ -11,9 +11,6 @@ export YEET_URL := "https://localhost:4337"
 @cli *args:
     cargo run --bin yeet -- "$@"
 
-
-[env("YEET_CERT", "cert.pem")]
-[env("YEET_CERT_KEY", "key.pem")]
 serve:
     #!/usr/bin/env bash
     if [ ! -f "cert.pem" ]; then
@@ -23,7 +20,6 @@ serve:
         just db-reset
     fi
     cargo run --bin yeetd
-
 
 # create openssl certs required when using osquery / tls
 certs:
@@ -56,4 +52,17 @@ migrate:
 
 prep:
     cargo sqlx prepare --workspace
-    nix run github:NixOS/nixpkgs/nixos-unstable#crate2nix -- generate
+    cargo sqlx prepare --workspace -- --tests
+    nix run nixpkgs#crate2nix -- generate
+
+check:
+    cargo clippy -- -D warnings
+    cargo +nightly fmt -- --check --color always
+
+fmt:
+    cargo +nightly fmt
+
+test:
+    cargo test -p yeetd
+    cargo test -p yeet-api
+    cargo test -p yeet

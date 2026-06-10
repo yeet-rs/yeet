@@ -6,7 +6,13 @@
       {
         "name": "verifying_key",
         "ordinal": 0,
-        "type_info": "Blob"
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "keys",
+            "name": "verifying_key"
+          }
+        }
       }
     ],
     "parameters": {

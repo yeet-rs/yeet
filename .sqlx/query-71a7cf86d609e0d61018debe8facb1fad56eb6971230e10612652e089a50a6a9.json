@@ -6,22 +6,46 @@
       {
         "name": "id!: api::ArtifactID",
         "ordinal": 0,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artifacts",
+            "name": "id"
+          }
+        }
       },
       {
         "name": "name",
         "ordinal": 1,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artifacts",
+            "name": "name"
+          }
+        }
       },
       {
         "name": "creation_time: jiff_sqlx::Timestamp",
         "ordinal": 2,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "artifacts",
+            "name": "creation_time"
+          }
+        }
       },
       {
         "name": "host_id: api::HostID",
         "ordinal": 3,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "hosts",
+            "name": "id"
+          }
+        }
       }
     ],
     "parameters": {

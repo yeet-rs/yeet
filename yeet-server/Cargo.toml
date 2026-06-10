@@ -35,17 +35,26 @@ serde.workspace = true
 log.workspace = true
 ed25519-dalek = { workspace = true, features = ["serde", "rand_core", "std", "pem"]}
 thiserror.workspace = true
-serde_json_any_key.workspace = true
 osquery-tls.workspace = true
 splunk_hec.workspace = true
-jiff-sqlx = { version = "0.1.1", features = ["sqlite"] }
-sqlx = { version = "0.8.6", features = ["json", "runtime-tokio", "sqlite", "uuid"] }
+jiff-sqlx = { version = "0.2", features = ["sqlite"] }
+sqlx = { workspace = true, features = ["json", "runtime-tokio", "sqlite", "uuid"] }
 futures = "0.3.32"
 error_set.workspace = true
 axum-server = { version = "0.8.0", features = ["tls-rustls"] }
 tower-http = { version = "0.6.8", features = ["trace"] }
 indexmap = { version = "2.13.0", features = ["serde"] }
+figment.workspace = true
+url.workspace = true
+color-eyre.workspace = true
+tracing.workspace = true
 tracing-subscriber.workspace = true
+tracing-error.workspace = true
+
+opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
+tracing-opentelemetry.workspace = true
+opentelemetry-otlp.workspace = true
 
 [dev-dependencies]
 paste = "1.0"

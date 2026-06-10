@@ -6,12 +6,24 @@
       {
         "name": "nixos_facter",
         "ordinal": 0,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "verification_attempts",
+            "name": "nixos_facter"
+          }
+        }
       },
       {
         "name": "verifying_key",
         "ordinal": 1,
-        "type_info": "Blob"
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "verification_attempts",
+            "name": "verifying_key"
+          }
+        }
       }
     ],
     "parameters": {

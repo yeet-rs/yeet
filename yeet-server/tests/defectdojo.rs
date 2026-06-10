@@ -26,7 +26,7 @@ async fn asset_creation(pool: sqlx::SqlitePool) {
     let config = {
         let client =
             defectdojo::Client::new(URL.unwrap().parse().unwrap(), TOKEN.unwrap()).unwrap();
-        yeetd::defectdojo::Config {
+        yeetd::defectdojo_sender::Config {
             client,
             organization: u32::from_str(&ORG.unwrap()).unwrap().into(),
         }
@@ -47,11 +47,12 @@ async fn asset_creation(pool: sqlx::SqlitePool) {
     let (tx, rx) = tokio::sync::mpsc::channel(5);
     {
         let config = config.clone();
-        let _detached = tokio::spawn(async move { yeetd::defectdojo::run(config, rx, pool).await });
+        let _detached =
+            tokio::spawn(async move { yeetd::defectdojo_sender::run(config, rx, pool).await });
     }
 
     tx.send_timeout(
-        yeetd::defectdojo::Action::CreateNode("host2".to_owned()),
+        yeetd::defectdojo_sender::Action::CreateNode("host2".to_owned()),
         std::time::Duration::from_secs(1),
     )
     .await

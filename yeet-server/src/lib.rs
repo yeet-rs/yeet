@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     env,
     fs::File,
     io::{self},
@@ -33,13 +32,13 @@ mod db {
     pub mod user;
     pub mod verification;
 }
-pub mod defectdojo;
+pub mod defectdojo_sender;
 mod error;
 mod httpsig;
 mod splunk_sender;
 
 use axum_server::tls_rustls::RustlsConfig;
-use ed25519_dalek::VerifyingKey;
+use figment::Figment;
 use indexmap::IndexMap;
 pub(crate) use routes::{artifact, health, host, key, secret, system, verify};
 
@@ -48,102 +47,212 @@ struct YeetState {
     pub pool: sqlx::SqlitePool,
     pub age_key: Arc<age::x25519::Identity>,
     pub splunk_sender: Option<tokio::sync::mpsc::Sender<()>>,
-    pub defectdojo_sender: Option<tokio::sync::mpsc::Sender<defectdojo::Action>>,
+    pub defectdojo_sender: Option<tokio::sync::mpsc::Sender<defectdojo_sender::Action>>,
     pub osquery_packs: IndexMap<String, serde_json::Value>,
 }
 
 use serde::{Deserialize, Serialize};
-use serde_json_any_key::any_key_map;
 
 use crate::routes::{osquery, tag, user};
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Default)]
-pub struct AppState {
-    #[serde(with = "any_key_map")]
-    host_by_key: HashMap<VerifyingKey, String>,
-    keyids: HashMap<String, VerifyingKey>,
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Flags {
+    /// Address to start the axum server
+    pub addr: std::net::SocketAddr,
+    /// Certificate required for tls
+    pub cert: PathBuf,
+    /// Certificate required for tls
+    pub cert_key: PathBuf,
+    #[serde(flatten)]
+    pub defect_dojo_flags: Option<DefectDojoFlags>,
+    #[serde(flatten)]
+    pub osquery_flags: Option<OsqueryFlags>,
+}
+
+impl Default for Flags {
+    fn default() -> Self {
+        Self {
+            addr: std::net::SocketAddrV6::new(std::net::Ipv6Addr::LOCALHOST, 4337, 0, 0).into(),
+            cert: "cert.pem".into(),
+            cert_key: "key.pem".into(),
+            defect_dojo_flags: None,
+            osquery_flags: None,
+        }
+    }
+}
+
+error_set::error_set! {
+    ConfigError := {
+        IO(std::io::Error),
+        DefectDojo(defectdojo::Error),
+        SQLX(sqlx::Error)
+    }
+}
+
+impl Flags {
+    #[must_use]
+    pub fn figment() -> Figment {
+        use figment::providers::Env;
+
+        Figment::from(Self::default()).merge(Env::prefixed("YEET_"))
+    }
+
+    pub async fn build(self, identity: age::x25519::Identity) -> Result<Config, ConfigError> {
+        let tls = RustlsConfig::from_pem_file(self.cert, self.cert_key).await?;
+        let osquery_packs = self
+            .osquery_flags
+            .as_ref()
+            .map(|flags| get_osquery_packs(&flags.osquery_packs))
+            .transpose()?
+            .unwrap_or_default();
+
+        let splunk = self.osquery_flags.map(|flags| {
+            splunk_hec::SplunkConfig::new(
+                flags.splunk_index,
+                flags.url,
+                flags.splunk_url,
+                flags.splunk_token,
+            )
+        });
+
+        if splunk.is_none() {
+            log::info!("Not using splunk");
+        }
+
+        let defectdojo = self
+            .defect_dojo_flags
+            .map(|flags| {
+                let client =
+                    defectdojo::Client::new(flags.defectdojo_url, &flags.defectdojo_token)?;
+                Ok::<_, defectdojo::Error>(defectdojo_sender::Config {
+                    client,
+                    organization: flags.defectdojo_org.into(),
+                })
+            })
+            .transpose()?;
+
+        if defectdojo.is_none() {
+            log::info!("Not using defectdojo");
+        }
+        let pool = {
+            let options = sqlx::sqlite::SqliteConnectOptions::new()
+                .filename("yeet.db")
+                .create_if_missing(true);
+
+            sqlx::sqlite::SqlitePoolOptions::new()
+                .connect_with(options)
+                .await?
+        };
+
+        Ok(Config {
+            addr: self.addr,
+            pool,
+            age_key: identity,
+            tls: Some(tls),
+            splunk,
+            osquery_packs,
+            defectdojo,
+        })
+    }
+}
+
+impl figment::Provider for Flags {
+    fn metadata(&self) -> figment::Metadata {
+        figment::Metadata::named("Yeet Default Config")
+    }
+
+    fn data(
+        &self,
+    ) -> Result<figment::value::Map<figment::Profile, figment::value::Dict>, figment::Error> {
+        figment::providers::Serialized::defaults(Self::default()).data()
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DefectDojoFlags {
+    /// `DefectDojo` api url
+    pub defectdojo_url: url::Url,
+    /// `DefectDojo` auth token
+    pub defectdojo_token: String,
+    pub defectdojo_org: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OsqueryFlags {
+    /// Splunk server used for osquery
+    pub splunk_url: url::Url,
+    /// Name of the index to send logs to
+    pub splunk_index: String,
+    /// URL of the yeet server (sent in splunk logs)
+    pub url: url::Url,
+    /// Splunk Auth token
+    pub splunk_token: String,
+    /// Path location of osquery packs to load
+    pub osquery_packs: PathBuf,
+}
+
+pub struct Config {
+    pub addr: SocketAddr,
+    pub pool: sqlx::SqlitePool,
+    pub age_key: age::x25519::Identity,
+    pub tls: Option<RustlsConfig>,
+    pub splunk: Option<splunk_hec::SplunkConfig>,
+    pub osquery_packs: IndexMap<String, serde_json::Value>,
+    pub defectdojo: Option<defectdojo_sender::Config>,
 }
 
 // TODO: too_many_arguments
-#[expect(clippy::too_many_arguments)]
 #[expect(clippy::missing_panics_doc)]
-pub async fn launch<I: Into<std::net::IpAddr>>(
-    port: u16,
-    host: I,
-    pool: sqlx::SqlitePool,
-    age_key: age::x25519::Identity,
-    tls: Option<RustlsConfig>,
-    splunk: Option<splunk_hec::SplunkConfig>,
-    osquery_packs: Option<PathBuf>,
-    defectdojo: Option<defectdojo::Config>,
-) -> tokio::task::JoinHandle<()> {
+pub async fn launch(config: Config) -> tokio::task::JoinHandle<()> {
     #[expect(clippy::unwrap_used)]
     {
-        let mut conn = pool.acquire().await.unwrap();
+        let mut conn = config.pool.acquire().await.unwrap();
         sqlx::migrate!("../migrations")
             .run(&mut conn)
             .await
             .unwrap();
-        // add hosts from state.json
-        let state = std::fs::File::open("state.json");
-        if let Ok(state) = state
-            && !db::keys::has_any_admin(&mut conn).await.unwrap()
-        {
-            let state: AppState = serde_json::from_reader(state).unwrap();
-            let valid_keys = state.keyids.values().collect::<Vec<_>>();
-            for (key, hostname) in state.host_by_key {
-                if valid_keys.contains(&&key) {
-                    db::hosts::add_host(&mut conn, key, hostname).await.unwrap();
-                }
-            }
-        }
-    }
+    };
 
-    let addr = SocketAddr::from((host, port));
+    let age_key = Arc::new(config.age_key);
 
-    let age_key = Arc::new(age_key);
-
-    let splunk_sender = if let Some(splunk) = splunk {
+    let splunk_sender = if let Some(splunk) = config.splunk {
         let (tx, rx) = tokio::sync::mpsc::channel(5);
-        let pool = pool.clone();
+        let pool = config.pool.clone();
         let _detached = tokio::spawn(async move { splunk_sender::run(splunk, rx, pool).await });
         Some(tx)
     } else {
         None
     };
 
-    let defectdojo_sender = if let Some(defectdojo) = defectdojo {
+    let defectdojo_sender = if let Some(defectdojo) = config.defectdojo {
         let (tx, rx) = tokio::sync::mpsc::channel(5);
-        let pool = pool.clone();
-        let _detached = tokio::spawn(async move { defectdojo::run(defectdojo, rx, pool).await });
+        let pool = config.pool.clone();
+        let _detached =
+            tokio::spawn(async move { defectdojo_sender::run(defectdojo, rx, pool).await });
         Some(tx)
     } else {
         None
     };
 
-    let osquery_packs = osquery_packs
-        .map(|path| get_osquery_packs(&path).expect("Could not retrive packs"))
-        .unwrap_or_default();
-
     let state = YeetState {
-        pool,
+        pool: config.pool,
         age_key,
         splunk_sender,
         defectdojo_sender,
-        osquery_packs,
+        osquery_packs: config.osquery_packs,
     };
 
     // wake the splunk sender immediately so that he can send all logs
     wake_splunk(state.splunk_sender.as_ref()).await;
 
     tokio::spawn(async move {
-        if let Some(tls) = tls {
-            axum_server::bind_rustls(addr, tls)
+        if let Some(tls) = config.tls {
+            axum_server::bind_rustls(config.addr, tls)
                 .serve(routes(state).into_make_service())
                 .await
                 .expect("Could not start axum");
         } else {
-            axum_server::bind(addr)
+            axum_server::bind(config.addr)
                 .serve(routes(state).into_make_service())
                 .await
                 .expect("Could not start axum");
@@ -240,8 +349,8 @@ pub(crate) async fn wake_splunk(sender: Option<&tokio::sync::mpsc::Sender<()>>) 
 }
 
 pub(crate) async fn wake_defectdojo(
-    sender: Option<&tokio::sync::mpsc::Sender<defectdojo::Action>>,
-    action: defectdojo::Action,
+    sender: Option<&tokio::sync::mpsc::Sender<defectdojo_sender::Action>>,
+    action: defectdojo_sender::Action,
 ) {
     if let Some(sender) = sender {
         // TODO: log if we could not notify

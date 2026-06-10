@@ -6,49 +6,92 @@
       {
         "name": "id!",
         "ordinal": 0,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "hosts",
+            "name": "id"
+          }
+        }
       },
       {
         "name": "hostname!",
         "ordinal": 1,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "hosts",
+            "name": "hostname"
+          }
+        }
       },
       {
         "name": "verifying_key!",
         "ordinal": 2,
-        "type_info": "Blob"
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "keys",
+            "name": "verifying_key"
+          }
+        }
       },
       {
         "name": "last_ping!: jiff_sqlx::Timestamp",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "hosts",
+            "name": "last_ping"
+          }
+        }
       },
       {
         "name": "state: Option<api::ProvisionState>",
         "ordinal": 4,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "state_history",
+            "name": "state"
+          }
+        }
       },
       {
         "name": "current_version: Option<String>",
         "ordinal": 5,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "version_history",
+            "name": "store_path"
+          }
+        }
       },
       {
         "name": "latest_update: Option<String>",
         "ordinal": 6,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "update_request_history",
+            "name": "store_path"
+          }
+        }
       },
       {
         "name": "tags!: Json<Vec<api::tag::Tag>>",
         "ordinal": 7,
-        "type_info": "Null"
+        "type_info": "Null",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Right": 2
     },
     "nullable": [
-      false,
+      null,
       false,
       false,
       false,
