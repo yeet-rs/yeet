@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO osquery_nodes (node_key, host_identifier, platform_type)\n       VALUES ($1,$2,$3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "1deffabb4f1da1d675516b43ddedfef850813cc29fd2f39b8332679885b7e3b9"
+}

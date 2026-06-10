@@ -52,6 +52,7 @@ migrate:
 
 prep:
     cargo sqlx prepare --workspace
+    cargo sqlx prepare --workspace -- --tests
     nix run nixpkgs#crate2nix -- generate
 
 check:
