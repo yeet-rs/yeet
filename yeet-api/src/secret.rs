@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use base64::prelude::*;
+use jiff::fmt::Write;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 /// The key is the name of the Secret, not to be confused with `Secret.name`
@@ -43,7 +44,8 @@ impl Secret {
     }
 
     /// create a secret based on the length and format
-    pub fn generate(&self) -> Option<String> {
+    #[must_use]
+    pub fn generate(&self) -> Option<Vec<u8>> {
         let Some(format) = &self.format else {
             return None;
         };
@@ -55,12 +57,11 @@ impl Secret {
 
         // convert the data to the required format
         Some(match format {
-            Format::Base64 => BASE64_STANDARD.encode(data),
+            Format::Base64 => BASE64_STANDARD.encode(data).into_bytes(),
             Format::Hex => data
                 .iter()
-                .map(|byte| format!("{:X}", byte))
-                .collect::<Vec<_>>()
-                .join(""),
+                .flat_map(|byte| format!("{:X}", byte).into_bytes())
+                .collect::<Vec<_>>(),
         })
     }
 }
