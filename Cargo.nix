@@ -14967,7 +14967,7 @@ rec {
       };
       "splunk_hec" = rec {
         crateName = "splunk_hec";
-        version = "0.13.3";
+        version = "0.13.4";
         edition = "2024";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./splunk_hec; };
         dependencies = [
@@ -22209,7 +22209,7 @@ rec {
       };
       "yeet" = rec {
         crateName = "yeet";
-        version = "0.13.3";
+        version = "0.13.4";
         edition = "2024";
         crateBin = [
           {
@@ -22300,6 +22300,10 @@ rec {
           {
             name = "opentelemetry_sdk";
             packageId = "opentelemetry_sdk";
+          }
+          {
+            name = "rand";
+            packageId = "rand 0.10.1";
           }
           {
             name = "reqwest";
@@ -22406,7 +22410,7 @@ rec {
       };
       "yeet-api" = rec {
         crateName = "yeet-api";
-        version = "0.13.3";
+        version = "0.13.4";
         edition = "2024";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeet-api; };
         libName = "yeet_api";
@@ -22419,6 +22423,10 @@ rec {
             name = "ahash";
             packageId = "ahash";
             features = [ "std" ];
+          }
+          {
+            name = "base64";
+            packageId = "base64 0.22.1";
           }
           {
             name = "colored";
@@ -22454,6 +22462,10 @@ rec {
           {
             name = "osquery-tls";
             packageId = "osquery-tls";
+          }
+          {
+            name = "rand";
+            packageId = "rand 0.10.1";
           }
           {
             name = "reqwest";
@@ -22517,7 +22529,7 @@ rec {
       };
       "yeetd" = rec {
         crateName = "yeetd";
-        version = "0.13.3";
+        version = "0.13.4";
         edition = "2024";
         crateBin = [
           {
