@@ -58,10 +58,12 @@ let
           default = true;
         };
         format = lib.mkOption {
-          type = lib.types.nullOr lib.types.enum [
-            "hex"
-            "base64"
-          ];
+          type = lib.types.nullOr (
+            lib.types.enum [
+              "hex"
+              "base64"
+            ]
+          );
           default = null;
           description = ''
             format of the generated secret
