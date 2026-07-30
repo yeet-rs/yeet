@@ -37,6 +37,7 @@ pub async fn query(config: &Config, sql: String) -> Result<()> {
     nodes.sort();
 
     let nodes = inquire::MultiSelect::new("Which nodes should execute this query?", nodes)
+        .with_page_size(14)
         .with_validator(
             inquire::validator::MinLengthValidator::new(1).with_message("Select at least one node"),
         )
