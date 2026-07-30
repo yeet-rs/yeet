@@ -14967,7 +14967,7 @@ rec {
       };
       "splunk_hec" = rec {
         crateName = "splunk_hec";
-        version = "0.13.3";
+        version = "0.13.4";
         edition = "2024";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./splunk_hec; };
         dependencies = [
@@ -22209,7 +22209,7 @@ rec {
       };
       "yeet" = rec {
         crateName = "yeet";
-        version = "0.13.3";
+        version = "0.13.4";
         edition = "2024";
         crateBin = [
           {
@@ -22406,7 +22406,7 @@ rec {
       };
       "yeet-api" = rec {
         crateName = "yeet-api";
-        version = "0.13.3";
+        version = "0.13.4";
         edition = "2024";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeet-api; };
         libName = "yeet_api";
@@ -22517,7 +22517,7 @@ rec {
       };
       "yeetd" = rec {
         crateName = "yeetd";
-        version = "0.13.3";
+        version = "0.13.4";
         edition = "2024";
         crateBin = [
           {
