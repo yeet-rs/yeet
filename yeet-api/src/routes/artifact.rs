@@ -30,6 +30,11 @@ request! (
     get("/artifact") -> Vec<Artifact>
 );
 
+request! (
+    delete_artifact(artifact: ArtifactID),
+    delete("/artifact/id/{artifact}") -> StatusCode
+);
+
 #[tracing::instrument(skip(key, artifact), fields(url = %url))]
 pub async fn store_artifact<K: SigningKey + Sync>(
     url: &url::Url,

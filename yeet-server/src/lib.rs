@@ -300,6 +300,7 @@ fn routes(state: YeetState) -> axum::Router {
         .route("/artifact/name/{name}", post(artifact::get_latest))
         // retrieve any artifact
         .route("/artifact/id/{id}", post(artifact::get_artifact))
+        .route("/artifact/id/{id}", delete(artifact::delete_artifact))
         // === Keys
         .route("/key/delete", delete(key::delete_key))
         // === User

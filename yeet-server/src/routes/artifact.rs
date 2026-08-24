@@ -13,6 +13,24 @@ use crate::{
     httpsig::{HttpSig, User, VerifiedJson},
 };
 
+pub async fn delete_artifact(
+    State(state): State<YeetState>,
+    Path(id): Path<api::ArtifactID>,
+    User(user): User,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let mut conn = state.pool.acquire().await.internal_server()?;
+    db::tag::auth_admin(&mut conn, user).await?;
+    let hostid = db::artifact::get_host_by_id(&mut conn, id)
+        .await
+        .internal_server()?;
+    db::tag::auth_tag(&mut conn, user, hostid.into()).await?;
+    db::artifact::delete_artifact(&mut conn, id)
+        .await
+        .bad_request()?;
+
+    Ok(StatusCode::OK)
+}
+
 pub async fn store(
     State(state): State<YeetState>,
     // can't use user because these are hosts TODO: maybe add a HOST extractor

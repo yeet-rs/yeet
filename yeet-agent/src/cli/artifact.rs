@@ -19,11 +19,14 @@ pub struct ArtifactArgs {
 pub enum ArtifactCommands {
     /// Show the content of an artifact
     Show,
+    /// Delete an artifact
+    Delete,
 }
 
 pub async fn handle_command(args: ArtifactArgs, config: &Config) -> Result<()> {
     match args.command {
         ArtifactCommands::Show => show(config).await,
+        ArtifactCommands::Delete => delete(config).await,
     }
 }
 #[tracing::instrument(skip(config), err)]
@@ -45,6 +48,35 @@ async fn show(config: &Config) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(config), err)]
+async fn delete(config: &Config) -> Result<()> {
+    let url = common::get_server_url(config).await?;
+    let secret_key = &ssh::key_by_url(&url)?;
+
+    let artifacts = api::list_artifacts(&url, secret_key).await?;
+
+    let artifact =
+        inquire::Select::new("Which artifact do you want to delete?", artifacts).prompt()?;
+
+    // The user has to confirm the action
+    let confirm = inquire::Confirm::new(
+        &format!("Are you sure you want to delete {artifact}. This action is not reversable").red(),
+    )
+    .with_default(false)
+    .prompt()?;
+
+    if !confirm {
+        log::info!("Aborting...");
+        return Ok(());
+    }
+
+    log::info!("Deleting...");
+
+    api::delete_artifact(&url, secret_key, artifact.id).await?;
+    log::info!("Done!");
+
+    Ok(())
+}
 #[tracing::instrument(skip(config), err)]
 pub async fn artifacts(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;

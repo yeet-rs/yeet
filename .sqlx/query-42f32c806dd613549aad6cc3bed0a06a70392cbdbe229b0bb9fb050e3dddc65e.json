@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT host_id as \"host_id: api::HostID\" from artifacts WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "host_id: api::HostID",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "artifacts",
+            "name": "host_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "42f32c806dd613549aad6cc3bed0a06a70392cbdbe229b0bb9fb050e3dddc65e"
+}

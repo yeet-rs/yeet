@@ -8,6 +8,28 @@ error_set::error_set! {
     }
 }
 
+pub async fn delete_artifact(
+    conn: &mut sqlx::SqliteConnection,
+    artifact: api::ArtifactID,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(r#"DELETE FROM artifacts WHERE id = $1"#, artifact)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+pub async fn get_host_by_id(
+    conn: &mut sqlx::SqliteConnection,
+    artifact: api::ArtifactID,
+) -> Result<api::HostID, sqlx::Error> {
+    Ok(sqlx::query_scalar!(
+        r#"SELECT host_id as "host_id: api::HostID" from artifacts WHERE id = $1"#,
+        artifact
+    )
+    .fetch_one(conn)
+    .await?)
+}
+
 // TODO: maybe do not store the artifact if it is the same contant as the last
 /// The artifact needs to be encrypted with the servers identity key
 /// retrieve it with GET `/secret/server_key`
