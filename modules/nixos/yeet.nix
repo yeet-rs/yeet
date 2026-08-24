@@ -57,6 +57,26 @@ let
           readOnly = true; # currently only symlinking is supported (TODO)
           default = true;
         };
+        format = lib.mkOption {
+          type = lib.types.nullOr (
+            lib.types.enum [
+              "hex"
+              "base64"
+            ]
+          );
+          default = null;
+          description = ''
+            format of the generated secret
+          '';
+        };
+        bytes = lib.mkOption {
+          type = lib.types.ints.positive;
+          default = 32;
+          description = ''
+            length of the generated secret.
+            Ignored if format is null
+          '';
+        };
       };
     }
   );

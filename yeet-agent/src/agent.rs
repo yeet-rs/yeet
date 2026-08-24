@@ -22,10 +22,13 @@ use httpsig_hyper::prelude::SecretKey;
 use log::{error, info};
 use tempfile::NamedTempFile;
 use tokio::time;
+use tracing_subscriber::registry::Data;
 use url::Url;
 use yeet::nix;
 
-use crate::{cli_args::AgentConfig, notification, varlink, version::get_active_version};
+use crate::{
+    cli::secret, cli_args::AgentConfig, notification, varlink, version::get_active_version,
+};
 
 static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 
@@ -154,7 +157,7 @@ fn trusted_public_keys() -> Result<Vec<String>> {
 async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
     download(version, url, key).await?;
     let current_gen = read_link("/etc/yeet/secret");
-    get_secrets(version, url, key).await?;
+    activate_secrets(version, url, key).await?;
     let next_gen = read_link("/etc/yeet/secret");
 
     let activation_err = activate(&version.store_path);
@@ -265,7 +268,11 @@ async fn download(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) ->
 }
 
 #[tracing::instrument(err, skip(key))]
-async fn get_secrets(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
+async fn activate_secrets(
+    version: &api::RemoteStorePath,
+    url: &Url,
+    key: &SecretKey,
+) -> Result<()> {
     // find out which secrets are required for this derivation
     let nix_secrets: api::Secrets = {
         let path = Path::new(&version.store_path).join("yeet-secrets.json");
@@ -281,12 +288,29 @@ async fn get_secrets(version: &api::RemoteStorePath, url: &Url, key: &SecretKey)
 
     // try to fetch all secrets
     let mut secrets = Vec::new();
-    for (secret, definition) in nix_secrets {
-        log::info!("Fetching secret {secret}");
-        let Some(secret) = api::get_secret(url, key, secret.clone()).await? else {
-            bail!("Secret {secret} not found! Unable to switch to derivation");
-        };
-        secrets.push((definition, secret));
+    for (name, secret) in nix_secrets {
+        if secret.is_generated() {
+            // short circuit if the artifact exists on the server
+            if let Some(data) = api::get_artifact_by_name(url, key, name.clone()).await? {
+                log::info!("Retrieved generated secret {name}");
+                secrets.push((secret, data));
+                continue;
+            }
+
+            // else create a new secret and store it on the server as an artifact
+            let Some(data) = secret.generate() else {
+                bail!("Secret {name} not found! Unable to switch to derivation");
+            };
+            log::info!("Generated secret {name}");
+            api::store_artifact(url, key, &name, data.as_slice()).await?;
+            secrets.push((secret, data));
+        } else {
+            log::info!("Fetching secret {name}");
+            let Some(data) = api::get_secret(url, key, name.clone()).await? else {
+                bail!("Secret {name} not found! Unable to switch to derivation");
+            };
+            secrets.push((secret, data));
+        }
     }
 
     // get next generation number
@@ -306,7 +330,7 @@ async fn get_secrets(version: &api::RemoteStorePath, url: &Url, key: &SecretKey)
     };
 
     // create new generation
-    let genration_result = create_generation(&generation, secrets);
+    let genration_result = create_secret_generation(&generation, secrets);
     if genration_result.is_err() {
         if let Err(result) =
             remove_dir_all(&generation).note(generation.to_string_lossy().to_string())
@@ -324,7 +348,9 @@ async fn get_secrets(version: &api::RemoteStorePath, url: &Url, key: &SecretKey)
 }
 
 #[tracing::instrument(err, skip(secrets))]
-fn create_generation(generation: &Path, secrets: Vec<(api::Secret, Vec<u8>)>) -> Result<()> {
+/// At this point all secret content is known.
+/// Create the secrets on disk
+fn create_secret_generation(generation: &Path, secrets: Vec<(api::Secret, Vec<u8>)>) -> Result<()> {
     fs::create_dir_all(generation)?;
     fs::set_permissions(generation, fs::Permissions::from_mode(0o751))?;
 

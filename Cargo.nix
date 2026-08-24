@@ -22302,6 +22302,10 @@ rec {
             packageId = "opentelemetry_sdk";
           }
           {
+            name = "rand";
+            packageId = "rand 0.10.1";
+          }
+          {
             name = "reqwest";
             packageId = "reqwest";
             features = [ "json" "query" "multipart" ];
@@ -22421,6 +22425,10 @@ rec {
             features = [ "std" ];
           }
           {
+            name = "base64";
+            packageId = "base64 0.22.1";
+          }
+          {
             name = "colored";
             packageId = "colored";
           }
@@ -22454,6 +22462,10 @@ rec {
           {
             name = "osquery-tls";
             packageId = "osquery-tls";
+          }
+          {
+            name = "rand";
+            packageId = "rand 0.10.1";
           }
           {
             name = "reqwest";
