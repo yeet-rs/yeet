@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use base64::prelude::*;
-use jiff::fmt::Write;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 /// The key is the name of the Secret, not to be confused with `Secret.name`
@@ -39,6 +38,7 @@ pub struct Secret {
 }
 
 impl Secret {
+    #[must_use]
     pub fn is_generated(&self) -> bool {
         self.format.is_some()
     }
@@ -51,8 +51,7 @@ impl Secret {
         };
 
         // create random data with the specified length
-        let mut data = Vec::new();
-        data.resize(self.bytes, 0);
+        let mut data = vec![0; self.bytes];
         rand::rng().fill_bytes(&mut data);
 
         // convert the data to the required format
@@ -60,7 +59,7 @@ impl Secret {
             Format::Base64 => BASE64_STANDARD.encode(data).into_bytes(),
             Format::Hex => data
                 .iter()
-                .flat_map(|byte| format!("{:X}", byte).into_bytes())
+                .flat_map(|byte| format!("{byte:X}").into_bytes())
                 .collect::<Vec<_>>(),
         })
     }

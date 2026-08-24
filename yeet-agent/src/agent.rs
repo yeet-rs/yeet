@@ -22,13 +22,10 @@ use httpsig_hyper::prelude::SecretKey;
 use log::{error, info};
 use tempfile::NamedTempFile;
 use tokio::time;
-use tracing_subscriber::registry::Data;
 use url::Url;
 use yeet::nix;
 
-use crate::{
-    cli::secret, cli_args::AgentConfig, notification, varlink, version::get_active_version,
-};
+use crate::{cli_args::AgentConfig, notification, varlink, version::get_active_version};
 
 static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 
