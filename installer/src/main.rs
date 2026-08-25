@@ -19,6 +19,14 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// replaces every `INSTALLER_DISK` with the corresponding disk
+fn replace_disko_devices(mut disko: String, map: HashMap<String, String>) -> String {
+    for (anchor, disk) in map {
+        disko = disko.replace(&anchor, &disk);
+    }
+    disko
+}
+
 fn list_devices() -> Result<Vec<String>> {
     let mut out = Vec::new();
     for entry in fs::read_dir("/sys/block")? {
@@ -41,4 +49,18 @@ fn list_devices() -> Result<Vec<String>> {
         out.push(entry.file_name().to_string_lossy().into_owned());
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+
+    use crate::replace_disko_devices;
+
+    #[test]
+    fn test_replacement() {
+        let after=replace_disko_devices(r#"{disko.devices = {disk = {main = {device = "/dev/INSTALLER_DISK_main";};two = {device = "/dev/INSTALLER_DISK_two";};};};}"#.into(),
+            HashMap::from([("INSTALLER_DISK_main".into(),"sda".into()),("INSTALLER_DISK_two".into(),"sdb".into())]));
+        assert_eq!(after,r#"{disko.devices = {disk = {main = {device = "/dev/sda";};two = {device = "/dev/sdb";};};};}"#.to_string())
+    }
 }
