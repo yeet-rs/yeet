@@ -48,6 +48,7 @@ tracing = "0.1"
 tracing-error = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 inquire = "0.9"
+toml = "1.1"
 
 opentelemetry = "0.32.0"
 opentelemetry_sdk = "0.32.0"
