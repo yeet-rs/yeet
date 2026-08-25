@@ -1,13 +1,12 @@
 {
   # Add all your dependencies here
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    blueprint.url = "github:numtide/blueprint";
-    blueprint.inputs.nixpkgs.follows = "nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
   };
 
   # Load the blueprint
-  outputs = inputs: inputs.blueprint { inherit inputs; };
+  # outputs = inputs: inputs.blueprint { inherit inputs; };
+  outputs = inputs: {};
 }
 # {
 #   inputs = {

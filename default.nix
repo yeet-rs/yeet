@@ -1,6 +1,7 @@
 {
   system ? builtins.currentSystem,
   sources ? import ./sources.nix,
+  nixpkgs ? sources.nixpkgs,
   pkgs ? import sources.nixpkgs {
     inherit system;
   },
@@ -58,11 +59,17 @@ let
         };
       };
   };
+  nixos = nixpkgs: configuration: import "${nixpkgs}/nixos" {inherit configuration;
+    specialArgs = {
+      inherit cargo_nix;
+    };
+  };
 
 in
 rec {
   packages = {
     yeet = cargo_nix.workspaceMembers."yeet".build;
+    installer = cargo_nix.workspaceMembers."installer".build;
     yeetd = cargo_nix.workspaceMembers."yeetd".build;
   };
   nixosModules = {
@@ -74,5 +81,13 @@ rec {
       imports = [ ./modules/nixos/yeetd.nix ];
       services.yeetd.package = lib.mkDefault packages.yeet;
     };
+  };
+  installer = nixos nixpkgs {
+    imports = [ ./installer/installer.nix ];
+    nixpkgs.overlays = [
+      (final: prev: {
+        yeet-installer = packages.installer;
+      })
+    ];
   };
 }
