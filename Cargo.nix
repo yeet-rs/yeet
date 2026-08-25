@@ -53,6 +53,16 @@ rec {
       # File a bug if you depend on any for non-debug work!
       debug = internal.debugCrate { inherit packageId; };
     };
+    "installer" = rec {
+      packageId = "installer";
+      build = internal.buildRustCrateWithFeatures {
+        packageId = "installer";
+      };
+
+      # Debug support which might change between releases.
+      # File a bug if you depend on any for non-debug work!
+      debug = internal.debugCrate { inherit packageId; };
+    };
     "osquery-tls" = rec {
       packageId = "osquery-tls";
       build = internal.buildRustCrateWithFeatures {
@@ -8225,6 +8235,30 @@ rec {
           "termion" = [ "dep:termion" ];
         };
         resolvedDefaultFeatures = [ "crossterm" "default" "fuzzy" "fuzzy-matcher" "macros" "one-liners" ];
+      };
+      "installer" = rec {
+        crateName = "installer";
+        version = "0.1.0";
+        edition = "2024";
+        crateBin = [
+          {
+            name = "yeet-installer";
+            path = "src/main.rs";
+            requiredFeatures = [ ];
+          }
+        ];
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./installer; };
+        dependencies = [
+          {
+            name = "color-eyre";
+            packageId = "color-eyre";
+          }
+          {
+            name = "inquire";
+            packageId = "inquire";
+          }
+        ];
+
       };
       "intl-memoizer" = rec {
         crateName = "intl-memoizer";

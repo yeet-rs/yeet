@@ -25,11 +25,11 @@ shadow-rs = { version = "1.5", default-features = false }
 zlink = { version = "0.4.0", features= ["idl", "introspection"] }
 futures-util = "0.3.31"
 nix = {version = "0.31", features = ["user"]}
-inquire = "0.9.1"
 ssh2-config = "0.7"
 zbus_polkit = "5.0.0"
 zbus = "5.13.2"
 
+inquire.workspace = true
 figment.workspace = true
 age.workspace = true
 httpsig-hyper.workspace = true

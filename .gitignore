@@ -1,6 +1,8 @@
 .idea
 target
 result
+result-*
+
 state.json
 .DS_Store
 dist
@@ -34,3 +36,4 @@ yeet.db
 # codecov
 *.html
 *.profraw
+*.qcow2
