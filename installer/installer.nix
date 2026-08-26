@@ -35,6 +35,10 @@ in
   isoImage.makeUsbBootable = true;
   isoImage.makeEfiBootable = true;
 
+  isoImage.contents = [{
+    source = ./presets; target = "/installer";
+  }];
+
   swapDevices = [ ];
   fileSystems = config.lib.isoFileSystems;
   boot.initrd.luks.devices = { };
