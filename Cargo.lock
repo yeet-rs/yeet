@@ -2495,7 +2495,12 @@ version = "0.1.0"
 dependencies = [
  "color-eyre",
  "inquire",
+ "serde",
+ "serde_json",
  "toml 1.1.4+spec-1.1.0",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
 ]
 
 [[package]]

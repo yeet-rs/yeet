@@ -1,12 +1,35 @@
-use std::{collections::HashMap, fs, hash::Hash};
+use std::{
+    collections::{HashMap, HashSet},
+    env::args,
+    fs::{self, read_to_string},
+    io::stderr,
+    process::Command,
+};
 
 use color_eyre::{
     Result,
-    eyre::{Ok, OptionExt, bail},
+    eyre::{OptionExt, bail},
 };
+use serde::Deserialize;
+use tracing::instrument;
+use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    pub nix_system: Option<String>,
+    #[serde(default = "nix_disko_attr")]
+    pub nix_disko_attr: String,
+}
+fn nix_disko_attr() -> String {
+    "config.system.build.diskoScript".to_owned()
+}
+
+#[instrument(err)]
 fn main() -> Result<()> {
+    init_tracer();
+    color_eyre::install()?;
     // 1. Get a list of disko configurations
+    // 1.2 build disko configuration
     // 2. query all devices in this disko configuration
     // 3. query all disks and assign the disko devices
     // 3.2 prompt for luks password
@@ -17,27 +40,53 @@ fn main() -> Result<()> {
     //
     // inquire::Select::new("What is your favourite color?", vec!["red", "blue"]).prompt()?;
 
+    let mut args = args();
+    args.next(); // ignore arg0
+    let toml = args
+        .next()
+        .ok_or_eyre("No `installer.toml` specified. exiting")?;
+
+    let config: Config = toml::from_str(&read_to_string(toml)?)?;
+
+    let disko = nix_eval_disko(config.nix_system.unwrap(), config.nix_disko_attr)?;
+
     let disks = list_devices()?;
-    let anchors = get_disko_anchors(
-        r#"{
-      disko.devices = {
-        disk = {
-          main = {
-            device = "/dev/INSTALLER_DISK_main";
-          };
-        };
-      };
-    }
-"#,
-    )?;
+    let anchors = get_disko_anchors(&disko)?;
     let map = map_disko_anchors(anchors, disks)?;
-    dbg!(map);
+    let disko = replace_disko_devices(disko, map);
+    println!("{}", disko);
     Ok(())
 }
 
+#[instrument(err, ret)]
+fn nix_eval_disko(nix_system: String, disko_attr: String) -> Result<String> {
+    let output = Command::new("nom")
+        .arg("build")
+        .arg("-f")
+        .arg(nix_system)
+        .arg(disko_attr)
+        .arg("--no-link")
+        .arg("--json")
+        .stderr(stderr())
+        .output()?;
+    if !output.status.success() {
+        bail!("Could not build the disko script")
+    }
+    let nixout =
+        serde_json::from_str::<serde_json::Value>(&String::from_utf8_lossy(&output.stdout))?;
+    let path = nixout
+        .pointer("/0/outputs/out")
+        .ok_or_eyre("Disko script built but did not contain output")?
+        .as_str()
+        .ok_or_eyre("Nix build output was of unexpected type")?;
+
+    Ok(read_to_string(path)?)
+}
+
 /// creates a mapping between available disks and the disko anchors
+#[instrument(err, ret)]
 fn map_disko_anchors(
-    anchors: Vec<String>,
+    anchors: HashSet<String>,
     mut disks: Vec<String>,
 ) -> Result<HashMap<String, String>> {
     if anchors.len() != disks.len() {
@@ -51,7 +100,7 @@ fn map_disko_anchors(
     if anchors.len() == 1 {
         let mut anchors = anchors;
         return Ok(HashMap::from([(
-            anchors.pop().unwrap(),
+            anchors.drain().next().unwrap(),
             disks.pop().unwrap(),
         )]));
     }
@@ -66,6 +115,7 @@ fn map_disko_anchors(
 }
 
 /// replaces every `INSTALLER_DISK` with the corresponding disk
+#[instrument(ret)]
 fn replace_disko_devices(mut disko: String, map: HashMap<String, String>) -> String {
     for (anchor, disk) in map {
         disko = disko.replace(&format!("INSTALLER_DISK_{anchor}"), &disk);
@@ -74,19 +124,25 @@ fn replace_disko_devices(mut disko: String, map: HashMap<String, String>) -> Str
 }
 
 /// returns all anchors marked with `INSTALLER_DISK`
-fn get_disko_anchors(disko: &str) -> Result<Vec<String>> {
-    let mut anchors = Vec::new();
+#[instrument(err, ret)]
+fn get_disko_anchors(disko: &str) -> Result<HashSet<String>> {
+    let mut anchors = HashSet::new();
     let mut remainder = disko;
-    while let Some((_rest, anchor)) = remainder.split_once("INSTALLER_DISK_") {
-        let anchor = anchor
-            .split_once('"')
-            .ok_or_eyre("Unexpected end of `INSTALLER_DISK`_ anchor")?;
-        remainder = anchor.1;
-        anchors.push(anchor.0.to_owned());
+    while let Some((_rest, rest)) = remainder.split_once("INSTALLER_DISK_") {
+        let anchor = rest
+            .chars()
+            .take_while(|char| {
+                char.is_ascii_lowercase() || char.is_ascii_uppercase() || *char == '_'
+            })
+            .collect::<String>();
+
+        remainder = rest;
+        anchors.insert(anchor.to_owned());
     }
     Ok(anchors)
 }
 
+#[instrument(err, ret)]
 fn list_devices() -> Result<Vec<String>> {
     let mut out = Vec::new();
     for entry in fs::read_dir("/sys/block")? {
@@ -106,6 +162,14 @@ fn list_devices() -> Result<Vec<String>> {
         out.push(entry.file_name().to_string_lossy().into_owned());
     }
     Ok(out)
+}
+
+fn init_tracer() {
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_error::ErrorLayer::default())
+        .with(tracing_subscriber::fmt::layer().with_target(false))
+        .init();
 }
 
 #[cfg(test)]
