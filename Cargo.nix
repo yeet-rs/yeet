@@ -8273,8 +8273,16 @@ rec {
             packageId = "color-eyre";
           }
           {
+            name = "env_logger";
+            packageId = "env_logger";
+          }
+          {
             name = "inquire";
             packageId = "inquire";
+          }
+          {
+            name = "log";
+            packageId = "log";
           }
           {
             name = "serde";
@@ -8286,6 +8294,10 @@ rec {
             packageId = "serde_json";
           }
           {
+            name = "tempfile";
+            packageId = "tempfile";
+          }
+          {
             name = "toml";
             packageId = "toml 1.1.4+spec-1.1.0";
           }
@@ -8294,13 +8306,18 @@ rec {
             packageId = "tracing";
           }
           {
+            name = "tracing-appender";
+            packageId = "tracing-appender";
+          }
+          {
             name = "tracing-error";
             packageId = "tracing-error";
           }
           {
             name = "tracing-subscriber";
             packageId = "tracing-subscriber";
-            features = [ "env-filter" ];
+            usesDefaultFeatures = false;
+            features = [ "env-filter" "smallvec" "fmt" "ansi" "std" ];
           }
         ];
 
@@ -18037,7 +18054,6 @@ rec {
           "lru" = [ "dep:lru" ];
           "std" = [ "log/std" ];
         };
-        resolvedDefaultFeatures = [ "log-tracer" "std" ];
       };
       "tracing-opentelemetry" = rec {
         crateName = "tracing-opentelemetry";
@@ -18178,22 +18194,11 @@ rec {
             packageId = "tracing-core";
             usesDefaultFeatures = false;
           }
-          {
-            name = "tracing-log";
-            packageId = "tracing-log";
-            optional = true;
-            usesDefaultFeatures = false;
-            features = [ "log-tracer" "std" ];
-          }
         ];
         devDependencies = [
           {
             name = "tracing";
             packageId = "tracing";
-          }
-          {
-            name = "tracing-log";
-            packageId = "tracing-log";
           }
         ];
         features = {
@@ -18223,7 +18228,7 @@ rec {
           "valuable-serde" = [ "dep:valuable-serde" ];
           "valuable_crate" = [ "dep:valuable_crate" ];
         };
-        resolvedDefaultFeatures = [ "alloc" "ansi" "default" "env-filter" "fmt" "matchers" "nu-ansi-term" "once_cell" "registry" "sharded-slab" "smallvec" "std" "thread_local" "tracing" "tracing-log" ];
+        resolvedDefaultFeatures = [ "alloc" "ansi" "env-filter" "fmt" "matchers" "nu-ansi-term" "once_cell" "registry" "sharded-slab" "smallvec" "std" "thread_local" "tracing" ];
       };
       "try-lock" = rec {
         crateName = "try-lock";
@@ -22255,7 +22260,8 @@ rec {
           {
             name = "tracing-subscriber";
             packageId = "tracing-subscriber";
-            features = [ "env-filter" ];
+            usesDefaultFeatures = false;
+            features = [ "env-filter" "smallvec" "fmt" "ansi" "std" ];
           }
           {
             name = "url";
@@ -22577,7 +22583,8 @@ rec {
           {
             name = "tracing-subscriber";
             packageId = "tracing-subscriber";
-            features = [ "env-filter" ];
+            usesDefaultFeatures = false;
+            features = [ "env-filter" "smallvec" "fmt" "ansi" "std" ];
           }
           {
             name = "url";

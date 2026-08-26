@@ -22,7 +22,7 @@
               content = {
                 type = "luks";
                 name = "crypted";
-                passwordFile = "/tmp/secret_anchor.key"; # Interactive
+                passwordFile = "/tmp/INSTALLER_LUKS_MAIN"; # Interactive
                 # settings = {
                 #   allowDiscards = true;
                 #   keyFile = "/tmp/secret.key";

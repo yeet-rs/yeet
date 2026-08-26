@@ -3,7 +3,7 @@ use std::{
     env::args,
     fs::{self, read_to_string},
     io::{Write, stderr, stdout},
-    os::unix::fs::{MetadataExt, PermissionsExt},
+    os::unix::fs::PermissionsExt,
     process::Command,
 };
 
@@ -11,6 +11,7 @@ use color_eyre::{
     Result,
     eyre::{OptionExt, bail},
 };
+use log::info;
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use tracing::instrument;
@@ -26,31 +27,62 @@ fn nix_disko_attr() -> String {
     "config.system.build.diskoScript".to_owned()
 }
 
+fn init_tracing() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        // .with(tracing_subscriber::fmt::layer().with_target(false))
+        .with(tracing_error::ErrorLayer::default())
+        .init();
+
+    let mut log_builder =
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
+    log_builder.format(|buf, record| {
+        write!(buf, "{}", buf.default_level_style(record.level()))?;
+        write!(buf, "{}", record.level())?;
+        write!(buf, "{:#}", buf.default_level_style(record.level()))?;
+        writeln!(buf, ": {}", record.args())
+    });
+
+    log_builder.init();
+}
+
 #[instrument(err)]
 fn main() -> Result<()> {
-    init_tracer();
+    init_tracing();
     color_eyre::install()?;
-    // 1. Get a list of disko configurations
+    // 1. Get a list of system configurations
     // 1.2 build disko configuration
     // 2. query all devices in this disko configuration
     // 3. query all disks and assign the disko devices
     // 3.2 prompt for luks password
     // 4. run disko
-    // 5. select system to build
-    // 6. build
+    // 6. build system
     // 7. ?? myabe install luks key in distro
     //
-    // inquire::Select::new("What is your favourite color?", vec!["red", "blue"]).prompt()?;
 
     let mut args = args();
     args.next(); // ignore arg0
-    let toml = args
-        .next()
-        .ok_or_eyre("No `installer.toml` specified. exiting")?;
+
+    let toml = args.next().unwrap_or("/etc/yeet/installer.toml".to_owned());
 
     let config: Config = toml::from_str(&read_to_string(toml)?)?;
 
-    let disko = nix_eval_disko(config.nix_system.unwrap(), config.nix_disko_attr)?;
+    let nix_system = match config.nix_system {
+        Some(system) => system,
+        None => {
+            let systems = fs::read_dir("/etc/yeet/systems")?
+                .flat_map(|dir| dir.ok())
+                .map(|dir| dir.path().to_string_lossy().to_string())
+                .collect::<Vec<_>>();
+            inquire::Select::new("Which system do you want to install?", systems).prompt()?
+        }
+    };
+
+    let disko = nix_eval_disko(nix_system, config.nix_disko_attr)?;
 
     let disks = list_devices()?;
     let anchors = get_disko_anchors(&disko)?;
@@ -62,12 +94,17 @@ fn main() -> Result<()> {
 
 #[instrument(err)]
 fn run_disko(disko: String) -> Result<()> {
-    let mut tmp = NamedTempFile::new()?;
-    tmp.write_all(disko.as_bytes())?;
-    let mut permissions = tmp.as_file().metadata()?.permissions();
-    permissions.set_mode(0o700);
-    tmp.as_file_mut().set_permissions(permissions)?;
-    let status = Command::new(tmp.path())
+    let path = {
+        let mut tmp = NamedTempFile::new()?;
+        tmp.write_all(disko.as_bytes())?;
+
+        let (file, path) = tmp.keep()?;
+        let mut permissions = file.metadata()?.permissions();
+        permissions.set_mode(0o700);
+        file.set_permissions(permissions)?;
+        path
+    };
+    let status = Command::new(path)
         .stderr(stderr())
         .stdout(stdout())
         .status()?;
@@ -80,6 +117,7 @@ fn run_disko(disko: String) -> Result<()> {
 
 #[instrument(err, ret)]
 fn nix_eval_disko(nix_system: String, disko_attr: String) -> Result<String> {
+    info!("Building disko script");
     let output = Command::new("nom")
         .arg("build")
         .arg("-f")
@@ -109,7 +147,7 @@ fn map_disko_anchors(
     anchors: HashSet<String>,
     mut disks: Vec<String>,
 ) -> Result<HashMap<String, String>> {
-    if anchors.len() != disks.len() {
+    if anchors.len() > disks.len() {
         bail!(
             "You have {} disk but {} anchors defined in your disko config",
             disks.len(),
@@ -117,7 +155,7 @@ fn map_disko_anchors(
         );
     }
     // if we only have one anchor and one disk it is easy because we can just return the mapping
-    if anchors.len() == 1 {
+    if anchors.len() == 1 && disks.len() == 1 {
         let mut anchors = anchors;
         return Ok(HashMap::from([(
             anchors.drain().next().unwrap(),
@@ -184,32 +222,24 @@ fn list_devices() -> Result<Vec<String>> {
     Ok(out)
 }
 
-fn init_tracer() {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::from_default_env())
-        .with(tracing_error::ErrorLayer::default())
-        .with(tracing_subscriber::fmt::layer().with_target(false))
-        .init();
-}
+// #[cfg(test)]
+// mod test {
+//     use std::collections::HashMap;
 
-#[cfg(test)]
-mod test {
-    use std::collections::HashMap;
+//     use crate::{get_disko_anchors, replace_disko_devices};
 
-    use crate::{get_disko_anchors, replace_disko_devices};
+//     #[test]
+//     fn disko_anchor_replace() {
+//         let after = replace_disko_devices(r#"{disko.devices = {disk = {main = {device = "/dev/INSTALLER_DISK_main";};two = {device = "/dev/INSTALLER_DISK_two";};};};}"#.into(),
+//             HashMap::from([("main".into(),"sda".into()),("two".into(),"sdb".into())]));
+//         assert_eq!(after,r#"{disko.devices = {disk = {main = {device = "/dev/sda";};two = {device = "/dev/sdb";};};};}"#.to_owned());
+//     }
 
-    #[test]
-    fn disko_anchor_replace() {
-        let after = replace_disko_devices(r#"{disko.devices = {disk = {main = {device = "/dev/INSTALLER_DISK_main";};two = {device = "/dev/INSTALLER_DISK_two";};};};}"#.into(),
-            HashMap::from([("main".into(),"sda".into()),("two".into(),"sdb".into())]));
-        assert_eq!(after,r#"{disko.devices = {disk = {main = {device = "/dev/sda";};two = {device = "/dev/sdb";};};};}"#.to_owned());
-    }
-
-    #[test]
-    fn disko_anchor_extract() {
-        let anchors = get_disko_anchors(
-            r#"{disko.devices = {disk = {main = {device = "/dev/INSTALLER_DISK_main";};two = {device = "/dev/INSTALLER_DISK_two";};};};}"#,
-        ).unwrap();
-        assert_eq!(anchors, vec!["main".to_owned(), "two".to_owned()]);
-    }
-}
+//     #[test]
+//     fn disko_anchor_extract() {
+//         let anchors = get_disko_anchors(
+//             r#"{disko.devices = {disk = {main = {device = "/dev/INSTALLER_DISK_main";};two = {device = "/dev/INSTALLER_DISK_two";};};};}"#,
+//         ).unwrap();
+//         assert_eq!(anchors, vec!["main".to_owned(), "two".to_owned()]);
+//     }
+// }

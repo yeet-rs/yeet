@@ -61,7 +61,7 @@ let
   };
   nixos = nixpkgs: configuration: import "${nixpkgs}/nixos" {inherit configuration;
     specialArgs = {
-      inherit cargo_nix;
+      inherit cargo_nix nixpkgs;
     };
   };
 

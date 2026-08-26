@@ -66,3 +66,11 @@ test:
     cargo test -p yeetd
     cargo test -p yeet-api
     cargo test -p yeet
+
+vm-installer:
+    rm -f nixos.qcow2
+    nom build -f . installer.config.system.build.vm
+    ./result/bin/run-nixos-vm
+
+build-installer:
+    nom build -f . installer.config.system.build.diskoImages

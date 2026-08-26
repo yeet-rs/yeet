@@ -46,10 +46,11 @@ tokio = { version = "1.49", features = ["full"] }
 color-eyre = "0.6"
 tracing = "0.1"
 tracing-error = "0.2"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter","smallvec", "fmt", "ansi", "std"], default-features = false }
 inquire = "0.9"
 toml = "1.1"
 tempfile = "3.27"
+env_logger = "0.11"
 
 
 opentelemetry = "0.32.0"
