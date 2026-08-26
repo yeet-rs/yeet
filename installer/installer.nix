@@ -25,35 +25,39 @@ let
 in
 {
   imports = [
-    "${modulesPath}/installer/cd-dvd/iso-image.nix"
+    "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix"
+    # Include a copy of Nixpkgs so that nixos-install works out of
+     # the box.
+    # "${modulesPath}/installer/cd-dvd/channel.nix"
   ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
   system.stateVersion = "26.05"; # initial nixos state
 
-  isoImage.makeBiosBootable = false;
-  isoImage.makeUsbBootable = true;
-  isoImage.makeEfiBootable = true;
+  # isoImage.makeBiosBootable = false;
+  # isoImage.makeUsbBootable = true;
+  # isoImage.makeEfiBootable = true;
 
   isoImage.contents = [{
     source = ./presets; target = "/installer";
   }];
 
-  swapDevices = [ ];
-  fileSystems = config.lib.isoFileSystems;
-  boot.initrd.luks.devices = { };
+  # swapDevices = [ ];
+  # fileSystems = config.lib.isoFileSystems;
+  # boot.initrd.luks.devices = { };
 
-  boot.loader.grub.memtest86.enable = true;
+  # boot.loader.grub.memtest86.enable = true;
 
   image.baseName = lib.mkForce "yeet-installer-${config.system.stateVersion}-${pkgs.stdenv.hostPlatform.system}";
+  system.nixos.variant_id = "yeet-installer";
 
   nixpkgs.config.allowUnfree = true;
   hardware.enableAllFirmware = true;
 
-  nix.settings.substituters = lib.mkForce [ ];
+  # nix.settings.substituters = lib.mkForce [ ];
 
-  boot.supportedFilesystems.zfs = false;
-  boot.zfs.forceImportRoot = false;
+  # boot.supportedFilesystems.zfs = false;
+  # boot.zfs.forceImportRoot = false;
 
   users.users.me.isNormalUser = true;
   users.users.me.password = "test";
@@ -68,6 +72,15 @@ in
         "-display sdl,gl=on"
       ];
   };
+
+
+  # To speed up installation a little bit, include the complete
+  # stdenvNoCC in the Nix store on the CD.
+  # system.extraDependencies =
+
+  #   [
+  #     pkgs.stdenvNoCC # for runCommand
+  #   ];
 
   systemd.services."getty@tty1" = {
     overrideStrategy = "asDropin";

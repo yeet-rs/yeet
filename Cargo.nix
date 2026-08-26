@@ -8267,6 +8267,10 @@ rec {
             packageId = "serde_json";
           }
           {
+            name = "tempfile";
+            packageId = "tempfile";
+          }
+          {
             name = "toml";
             packageId = "toml 1.1.4+spec-1.1.0";
           }
