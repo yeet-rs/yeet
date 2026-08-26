@@ -2,7 +2,8 @@ use std::{
     collections::{HashMap, HashSet},
     env::args,
     fs::{self, read_to_string},
-    io::stderr,
+    io::{Write, stderr, stdout},
+    os::unix::fs::{MetadataExt, PermissionsExt},
     process::Command,
 };
 
@@ -11,6 +12,7 @@ use color_eyre::{
     eyre::{OptionExt, bail},
 };
 use serde::Deserialize;
+use tempfile::NamedTempFile;
 use tracing::instrument;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
@@ -54,7 +56,25 @@ fn main() -> Result<()> {
     let anchors = get_disko_anchors(&disko)?;
     let map = map_disko_anchors(anchors, disks)?;
     let disko = replace_disko_devices(disko, map);
-    println!("{}", disko);
+    run_disko(disko)?;
+    Ok(())
+}
+
+#[instrument(err)]
+fn run_disko(disko: String) -> Result<()> {
+    let mut tmp = NamedTempFile::new()?;
+    tmp.write_all(disko.as_bytes())?;
+    let mut permissions = tmp.as_file().metadata()?.permissions();
+    permissions.set_mode(0o700);
+    tmp.as_file_mut().set_permissions(permissions)?;
+    let status = Command::new(tmp.path())
+        .stderr(stderr())
+        .stdout(stdout())
+        .status()?;
+    if !status.success() {
+        bail!("Disko script did not execute correctly. Aborting");
+    }
+
     Ok(())
 }
 
