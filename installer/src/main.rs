@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs, hash::Hash};
 
 use color_eyre::{
     Result,
-    eyre::{Ok, OptionExt},
+    eyre::{Ok, OptionExt, bail},
 };
 
 fn main() -> Result<()> {
@@ -18,14 +18,43 @@ fn main() -> Result<()> {
     // inquire::Select::new("What is your favourite color?", vec!["red", "blue"]).prompt()?;
 
     let disks = list_devices()?;
-    dbg!(disks);
+    let anchors = get_disko_anchors(
+        r#"{
+      disko.devices = {
+        disk = {
+          main = {
+            device = "/dev/INSTALLER_DISK_main";
+          };
+        };
+      };
+    }
+"#,
+    )?;
+    let map = map_disko_anchors(anchors, disks)?;
+    dbg!(map);
     Ok(())
 }
 
+/// creates a mapping between available disks and the disko anchors
 fn map_disko_anchors(
     anchors: Vec<String>,
     mut disks: Vec<String>,
 ) -> Result<HashMap<String, String>> {
+    if anchors.len() != disks.len() {
+        bail!(
+            "You have {} disk but {} anchors defined in your disko config",
+            disks.len(),
+            anchors.len()
+        );
+    }
+    // if we only have one anchor and one disk it is easy because we can just return the mapping
+    if anchors.len() == 1 {
+        let mut anchors = anchors;
+        return Ok(HashMap::from([(
+            anchors.pop().unwrap(),
+            disks.pop().unwrap(),
+        )]));
+    }
     let mut map = HashMap::new();
     for anchor in anchors {
         let disk = inquire::Select::new(&format!("Select the disk for `{anchor}`"), disks.clone())
