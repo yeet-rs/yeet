@@ -80,6 +80,7 @@ async fn api_e2e_with_credentials(pool: sqlx::SqlitePool) {
             hosts: HashMap::from([("mysuperhostname".into(), "mysuperversion".into())]),
             public_key: "mypublickey".into(),
             substitutor: "mycache".into(),
+            priority: api::UpdatePriority::Normal,
         },
     )
     .await
@@ -114,7 +115,8 @@ async fn api_e2e_with_credentials(pool: sqlx::SqlitePool) {
         api::AgentAction::SwitchTo(api::RemoteStorePath {
             public_key: "mypublickey".into(),
             store_path: "mysuperversion".into(),
-            substitutor: "mycache".into()
+            substitutor: "mycache".into(),
+            priority: api::UpdatePriority::Normal
         })
     );
 
@@ -185,6 +187,7 @@ async fn api_e2e_with_credentials(pool: sqlx::SqlitePool) {
             hosts: HashMap::from([("mynewname".into(), "mynewversion".into())]),
             public_key: "mypublickey".into(),
             substitutor: "mycache".into(),
+            priority: api::UpdatePriority::Normal,
         },
     )
     .await
@@ -219,7 +222,8 @@ async fn api_e2e_with_credentials(pool: sqlx::SqlitePool) {
         api::AgentAction::SwitchTo(api::RemoteStorePath {
             public_key: "mypublickey".into(),
             store_path: "mynewversion".into(),
-            substitutor: "mycache".into()
+            substitutor: "mycache".into(),
+            priority: api::UpdatePriority::Normal,
         })
     );
     // lets be nice and do the update
@@ -371,6 +375,7 @@ async fn api_e2e_with_non_superuser(pool: sqlx::SqlitePool) {
             hosts: HashMap::from([("mysuperhostname".into(), "mysuperversion".into())]),
             public_key: "mypublickey".into(),
             substitutor: "mycache".into(),
+            priority: api::UpdatePriority::Normal,
         },
     )
     .await
@@ -470,6 +475,7 @@ async fn api_e2e_with_non_superuser(pool: sqlx::SqlitePool) {
             hosts: HashMap::from([("mynewname".into(), "mysuperversion".into())]),
             public_key: "mypublickey".into(),
             substitutor: "mycache".into(),
+            priority: api::UpdatePriority::Normal,
         },
     )
     .await

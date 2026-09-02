@@ -4,7 +4,7 @@ use colored::Colorize as _;
 use ed25519_dalek::VerifyingKey;
 use serde::{Deserialize, Serialize};
 
-use crate::{StorePath, request, tag};
+use crate::{StorePath, request, routes::system, tag};
 
 crate::db_id!(HostID);
 
@@ -132,6 +132,10 @@ pub struct HostUpdateRequest {
     pub public_key: String,
     /// The substitutor the agent should use to fetch the update
     pub substitutor: String,
+    /// Normal updates are installed manually if the host is in attended mode
+    /// In unattended mode, `Normal` updates are installed without interaction
+    #[serde(default)]
+    pub priority: system::UpdatePriority,
 }
 
 request! (

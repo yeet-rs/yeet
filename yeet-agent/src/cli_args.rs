@@ -1,7 +1,7 @@
 use std::{env::current_dir, fmt::Debug, path::PathBuf};
 
 use build::CLAP_LONG_VERSION;
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
 use shadow_rs::shadow;
 use url::Url;
@@ -59,6 +59,7 @@ pub struct AgentConfig {
     pub sleep: u64,
     pub facter: bool,
     pub key: PathBuf,
+    pub attended: bool,
 }
 
 #[derive(Subcommand)]
@@ -90,6 +91,10 @@ pub enum Commands {
         /// Collect facter with nixos-facter
         #[arg(long)]
         facter: bool,
+
+        /// In unattended mode all updates are installed immediately
+        #[arg(long)]
+        attended: bool,
     },
     /// Approve a pending key verification with the corresponding code
     Approve,
@@ -106,6 +111,10 @@ pub enum Commands {
         /// Sets the `NIXOS_VARIANT` variable when building NixOS. You have to set `system.nixos.variantName = lib.maybeEnv "NIXOS_VARIANT" "No VARIANT"`
         #[arg(long)]
         variant: Option<String>,
+
+        /// Default update are pushed with priority `Normal`. If the update should get forced use `Emergency`
+        #[arg(long, default_value_t, value_enum)]
+        priority: UpdatePriority,
 
         /// Which hosts should be built? Defaults to current ARCH
         #[arg(
@@ -196,5 +205,29 @@ pub enum ServerCommands {
         /// The substitutor the agent should use to fetch the update
         #[arg(long)]
         substitutor: String,
+
+        /// Default update are pushed with priority `Normal`. If the update should get forced use `Emergency`
+        #[arg(long, default_value_t, value_enum)]
+        priority: UpdatePriority,
     },
+}
+
+#[derive(Debug, ValueEnum, Clone)]
+pub enum UpdatePriority {
+    Normal,
+    Emergency,
+}
+impl Default for UpdatePriority {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
+impl From<UpdatePriority> for api::UpdatePriority {
+    fn from(value: UpdatePriority) -> Self {
+        match value {
+            UpdatePriority::Normal => api::UpdatePriority::Normal,
+            UpdatePriority::Emergency => api::UpdatePriority::Emergency,
+        }
+    }
 }

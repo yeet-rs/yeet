@@ -16,6 +16,7 @@ pub async fn publish(
     host: Vec<String>,
     variant: Option<String>,
     darwin: bool,
+    priority: api::UpdatePriority,
 ) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -62,6 +63,7 @@ pub async fn publish(
             hosts,
             public_key,
             substitutor: format!("https://{cachix}.cachix.org"),
+            priority,
         },
     )
     .await?;

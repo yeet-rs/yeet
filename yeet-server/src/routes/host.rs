@@ -76,6 +76,7 @@ pub async fn update_hosts(
         hosts,
         public_key,
         substitutor,
+        priority,
     }): VerifiedJson<api::HostUpdateRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let mut conn = state.pool.acquire().await.internal_server()?;
@@ -91,7 +92,7 @@ pub async fn update_hosts(
         db::tag::auth_tag(&mut conn, user, api::tag::Resource::from(host)).await?;
     }
 
-    db::hosts::update(&mut conn, hosts.iter(), public_key, substitutor)
+    db::hosts::update(&mut conn, hosts.iter(), public_key, substitutor, priority)
         .await
         .bad_request()?;
 

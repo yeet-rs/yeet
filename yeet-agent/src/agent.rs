@@ -118,7 +118,10 @@ async fn agent_loop(
 
         info!("{action:#?}");
 
-        agent_action(action, &config.server, key).await?;
+        // only update when unattended
+        if !config.attended {
+            agent_action(action, &config.server, key).await?;
+        }
         time::sleep(Duration::from_secs(sleep)).await;
     }
 }

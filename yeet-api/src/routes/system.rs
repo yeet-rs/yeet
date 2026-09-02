@@ -33,6 +33,23 @@ pub struct RemoteStorePath {
     pub store_path: StorePath,
     /// The substitutor (nix cache) to fetch the store path from
     pub substitutor: String,
+    /// Normal updates are installed manually if the host is in attended mode
+    /// In unattended mode, `Normal` updates are installed without interaction
+    #[serde(default)]
+    pub priority: UpdatePriority,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+#[cfg_attr(feature = "hazard", derive(sqlx::Type))]
+pub enum UpdatePriority {
+    Normal,
+    Emergency,
+}
+impl Default for UpdatePriority {
+    fn default() -> Self {
+        UpdatePriority::Normal
+    }
 }
 
 request! (

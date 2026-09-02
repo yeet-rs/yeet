@@ -96,12 +96,14 @@ async fn run() -> color_eyre::Result<()> {
             sleep,
             facter,
             key,
+            attended,
         } => {
             let config = AgentConfig {
                 server,
                 sleep,
                 facter,
                 key,
+                attended,
             };
             agent::agent(&config, sleep, facter).await
         }
@@ -111,7 +113,8 @@ async fn run() -> color_eyre::Result<()> {
             host,
             darwin,
             variant,
-        } => cli::publish::publish(&config, path, host, variant, darwin).await,
+            priority,
+        } => cli::publish::publish(&config, path, host, variant, darwin, priority.into()).await,
         Commands::Server(args) => server_cli::handle_server_commands(args, &config).await,
     };
 

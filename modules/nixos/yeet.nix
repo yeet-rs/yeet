@@ -136,6 +136,12 @@ in
       description = "Seconds to wait between updates";
     };
 
+    attended = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "In attended mode, updates have to be installed manually. Only emergency updates will be installed immediately";
+    };
+
     facter = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -175,7 +181,12 @@ in
         RestartSec = 5;
         RuntimeDirectory = "yeet";
         ExecStart = ''
-          ${lib.getExe cfg.package} agent --sleep ${toString cfg.sleep} --server ${cfg.server} --key ${cfg.key} ${lib.optionalString cfg.facter "--facter"}
+          ${lib.getExe cfg.package} agent \
+          --sleep ${toString cfg.sleep} \
+          --server ${cfg.server} \
+          --key ${cfg.key} \
+          ${lib.optionalString cfg.facter "--facter"} \
+          ${lib.optionalString cfg.attended "--attended"}
         '';
       };
     };
