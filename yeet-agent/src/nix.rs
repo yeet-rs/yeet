@@ -185,7 +185,7 @@ pub fn get_host(flake_path: &str, darwin: bool) -> Result<String> {
 pub struct NixOSVersion {
     pub configuration_revision: String,
     pub nixos_version: String,
-    pub nixpkgs_revision: String,
+    pub nixpkgs_revision: Option<String>,
 }
 
 #[tracing::instrument(err, ret)]

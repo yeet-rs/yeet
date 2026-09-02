@@ -36,13 +36,13 @@ fn init_tracer() -> opentelemetry_sdk::trace::SdkTracerProvider {
     use opentelemetry::trace::TracerProvider as _;
     use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
-    let exporter = opentelemetry_otlp::SpanExporter::builder()
-        .build()
-        .expect("Could not build SpanExporter");
+    // let exporter = opentelemetry_otlp::SpanExporter::builder()
+    //     .build()
+    //     .expect("Could not build SpanExporter");
 
     let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
         // .with_resource(resource())
-        .with_batch_exporter(exporter)
+        // .with_batch_exporter(exporter)
         .build();
 
     let tracer = provider.tracer("yeetd");

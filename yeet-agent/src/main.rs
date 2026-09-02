@@ -90,7 +90,7 @@ async fn run() -> color_eyre::Result<()> {
         } => cli::detach::detach(version, path, darwin).await,
         Commands::Attach => cli::detach::attach().await,
         Commands::Approve => cli::approve::approve(&config).await,
-        Commands::Notify => notification::notify(),
+        Commands::Notify { body, summary } => notification::notify(&body, &summary),
         Commands::Agent {
             server,
             sleep,
@@ -143,13 +143,13 @@ async fn run() -> color_eyre::Result<()> {
 }
 
 fn init_tracer() -> SdkTracerProvider {
-    let exporter = opentelemetry_otlp::SpanExporter::builder()
-        .build()
-        .expect("Could not build SpanExporter");
+    // let exporter = opentelemetry_otlp::SpanExporter::builder()
+    //     .build()
+    //     .expect("Could not build SpanExporter");
 
     let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
         // .with_resource(resource())
-        .with_batch_exporter(exporter)
+        // .with_batch_exporter(exporter)
         .build();
 
     let tracer = provider.tracer("yeet");

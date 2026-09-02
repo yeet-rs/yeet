@@ -124,7 +124,7 @@ struct SystemInfo {
     pub build_date: jiff::civil::DateTime,
     pub variant: String,
     pub configuration_revision: String,
-    pub nixpkgs_revision: String,
+    pub nixpkgs_revision: Option<String>,
     pub current_generation: u32,
 }
 
@@ -154,6 +154,12 @@ impl DisplaySection for SystemInfo {
             &self.variant.bold()
         };
 
+        let nixpkgs_revision = self
+            .nixpkgs_revision
+            .as_ref()
+            .map(|rev| rev[..8].to_string())
+            .unwrap_or("Unknown".red().to_string());
+
         section!(
             "System:".underline() => [
                 "Kernel", self.kernel,
@@ -161,7 +167,7 @@ impl DisplaySection for SystemInfo {
                 "Build date", format!("\u{2514}\u{2500}{}; {}",self.build_date, build_date_span),
                 "Variant", variant,
                 "Conf revision", self.configuration_revision[..8],
-                "Nixpkgs version", self.nixpkgs_revision[..8],
+                "Nixpkgs version", nixpkgs_revision,
             ]
         )
     }

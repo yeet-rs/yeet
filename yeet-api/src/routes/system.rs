@@ -23,7 +23,7 @@ pub struct VersionRequest {
     pub store_path: StorePath,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 /// Represents a Version
 /// Each Version can have its own nix cache
 pub struct RemoteStorePath {
@@ -39,7 +39,7 @@ pub struct RemoteStorePath {
     pub priority: UpdatePriority,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 #[cfg_attr(feature = "hazard", derive(sqlx::Type))]
 pub enum UpdatePriority {

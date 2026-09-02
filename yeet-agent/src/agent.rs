@@ -65,7 +65,7 @@ pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<()>
     Ok(())
 }
 
-#[tracing::instrument(err)]
+#[tracing::instrument(err, skip(key, pub_key))]
 async fn agent_loop(
     config: &AgentConfig,
     key: &SecretKey,
@@ -106,6 +106,7 @@ async fn agent_loop(
     }
     info!("Verified!");
 
+    let mut last_action: Option<api::AgentAction> = None;
     loop {
         let action = api::check_system(
             &config.server,
@@ -120,8 +121,22 @@ async fn agent_loop(
 
         // only update when unattended
         if !config.attended {
-            agent_action(action, &config.server, key).await?;
+            agent_action(action.clone(), &config.server, key).await?;
         }
+        // or update is emergency
+        else if let api::AgentAction::SwitchTo(store) = &action
+            && store.priority == api::UpdatePriority::Emergency
+        {
+            agent_action(action.clone(), &config.server, key).await?;
+        }
+        // else inform user of new update
+        else if matches!(action, api::AgentAction::SwitchTo(..))
+            && last_action.as_ref() != Some(&action)
+        {
+            notification::notify_all("Check with `yeet update status`", "System Update available")?;
+        }
+
+        last_action = Some(action);
         time::sleep(Duration::from_secs(sleep)).await;
     }
 }
@@ -181,7 +196,11 @@ async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> R
         }
         activation_err?;
     }
-    notification::notify_all()?;
+    let variant = nix::nixos_variant_name()?;
+    notification::notify_all(
+        &format!("System has been updated to `{variant}`"),
+        "System Update",
+    )?;
     Ok(())
 }
 
@@ -197,10 +216,16 @@ fn remove_all_dirs_unless<P: AsRef<Path>>(base: P, dirname: &OsStr) -> Result<()
 
     Ok(())
 }
+
+/// Used for detaching
 #[tracing::instrument(err)]
 pub fn switch_to(store_path: &api::StorePath) -> Result<()> {
     activate(store_path)?;
-    notification::notify_all()?;
+    let variant = nix::nixos_variant_name()?;
+    notification::notify_all(
+        &format!("System has been updated to `{variant}`"),
+        "System Update",
+    )?;
     Ok(())
 }
 

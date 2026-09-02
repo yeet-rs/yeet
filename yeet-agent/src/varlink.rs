@@ -251,13 +251,13 @@ where
     }
 }
 
-#[tracing::instrument(err)]
+#[tracing::instrument(err, skip(key))]
 pub async fn start_service(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
     YeetVarlinkService::start(config, key).await
 }
 
 impl YeetVarlinkService {
-    #[tracing::instrument(err)]
+    #[tracing::instrument(err, skip(key))]
     pub async fn start(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
         let listener = {
             let _err = remove_file(SOCKET_PATH).await;

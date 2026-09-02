@@ -2,22 +2,19 @@ use std::fs;
 
 use color_eyre::eyre::Result;
 use tokio::process::Command;
-use yeet::nix;
 
 #[tracing::instrument(err)]
-pub fn notify() -> Result<()> {
-    let variant = nix::nixos_variant_name()?;
-
+pub fn notify(body: &str, summary: &str) -> Result<()> {
     notify_rust::Notification::new()
-        .summary("System Update")
-        .body(&format!("System has been updated to `{variant}`"))
+        .summary(summary)
+        .body(body)
         .appname("Yeet")
         .show()?;
     Ok(())
 }
 
 #[tracing::instrument(err)]
-pub fn notify_all() -> Result<()> {
+pub fn notify_all(body: &str, summary: &str) -> Result<()> {
     let user_dirs = {
         let dirs = fs::read_dir("/run/user")?;
         dirs.flatten()
@@ -36,6 +33,10 @@ pub fn notify_all() -> Result<()> {
         let _cmd = Command::new(current_exe)
             .arg("notify")
             .uid(user)
+            .arg("--body")
+            .arg(body)
+            .arg("--summary")
+            .arg(summary)
             .env("DBUS_SESSION_BUS_ADDRESS", &dbus_address)
             // .env("DISPLAY", ":0")
             .spawn();

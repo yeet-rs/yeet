@@ -66,7 +66,12 @@ pub struct AgentConfig {
 pub enum Commands {
     #[command(hide = true)]
     /// Used to notify all users
-    Notify,
+    Notify {
+        #[arg(long)]
+        body: String,
+        #[arg(long)]
+        summary: String,
+    },
     /// show all osquery nodes
     Nodes,
     /// Create an distributed osquery and wait for the result of all nodes
