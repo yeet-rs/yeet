@@ -24,7 +24,7 @@ tempfile = "3.23.0"
 shadow-rs = { version = "1.5", default-features = false }
 zlink = { version = "0.4.0", features= ["idl", "introspection"] }
 futures-util = "0.3.31"
-nix = {version = "0.31", features = ["user"]}
+nix = {version = "0.31", features = ["user","fs"]}
 inquire = "0.9.1"
 ssh2-config = "0.7"
 zbus_polkit = "5.0.0"
@@ -54,6 +54,7 @@ opentelemetry_sdk.workspace = true
 tracing-opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
 rand = "0.10.1"
+tracing-appender = "0.2.5"
 # TODO: ssh-agent-client-rs = "1.1.2"
 
 [build-dependencies]

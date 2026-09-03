@@ -180,6 +180,7 @@ pub enum Commands {
     /// List artifacts
     Artifacts,
     Artifact(crate::cli::artifact::ArtifactArgs),
+    Update(crate::cli::update::UpdateArgs),
 }
 
 #[derive(Args)]

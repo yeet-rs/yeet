@@ -3,7 +3,7 @@ use std::{
     fs::{
         self, File, Permissions, read_dir, read_link, read_to_string, remove_dir_all, remove_file,
     },
-    io::{self, BufRead as _, BufReader, Write as _},
+    io::{self, Write as _},
     os::unix::fs::{PermissionsExt as _, chown, symlink},
     path::{Path, PathBuf},
     process::Command,
@@ -15,12 +15,11 @@ use api::{get_secret_key, get_verify_key};
 use backon::{ConstantBuilder, Retryable as _};
 use color_eyre::{
     Result, Section as _,
-    eyre::{Context as _, bail, eyre},
+    eyre::{bail, eyre},
 };
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::SecretKey;
 use log::{error, info};
-use tempfile::NamedTempFile;
 use tokio::time;
 use url::Url;
 use yeet::nix;
@@ -133,7 +132,7 @@ async fn agent_loop(
         else if matches!(action, api::AgentAction::SwitchTo(..))
             && last_action.as_ref() != Some(&action)
         {
-            notification::notify_all("Check with `yeet update status`", "System Update available")?;
+            notification::notify_all("Download with `yeet update`", "System Update available")?;
         }
 
         last_action = Some(action);
@@ -152,25 +151,9 @@ async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> R
     Ok(())
 }
 
-#[tracing::instrument(err, ret)]
-fn trusted_public_keys() -> Result<Vec<String>> {
-    let file = File::open("/etc/nix/nix.conf")?;
-    Ok(BufReader::new(file)
-        .lines()
-        .map_while(Result::ok)
-        .find(|line| line.starts_with("trusted-public-keys"))
-        .unwrap_or(String::from(
-            "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=",
-        ))
-        .split_whitespace()
-        .skip(2)
-        .map(str::to_owned)
-        .collect())
-}
-
 #[tracing::instrument(err, skip(key))]
 async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
-    download(version, url, key).await?;
+    nix::realise_store_path(version, url, key, io::stderr(), io::stdout(), false).await?;
     let current_gen = read_link("/etc/yeet/secret");
     activate_secrets(version, url, key).await?;
     let next_gen = read_link("/etc/yeet/secret");
@@ -226,69 +209,6 @@ pub fn switch_to(store_path: &api::StorePath) -> Result<()> {
         &format!("System has been updated to `{variant}`"),
         "System Update",
     )?;
-    Ok(())
-}
-
-#[tracing::instrument(err, skip(key))]
-async fn download(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
-    info!("Downloading {}", version.store_path);
-    let mut keys = trusted_public_keys()?;
-    keys.push(version.public_key.clone());
-    keys.sort();
-    keys.dedup();
-
-    let mut command = Command::new("nix-store");
-    command.stderr(io::stderr()).stdout(io::stdout());
-    command.args(vec![
-        "--realise",
-        &version.store_path,
-        "--option",
-        "extra-substituters",
-        &version.substitutor,
-        "--option",
-        "trusted-public-keys",
-        &keys.join(" "),
-        "--option",
-        "narinfo-cache-negative-ttl",
-        "0",
-    ]);
-
-    // Even if we do not end up using the temp file we create it outside of the if scope.
-    // Else it would get dropped before nix-store can use it
-    let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
-    let netrc = match api::get_secret(url, key, "netrc".into()).await {
-        Ok(secret) => secret,
-        Err(err) => {
-            log::error!("could not get netrc secret: {err}");
-            None
-        }
-    };
-    if let Some(netrc) = netrc {
-        netrc_file
-            .write_all(&netrc)
-            .context("Could not write to the temp netrc file")?;
-        netrc_file.flush()?;
-        command.args([
-            "--option",
-            "netrc-file",
-            &netrc_file.path().to_string_lossy(),
-        ]);
-    }
-
-    let download = command.output()?;
-
-    if !download.status.success() {
-        return Err(eyre!("{}", String::from_utf8(download.stderr)?)
-            .note("Could not realize new version")
-            .note(format!(
-                "Command: {}",
-                command
-                    .get_args()
-                    .map(|ostr| ostr.to_string_lossy())
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            )));
-    }
     Ok(())
 }
 

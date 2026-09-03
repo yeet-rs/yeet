@@ -1,5 +1,10 @@
 //! # Yeet Agent
 
+use std::{
+    env::args,
+    io::{IsTerminal as _, Write as _},
+};
+
 use clap::Parser as _;
 use color_eyre::Section as _;
 use colored::Colorize as _;
@@ -7,7 +12,7 @@ use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
 };
-use opentelemetry::trace::TracerProvider as _;
+
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
@@ -31,6 +36,7 @@ mod cli {
     pub mod publish;
     pub mod secret;
     pub mod tag;
+    pub mod update;
     pub mod user;
 }
 mod notification;
@@ -43,7 +49,7 @@ mod version;
 
 #[tokio::main(flavor = "local")]
 async fn main() -> color_eyre::Result<()> {
-    let provider = init_tracer();
+    let (provider, _guard) = init_tracer();
     let result = run().await;
     // this is required because `color_eyre` holds a ref to the current span
     if let Err(err) = result {
@@ -72,6 +78,7 @@ async fn run() -> color_eyre::Result<()> {
 
     let command = match args.command {
         Commands::Artifact(args) => cli::artifact::handle_command(args, &config).await,
+        Commands::Update(args) => cli::update::update(args).await,
         Commands::Artifacts => cli::artifact::artifacts(&config).await,
         Commands::Nodes => cli::osquery::show_nodes(&config).await,
         Commands::Query { query } => cli::osquery::query(&config, query).await,
@@ -142,7 +149,10 @@ async fn run() -> color_eyre::Result<()> {
     }
 }
 
-fn init_tracer() -> SdkTracerProvider {
+fn init_tracer() -> (
+    SdkTracerProvider,
+    tracing_appender::non_blocking::WorkerGuard,
+) {
     // let exporter = opentelemetry_otlp::SpanExporter::builder()
     //     .build()
     //     .expect("Could not build SpanExporter");
@@ -152,13 +162,38 @@ fn init_tracer() -> SdkTracerProvider {
         // .with_batch_exporter(exporter)
         .build();
 
-    let tracer = provider.tracer("yeet");
+    // let tracer = provider.tracer("yeet");
 
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::from_default_env())
-        .with(tracing_error::ErrorLayer::default())
-        .with(tracing_subscriber::fmt::layer().with_target(false))
-        .with(tracing_opentelemetry::OpenTelemetryLayer::new(tracer))
-        .init();
-    provider
+    let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
+
+    if std::io::stderr().is_terminal() && args().nth(1) != Some("agent".to_owned()) {
+        let mut log_builder =
+            env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
+        log_builder.format(|buf, record| {
+            write!(buf, "{}", buf.default_level_style(record.level()))?;
+            write!(buf, "{}", record.level())?;
+            write!(buf, "{:#}", buf.default_level_style(record.level()))?;
+            writeln!(buf, ": {}", record.args())
+        });
+        log_builder.init();
+    } else {
+        let format = tracing_subscriber::fmt::format().pretty();
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::EnvFilter::builder()
+                    .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                    .from_env_lossy(),
+            )
+            .with(tracing_error::ErrorLayer::default())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_target(false)
+                    .event_format(format)
+                    .with_writer(non_blocking),
+            )
+            // .with(tracing_opentelemetry::OpenTelemetryLayer::new(tracer))
+            .init();
+    }
+
+    (provider, guard)
 }

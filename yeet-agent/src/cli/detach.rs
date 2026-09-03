@@ -57,7 +57,9 @@ pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool
                 return Err(eyre!("There was an error during polikit auth").note(error));
             }
             #[expect(clippy::unreachable, reason = "Can only happen on varlink status")]
-            YeetDaemonError::NoCurrentSystem => unreachable!(),
+            YeetDaemonError::NoCurrentSystem
+            | YeetDaemonError::EyreError { .. }
+            | YeetDaemonError::UnattendedSystem => unreachable!(),
         },
     }
     Ok(())
