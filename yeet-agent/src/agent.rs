@@ -118,6 +118,7 @@ async fn agent_loop(
         info!("{action:#?}");
 
         // only update when unattended
+        #[expect(clippy::else_if_without_else)]
         if !config.attended {
             agent_action(action.clone(), &config.server, key).await?;
         }

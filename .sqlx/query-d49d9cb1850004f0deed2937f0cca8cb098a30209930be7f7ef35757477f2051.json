@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO update_request_history (host_id, store_path, remote, update_time, priority)\n        SELECT id, $1, $2, $3, $5\n        FROM hosts\n        WHERE id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "d49d9cb1850004f0deed2937f0cca8cb098a30209930be7f7ef35757477f2051"
+}

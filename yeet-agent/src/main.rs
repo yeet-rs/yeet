@@ -12,7 +12,6 @@ use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
 };
-
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
@@ -51,22 +50,24 @@ mod version;
 
 #[tokio::main(flavor = "local")]
 async fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+
     let (provider, _guard) = init_tracer();
     let result = run().await;
     // this is required because `color_eyre` holds a ref to the current span
-    if let Err(err) = result {
+    if let Err(ref err) = result {
         tracing::error!(error = ?err);
     }
     tokio::task::yield_now().await;
     provider.force_flush()?;
     provider.shutdown()?;
+
+    result?;
     Ok(())
 }
 
 #[tracing::instrument(err)]
 async fn run() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-
     let xdg_dirs = xdg::BaseDirectories::with_prefix("yeet");
     let args = Yeet::try_parse()?;
 

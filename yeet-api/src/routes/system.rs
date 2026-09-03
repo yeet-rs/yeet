@@ -39,17 +39,13 @@ pub struct RemoteStorePath {
     pub priority: UpdatePriority,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 #[cfg_attr(feature = "hazard", derive(sqlx::Type))]
 pub enum UpdatePriority {
+    #[default]
     Normal,
     Emergency,
-}
-impl Default for UpdatePriority {
-    fn default() -> Self {
-        UpdatePriority::Normal
-    }
 }
 
 request! (

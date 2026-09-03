@@ -22,12 +22,12 @@ pub async fn get_host_by_id(
     conn: &mut sqlx::SqliteConnection,
     artifact: api::ArtifactID,
 ) -> Result<api::HostID, sqlx::Error> {
-    Ok(sqlx::query_scalar!(
+    sqlx::query_scalar!(
         r#"SELECT host_id as "host_id: api::HostID" from artifacts WHERE id = $1"#,
         artifact
     )
     .fetch_one(conn)
-    .await?)
+    .await
 }
 
 // TODO: maybe do not store the artifact if it is the same contant as the last

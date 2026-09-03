@@ -11,13 +11,12 @@ use std::{
 use api::AgentAction;
 use color_eyre::{
     Section as _,
-    eyre::{Context as _, OptionExt, Result, eyre},
+    eyre::{Context as _, OptionExt as _, Result, eyre},
 };
 use httpsig_hyper::prelude::SecretKey;
 use log::info;
 use nix::unistd::Group;
 use serde::{Deserialize, Serialize};
-
 use tokio::fs::{self, remove_file};
 use url::Url;
 use zlink::{Connection, ReplyError, connection::socket::FetchPeerCredentials, proxy, unix};
@@ -133,7 +132,11 @@ where
         })
     }
 
-    #[expect(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        clippy::unused_async_trait_impl,
+        reason = "varlink proxy methods need async"
+    )]
     pub async fn config(&self) -> AgentConfig {
         self.config.clone()
     }

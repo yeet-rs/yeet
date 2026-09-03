@@ -218,15 +218,11 @@ pub enum ServerCommands {
     },
 }
 
-#[derive(Debug, ValueEnum, Clone)]
+#[derive(Debug, ValueEnum, Clone, Default)]
 pub enum UpdatePriority {
+    #[default]
     Normal,
     Emergency,
-}
-impl Default for UpdatePriority {
-    fn default() -> Self {
-        Self::Normal
-    }
 }
 
 impl From<UpdatePriority> for api::UpdatePriority {

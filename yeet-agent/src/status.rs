@@ -91,7 +91,7 @@ impl DisplaySection for YeetInfo {
                 "Mode", mode,
                 "Systemd Unit", self.systemd_status,
                 "Daemon version", daemon_version,
-                "CLI Version", format!("{}", self.cli_version_long),
+                "CLI Version", self.cli_version_long,
             ]
         )
     }
@@ -156,8 +156,7 @@ impl DisplaySection for SystemInfo {
         let nixpkgs_revision = self
             .nixpkgs_revision
             .as_ref()
-            .map(|rev| rev[..8].to_string())
-            .unwrap_or("Unknown".red().to_string());
+            .map_or("Unknown".red().to_string(), |rev| rev[..8].to_string());
 
         section!(
             "System:".underline() => [

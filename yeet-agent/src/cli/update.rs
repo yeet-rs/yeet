@@ -1,7 +1,8 @@
+use std::io;
+
 use clap::Args;
 use color_eyre::{Result, eyre::bail};
 use log::info;
-use std::io::{self};
 
 use crate::varlink;
 
@@ -20,15 +21,15 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
     let dry_run_result = varlink::download_update(
         !args.yes,
         vec![
-            nix::unistd::dup(&io::stdout())?,
-            nix::unistd::dup(&io::stderr())?,
+            nix::unistd::dup(io::stdout())?,
+            nix::unistd::dup(io::stderr())?,
         ],
     )
     .await?;
 
     match dry_run_result {
         varlink::DownloadUpdateResult::Downloaded => {
-            info!("File is already downloaded")
+            info!("File is already downloaded");
         }
         varlink::DownloadUpdateResult::UpToDate => {
             info!("You are Up To Date");
@@ -41,14 +42,14 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
         varlink::DownloadUpdateResult::DryRun => {}
     }
 
-    if !args.yes && matches!(dry_run_result, varlink::DownloadUpdateResult::DryRun) {
-        if !inquire::Confirm::new("Do you want to download this update (without installing)?")
+    if !args.yes
+        && matches!(dry_run_result, varlink::DownloadUpdateResult::DryRun)
+        && !inquire::Confirm::new("Do you want to download this update (without installing)?")
             .with_default(true)
             .prompt()?
-        {
-            // User does not want to update yet
-            return Ok(());
-        }
+    {
+        // User does not want to update yet
+        return Ok(());
     }
 
     // we do not need to run it a second time if it is already downloaded
@@ -56,8 +57,8 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
         varlink::download_update(
             false,
             vec![
-                nix::unistd::dup(&io::stdout())?,
-                nix::unistd::dup(&io::stderr())?,
+                nix::unistd::dup(io::stdout())?,
+                nix::unistd::dup(io::stderr())?,
             ],
         )
         .await?;
@@ -66,8 +67,8 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
     let dry_run_result = varlink::activate_update(
         !args.yes,
         vec![
-            nix::unistd::dup(&io::stdout())?,
-            nix::unistd::dup(&io::stderr())?,
+            nix::unistd::dup(io::stdout())?,
+            nix::unistd::dup(io::stderr())?,
         ],
     )
     .await?;
@@ -88,21 +89,21 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
         }
     }
 
-    if !args.yes && matches!(dry_run_result, varlink::ActivateUpdateResult::DryRun) {
-        if !inquire::Confirm::new("Do you want to install this update (might cause a logout)?")
+    if !args.yes
+        && matches!(dry_run_result, varlink::ActivateUpdateResult::DryRun)
+        && !inquire::Confirm::new("Do you want to install this update (might cause a logout)?")
             .with_default(true)
             .prompt()?
-        {
-            // User does not want to update yet
-            return Ok(());
-        }
+    {
+        // User does not want to update yet
+        return Ok(());
     }
 
     varlink::activate_update(
         false,
         vec![
-            nix::unistd::dup(&io::stdout())?,
-            nix::unistd::dup(&io::stderr())?,
+            nix::unistd::dup(io::stdout())?,
+            nix::unistd::dup(io::stderr())?,
         ],
     )
     .await?;
