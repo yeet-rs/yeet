@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use color_eyre::{Result, Section as _, eyre::eyre};
 use log::info;
-use yeet::nix;
 
 use crate::{varlink, varlink::YeetDaemonError};
 
@@ -21,9 +20,9 @@ pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool
     let revision = if let Some(version) = version {
         version
     } else {
-        let host = nix::get_host(&path.to_string_lossy(), darwin)?;
+        let host = crate::nix::get_host(&path.to_string_lossy(), darwin)?;
 
-        let mut hosts = nix::build_hosts(
+        let mut hosts = crate::nix::build_hosts(
             &path.to_string_lossy(),
             vec![host.clone()],
             darwin,
@@ -31,7 +30,7 @@ pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool
         )?;
         #[expect(
             clippy::unwrap_used,
-            reason = "because we source nix::get_host from the same nix file source"
+            reason = "because we source crate::nix::get_host from the same crate::nix file source"
         )]
         hosts.remove(&host).unwrap()
     };
@@ -57,7 +56,9 @@ pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool
                 return Err(eyre!("There was an error during polikit auth").note(error));
             }
             #[expect(clippy::unreachable, reason = "Can only happen on varlink status")]
-            YeetDaemonError::NoCurrentSystem => unreachable!(),
+            YeetDaemonError::NoCurrentSystem
+            | YeetDaemonError::EyreError { .. }
+            | YeetDaemonError::UnattendedSystem => unreachable!(),
         },
     }
     Ok(())

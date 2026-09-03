@@ -65,8 +65,14 @@ async fn fetch_latest_update(
     sqlx::query_as!(
         api::RemoteStorePath,
         r#"
-        SELECT store_path,public_key,substitutor FROM update_request_history
-        JOIN nix_remotes ON update_request_history.remote = nix_remotes.id
+        SELECT
+            store_path,
+            public_key,
+            substitutor,
+            priority as "priority: api::UpdatePriority"
+        FROM update_request_history
+        JOIN
+            nix_remotes ON update_request_history.remote = nix_remotes.id
         WHERE host_id = $1
         ORDER BY update_time DESC LIMIT 1"#,
         host
@@ -138,6 +144,7 @@ pub async fn update(
     hosts: impl Iterator<Item = (&String, &api::StorePath)>,
     public_key: String,
     substitutor: String,
+    priority: api::UpdatePriority,
 ) -> Result<(), HostUpdateError> {
     let mut tx = conn.begin().await?;
 
@@ -162,14 +169,15 @@ pub async fn update(
         let now = jiff::Timestamp::now().to_sqlx();
         sqlx::query!(
             r#"
-        INSERT INTO update_request_history (host_id, store_path, remote, update_time)
-        SELECT id, $1, $2, $3
+        INSERT INTO update_request_history (host_id, store_path, remote, update_time, priority)
+        SELECT id, $1, $2, $3, $5
         FROM hosts
         WHERE id = $4"#,
             store_path,
             remote.id,
             now,
-            host
+            host,
+            priority
         )
         .execute(&mut *tx)
         .await?;

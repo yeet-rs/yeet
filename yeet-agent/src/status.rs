@@ -4,7 +4,6 @@ use color_eyre::{Result, eyre::Context as _};
 use colored::Colorize as _;
 use jiff::tz::TimeZone;
 use serde::{Deserialize, Serialize};
-use yeet::nix;
 
 use crate::{
     section::{self, DisplaySection, Section, section},
@@ -92,7 +91,7 @@ impl DisplaySection for YeetInfo {
                 "Mode", mode,
                 "Systemd Unit", self.systemd_status,
                 "Daemon version", daemon_version,
-                "CLI Version", format!("{}", self.cli_version_long),
+                "CLI Version", self.cli_version_long,
             ]
         )
     }
@@ -124,7 +123,7 @@ struct SystemInfo {
     pub build_date: jiff::civil::DateTime,
     pub variant: String,
     pub configuration_revision: String,
-    pub nixpkgs_revision: String,
+    pub nixpkgs_revision: Option<String>,
     pub current_generation: u32,
 }
 
@@ -154,6 +153,11 @@ impl DisplaySection for SystemInfo {
             &self.variant.bold()
         };
 
+        let nixpkgs_revision = self
+            .nixpkgs_revision
+            .as_ref()
+            .map_or("Unknown".red().to_string(), |rev| rev[..8].to_string());
+
         section!(
             "System:".underline() => [
                 "Kernel", self.kernel,
@@ -161,7 +165,7 @@ impl DisplaySection for SystemInfo {
                 "Build date", format!("\u{2514}\u{2500}{}; {}",self.build_date, build_date_span),
                 "Variant", variant,
                 "Conf revision", self.configuration_revision[..8],
-                "Nixpkgs version", self.nixpkgs_revision[..8],
+                "Nixpkgs version", nixpkgs_revision,
             ]
         )
     }
@@ -169,9 +173,9 @@ impl DisplaySection for SystemInfo {
 
 #[tracing::instrument(err, ret)]
 fn system_info() -> Result<SystemInfo> {
-    let nixos_version = nix::nixos_version().context("Could not fetch nixos version")?;
+    let nixos_version = crate::nix::nixos_version().context("Could not fetch nixos version")?;
     let nixos_generations =
-        nix::nixos_generations().context("Could not fetch nixos generations")?;
+        crate::nix::nixos_generations().context("Could not fetch nixos generations")?;
     let generation = nixos_generations
         .into_iter()
         .find(|generation| generation.current)
@@ -181,7 +185,7 @@ fn system_info() -> Result<SystemInfo> {
         kernel: generation.kernel_version,
         nixos_version: generation.nixos_version,
         build_date: generation.date,
-        variant: nix::nixos_variant_name()?,
+        variant: crate::nix::nixos_variant_name()?,
         configuration_revision: generation.configuration_revision,
         nixpkgs_revision: nixos_version.nixpkgs_revision,
         current_generation: generation.generation,

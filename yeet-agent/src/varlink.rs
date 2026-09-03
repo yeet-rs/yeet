@@ -1,13 +1,17 @@
 #![expect(clippy::multiple_inherent_impl)]
 use std::{
-    os::unix::fs::{PermissionsExt as _, lchown},
+    os::{
+        fd::OwnedFd,
+        unix::fs::{PermissionsExt as _, lchown},
+    },
     path::Path,
+    process::Stdio,
 };
 
 use api::AgentAction;
 use color_eyre::{
     Section as _,
-    eyre::{Context as _, Result, eyre},
+    eyre::{Context as _, OptionExt as _, Result, eyre},
 };
 use httpsig_hyper::prelude::SecretKey;
 use log::info;
@@ -32,6 +36,18 @@ const SOCKET_PATH: &str = "/run/yeet/agent.varlink";
 pub trait YeetProxy {
     async fn status(&mut self) -> zlink::Result<Result<DaemonStatus, YeetDaemonError>>;
     async fn config(&mut self) -> zlink::Result<Result<AgentConfig, YeetDaemonError>>;
+
+    async fn download_update(
+        &mut self,
+        dry_run: bool,
+        #[zlink(fds)] fds: Vec<OwnedFd>,
+    ) -> zlink::Result<Result<DownloadUpdateResult, YeetDaemonError>>;
+
+    async fn activate_update(
+        &mut self,
+        dry_run: bool,
+        #[zlink(fds)] fds: Vec<OwnedFd>,
+    ) -> zlink::Result<Result<ActivateUpdateResult, YeetDaemonError>>;
     async fn detach(
         &mut self,
         version: api::StorePath,
@@ -48,101 +64,12 @@ pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
         ?)
 }
 
-#[tracing::instrument(err, ret)]
-pub async fn status() -> Result<DaemonStatus, VarlinkError> {
-    let mut client = client().await?;
-    client
-        .status()
-        .await
-        .context(
-            "Could not communicate with the varlink daemon. Are you running the same version?",
-        )?
-        .map_err(VarlinkError::DaemonError)
-}
-
-#[tracing::instrument(err, ret)]
-pub async fn config() -> Result<AgentConfig, VarlinkError> {
-    let mut client = client().await?;
-    Ok(client
-        .config()
-        .await
-        .context(
-            "Could not communicate with the varlink daemon. Are you running the same version?",
-        )?
-        .expect("Config can never Error because it does not return a result"))
-}
-
-#[tracing::instrument(err)]
-pub async fn detach(version: api::StorePath) -> Result<(), VarlinkError> {
-    let mut client = client().await?;
-    client
-        .detach(version)
-        .await
-        .context(
-            "Could not communicate with the varlink daemon. Are you running the same version?",
-        )?
-        .map_err(VarlinkError::DaemonError)
-}
-
-#[tracing::instrument(err)]
-pub async fn attach() -> Result<(), VarlinkError> {
-    let mut client = client().await?;
-    client
-        .attach()
-        .await
-        .context(
-            "Could not communicate with the varlink daemon. Are you running the same version?",
-        )?
-        .map_err(VarlinkError::DaemonError)
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum VarlinkError {
-    #[error(transparent)]
-    Report(#[from] color_eyre::Report),
-    #[error("Defined error from Daemon:\n{0:?}")]
-    DaemonError(YeetDaemonError),
-}
-
-#[derive(Debug, ReplyError, zlink::introspect::ReplyError)]
-#[zlink(interface = "ch.yeetme.yeet")]
-pub enum YeetDaemonError {
-    NoCurrentSystem,
-    /// Could not connect to the yeet-server in an operation where a server connection is required
-    NoConnectionToServer {
-        error: String,
-    },
-    CredentialError {
-        error: String,
-    },
-    /// Polkit was not able to perform authentication
-    PolkitError {
-        error: String,
-    },
-}
-
-impl From<std::io::Error> for YeetDaemonError {
-    fn from(value: std::io::Error) -> Self {
-        Self::CredentialError {
-            error: value.to_string(),
-        }
-    }
-}
-
-impl From<PolkitError> for YeetDaemonError {
-    fn from(value: PolkitError) -> Self {
-        Self::PolkitError {
-            error: value.to_string(),
-        }
-    }
-}
-impl From<api::ResponseError> for YeetDaemonError {
-    fn from(value: api::ResponseError) -> Self {
-        Self::NoConnectionToServer {
-            error: value.to_string(),
-        }
-    }
-}
+varlink_method!(status() -> DaemonStatus);
+varlink_method!(config() -> AgentConfig);
+varlink_method!(detach(version: api::StorePath) -> ());
+varlink_method!(attach() -> ());
+varlink_method!(download_update(dry_run: bool, fds: Vec<OwnedFd>) -> DownloadUpdateResult);
+varlink_method!(activate_update(dry_run: bool, fds: Vec<OwnedFd>) -> ActivateUpdateResult);
 
 struct YeetVarlinkService {
     pub config: cli_args::AgentConfig,
@@ -205,7 +132,11 @@ where
         })
     }
 
-    #[expect(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        clippy::unused_async_trait_impl,
+        reason = "varlink proxy methods need async"
+    )]
     pub async fn config(&self) -> AgentConfig {
         self.config.clone()
     }
@@ -236,7 +167,7 @@ where
         info!("System detached. Switching");
 
         // Switch to version
-        let _err = agent::switch_to(&version);
+        let _err = crate::nix::detach(&version);
 
         info!("Switched to detached version");
 
@@ -249,15 +180,110 @@ where
 
         Ok(())
     }
+
+    pub async fn download_update(
+        &self,
+        dry_run: bool,
+        #[zlink(fds)] mut fds: Vec<OwnedFd>,
+    ) -> Result<DownloadUpdateResult, YeetDaemonError> {
+        if !self.config.attended {
+            return Err(YeetDaemonError::UnattendedSystem);
+        }
+
+        let Ok(store_path) = version::get_active_version() else {
+            return Err(YeetDaemonError::NoCurrentSystem);
+        };
+
+        let agent_action = api::check_system(
+            &self.config.server,
+            &self.key,
+            api::VersionRequest { store_path },
+        )
+        .await?;
+        let store_path = match agent_action {
+            AgentAction::Nothing => return Ok(DownloadUpdateResult::UpToDate),
+            AgentAction::Detach => return Ok(DownloadUpdateResult::Detached),
+            AgentAction::SwitchTo(remote_store_path) => remote_store_path,
+        };
+
+        let stdout = fds.pop().ok_or_eyre("Not fd for stderr sent")?;
+        let stderr = fds.pop().ok_or_eyre("Not fd for stdout sent")?;
+
+        crate::nix::realise_store_path(
+            &store_path,
+            &self.config.server,
+            &self.key,
+            Stdio::from(stderr),
+            Stdio::from(stdout),
+            dry_run,
+        )
+        .await?;
+
+        if std::fs::exists(store_path.store_path)? {
+            Ok(DownloadUpdateResult::Downloaded)
+        } else {
+            Ok(DownloadUpdateResult::DryRun)
+        }
+    }
+
+    pub async fn activate_update(
+        &self,
+        dry_run: bool,
+        #[zlink(fds)] mut fds: Vec<OwnedFd>,
+    ) -> Result<ActivateUpdateResult, YeetDaemonError> {
+        if !self.config.attended {
+            return Err(YeetDaemonError::UnattendedSystem);
+        }
+
+        let Ok(store_path) = version::get_active_version() else {
+            return Err(YeetDaemonError::NoCurrentSystem);
+        };
+
+        let agent_action = api::check_system(
+            &self.config.server,
+            &self.key,
+            api::VersionRequest { store_path },
+        )
+        .await?;
+        let store_path = match agent_action {
+            AgentAction::Nothing => return Ok(ActivateUpdateResult::AlreadySwitched),
+            AgentAction::Detach => return Ok(ActivateUpdateResult::Detached),
+            AgentAction::SwitchTo(remote_store_path) => remote_store_path,
+        };
+
+        // User first needs to download -> does not happen normally with `yeet update`
+        if !std::fs::exists(&store_path.store_path)? {
+            return Ok(ActivateUpdateResult::NotDownloaded);
+        }
+
+        let stdout = fds.pop().ok_or_eyre("Not fd for stderr sent")?;
+        let stderr = fds.pop().ok_or_eyre("Not fd for stdout sent")?;
+
+        if dry_run {
+            crate::nix::activate_system(&store_path.store_path, stderr, stdout, dry_run)?;
+            Ok(ActivateUpdateResult::DryRun)
+        } else {
+            agent::activate_system_with_secrets(
+                &store_path,
+                &self.config.server,
+                &self.key,
+                stderr,
+                stdout,
+                dry_run,
+            )
+            .await?;
+            Ok(ActivateUpdateResult::Activated)
+        }
+    }
 }
 
-#[tracing::instrument(err)]
+#[tracing::instrument(err, skip(key))]
 pub async fn start_service(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
     YeetVarlinkService::start(config, key).await
 }
 
 impl YeetVarlinkService {
-    #[tracing::instrument(err)]
+    #[tracing::instrument(err, skip(key))]
     pub async fn start(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
         let listener = {
             let _err = remove_file(SOCKET_PATH).await;
@@ -303,6 +329,83 @@ pub enum DaemonMode {
     NetworkError,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum DownloadUpdateResult {
+    DryRun,
+    Downloaded,
+    UpToDate,
+    Detached,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ActivateUpdateResult {
+    DryRun,
+    NotDownloaded,
+    Activated,
+    AlreadySwitched,
+    Detached,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum VarlinkError {
+    #[error(transparent)]
+    Report(#[from] color_eyre::Report),
+    #[error("Defined error from Daemon:\n{0:?}")]
+    DaemonError(YeetDaemonError),
+}
+
+#[derive(Debug, ReplyError, zlink::introspect::ReplyError)]
+#[zlink(interface = "ch.yeetme.yeet")]
+pub enum YeetDaemonError {
+    EyreError {
+        error: String,
+    },
+    NoCurrentSystem,
+    /// Could not connect to the yeet-server in an operation where a server connection is required
+    NoConnectionToServer {
+        error: String,
+    },
+    CredentialError {
+        error: String,
+    },
+    /// Polkit was not able to perform authentication
+    PolkitError {
+        error: String,
+    },
+    /// Update actions only available only on attended systems
+    UnattendedSystem,
+}
+
+impl From<std::io::Error> for YeetDaemonError {
+    fn from(value: std::io::Error) -> Self {
+        Self::CredentialError {
+            error: value.to_string(),
+        }
+    }
+}
+
+impl From<PolkitError> for YeetDaemonError {
+    fn from(value: PolkitError) -> Self {
+        Self::PolkitError {
+            error: value.to_string(),
+        }
+    }
+}
+impl From<api::ResponseError> for YeetDaemonError {
+    fn from(value: api::ResponseError) -> Self {
+        Self::NoConnectionToServer {
+            error: value.to_string(),
+        }
+    }
+}
+impl From<color_eyre::eyre::ErrReport> for YeetDaemonError {
+    fn from(value: color_eyre::eyre::ErrReport) -> Self {
+        Self::EyreError {
+            error: value.to_string(),
+        }
+    }
+}
+
 async fn setup_socket_permissions(path: &str, group_name: &str) -> Result<()> {
     let group = Group::from_name(group_name)
         .context("Error while trying to look up `yeet` group on the system")?
@@ -323,3 +426,20 @@ async fn setup_socket_permissions(path: &str, group_name: &str) -> Result<()> {
     log::debug!("Socket permissions set: Group '{group_name}' can now access {path}");
     Ok(())
 }
+
+macro_rules! varlink_method {
+    ($fn_name:ident($($param:ident: $param_ty:ty),* $(,)?) -> $ret:ty) => {
+        #[tracing::instrument(err)]
+        pub async fn $fn_name($($param: $param_ty),*) -> Result<$ret, VarlinkError> {
+            let mut client = client().await?;
+            client
+                .$fn_name($($param),*)
+                .await
+                .context(
+                    "Could not communicate with the varlink daemon. Are you running the same version?",
+                )?
+                .map_err(VarlinkError::DaemonError)
+        }
+    };
+}
+pub(crate) use varlink_method;

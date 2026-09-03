@@ -3,10 +3,10 @@ use std::{
     fs::{
         self, File, Permissions, read_dir, read_link, read_to_string, remove_dir_all, remove_file,
     },
-    io::{self, BufRead as _, BufReader, Write as _},
+    io::{self, Write as _},
     os::unix::fs::{PermissionsExt as _, chown, symlink},
     path::{Path, PathBuf},
-    process::Command,
+    process::Stdio,
     sync::OnceLock,
     time::Duration,
 };
@@ -15,15 +15,13 @@ use api::{get_secret_key, get_verify_key};
 use backon::{ConstantBuilder, Retryable as _};
 use color_eyre::{
     Result, Section as _,
-    eyre::{Context as _, bail, eyre},
+    eyre::{bail, eyre},
 };
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::SecretKey;
 use log::{error, info};
-use tempfile::NamedTempFile;
 use tokio::time;
 use url::Url;
-use yeet::nix;
 
 use crate::{cli_args::AgentConfig, notification, varlink, version::get_active_version};
 
@@ -65,7 +63,7 @@ pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<()>
     Ok(())
 }
 
-#[tracing::instrument(err)]
+#[tracing::instrument(err, skip(key, pub_key))]
 async fn agent_loop(
     config: &AgentConfig,
     key: &SecretKey,
@@ -84,7 +82,7 @@ async fn agent_loop(
 
         let nixos_facter = if facter {
             info!("Collecting nixos-facter information");
-            let facts = Some(nix::facter()?);
+            let facts = Some(crate::nix::facter()?);
             info!("Done collecting facts");
             facts
         } else {
@@ -106,6 +104,7 @@ async fn agent_loop(
     }
     info!("Verified!");
 
+    let mut last_action: Option<api::AgentAction> = None;
     loop {
         let action = api::check_system(
             &config.server,
@@ -118,7 +117,25 @@ async fn agent_loop(
 
         info!("{action:#?}");
 
-        agent_action(action, &config.server, key).await?;
+        // only update when unattended
+        #[expect(clippy::else_if_without_else)]
+        if !config.attended {
+            agent_action(action.clone(), &config.server, key).await?;
+        }
+        // or update is emergency
+        else if let api::AgentAction::SwitchTo(store) = &action
+            && store.priority == api::UpdatePriority::Emergency
+        {
+            agent_action(action.clone(), &config.server, key).await?;
+        }
+        // else inform user of new update
+        else if matches!(action, api::AgentAction::SwitchTo(..))
+            && last_action.as_ref() != Some(&action)
+        {
+            notification::notify_all("Download with `yeet update`", "System Update available")?;
+        }
+
+        last_action = Some(action);
         time::sleep(Duration::from_secs(sleep)).await;
     }
 }
@@ -134,30 +151,27 @@ async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> R
     Ok(())
 }
 
-#[tracing::instrument(err, ret)]
-fn trusted_public_keys() -> Result<Vec<String>> {
-    let file = File::open("/etc/nix/nix.conf")?;
-    Ok(BufReader::new(file)
-        .lines()
-        .map_while(Result::ok)
-        .find(|line| line.starts_with("trusted-public-keys"))
-        .unwrap_or(String::from(
-            "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=",
-        ))
-        .split_whitespace()
-        .skip(2)
-        .map(str::to_owned)
-        .collect())
-}
-
 #[tracing::instrument(err, skip(key))]
 async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
-    download(version, url, key).await?;
+    crate::nix::realise_store_path(version, url, key, io::stderr(), io::stdout(), false).await?;
+    activate_system_with_secrets(version, url, key, io::stderr(), io::stdout(), false).await?;
+    Ok(())
+}
+
+#[tracing::instrument(err, skip(key, stderr, stdout))]
+pub async fn activate_system_with_secrets(
+    version: &api::RemoteStorePath,
+    url: &Url,
+    key: &SecretKey,
+    stderr: impl Into<Stdio>,
+    stdout: impl Into<Stdio>,
+    dry_run: bool,
+) -> Result<()> {
     let current_gen = read_link("/etc/yeet/secret");
     activate_secrets(version, url, key).await?;
     let next_gen = read_link("/etc/yeet/secret");
 
-    let activation_err = activate(&version.store_path);
+    let activation_err = crate::nix::activate_system(&version.store_path, stderr, stdout, false);
     // switch did not go correct
     if get_active_version()? == version.store_path {
         if let Ok(next_gen) = next_gen {
@@ -178,7 +192,11 @@ async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> R
         }
         activation_err?;
     }
-    notification::notify_all()?;
+    let variant = crate::nix::nixos_variant_name()?;
+    notification::notify_all(
+        &format!("System has been updated to `{variant}`"),
+        "System Update",
+    )?;
     Ok(())
 }
 
@@ -192,75 +210,6 @@ fn remove_all_dirs_unless<P: AsRef<Path>>(base: P, dirname: &OsStr) -> Result<()
         }
     }
 
-    Ok(())
-}
-#[tracing::instrument(err)]
-pub fn switch_to(store_path: &api::StorePath) -> Result<()> {
-    activate(store_path)?;
-    notification::notify_all()?;
-    Ok(())
-}
-
-#[tracing::instrument(err, skip(key))]
-async fn download(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
-    info!("Downloading {}", version.store_path);
-    let mut keys = trusted_public_keys()?;
-    keys.push(version.public_key.clone());
-    keys.sort();
-    keys.dedup();
-
-    let mut command = Command::new("nix-store");
-    command.stderr(io::stderr()).stdout(io::stdout());
-    command.args(vec![
-        "--realise",
-        &version.store_path,
-        "--option",
-        "extra-substituters",
-        &version.substitutor,
-        "--option",
-        "trusted-public-keys",
-        &keys.join(" "),
-        "--option",
-        "narinfo-cache-negative-ttl",
-        "0",
-    ]);
-
-    // Even if we do not end up using the temp file we create it outside of the if scope.
-    // Else it would get dropped before nix-store can use it
-    let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
-    let netrc = match api::get_secret(url, key, "netrc".into()).await {
-        Ok(secret) => secret,
-        Err(err) => {
-            log::error!("could not get netrc secret: {err}");
-            None
-        }
-    };
-    if let Some(netrc) = netrc {
-        netrc_file
-            .write_all(&netrc)
-            .context("Could not write to the temp netrc file")?;
-        netrc_file.flush()?;
-        command.args([
-            "--option",
-            "netrc-file",
-            &netrc_file.path().to_string_lossy(),
-        ]);
-    }
-
-    let download = command.output()?;
-
-    if !download.status.success() {
-        return Err(eyre!("{}", String::from_utf8(download.stderr)?)
-            .note("Could not realize new version")
-            .note(format!(
-                "Command: {}",
-                command
-                    .get_args()
-                    .map(|ostr| ostr.to_string_lossy())
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            )));
-    }
     Ok(())
 }
 
@@ -376,45 +325,5 @@ fn create_secret_generation(generation: &Path, secrets: Vec<(api::Secret, Vec<u8
         .note(format!("File to chown: {}", file_name.to_string_lossy()))?;
     }
 
-    Ok(())
-}
-
-#[tracing::instrument(err)]
-fn set_system_profile(store_path: &api::StorePath) -> Result<()> {
-    info!("Setting system profile to {store_path}");
-    let profile = Command::new("nix-env")
-        .args([
-            "--profile",
-            "/nix/var/nix/profiles/system",
-            "--set",
-            store_path,
-        ])
-        .output()?;
-    if !profile.status.success() {
-        bail!("{}", String::from_utf8(profile.stderr)?);
-    }
-    Ok(())
-}
-
-#[cfg(target_os = "macos")]
-#[tracing::instrument(err)]
-fn activate(store_path: &api::StorePath) -> Result<()> {
-    set_system_profile(store_path)?;
-    info!("Activating {}", store_path);
-    Command::new(Path::new(&store_path).join("activate"))
-        .spawn()?
-        .wait()?;
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-#[tracing::instrument(err)]
-fn activate(store_path: &api::StorePath) -> Result<()> {
-    info!("Activating {store_path}");
-    set_system_profile(store_path)?;
-    Command::new(Path::new(&store_path).join("bin/switch-to-configuration"))
-        .arg("switch")
-        .spawn()?
-        .wait()?;
     Ok(())
 }

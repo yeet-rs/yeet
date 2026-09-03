@@ -23,7 +23,7 @@ pub struct VersionRequest {
     pub store_path: StorePath,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 /// Represents a Version
 /// Each Version can have its own nix cache
 pub struct RemoteStorePath {
@@ -33,6 +33,19 @@ pub struct RemoteStorePath {
     pub store_path: StorePath,
     /// The substitutor (nix cache) to fetch the store path from
     pub substitutor: String,
+    /// Normal updates are installed manually if the host is in attended mode
+    /// In unattended mode, `Normal` updates are installed without interaction
+    #[serde(default)]
+    pub priority: UpdatePriority,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+#[cfg_attr(feature = "hazard", derive(sqlx::Type))]
+pub enum UpdatePriority {
+    #[default]
+    Normal,
+    Emergency,
 }
 
 request! (

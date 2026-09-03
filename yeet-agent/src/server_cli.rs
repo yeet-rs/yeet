@@ -21,6 +21,7 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
             store_path,
             public_key,
             substitutor,
+            priority,
         } => {
             api::update_hosts(
                 url,
@@ -29,6 +30,7 @@ pub async fn handle_server_commands(args: ServerArgs, config: &Config) -> Result
                     hosts: HashMap::from([(host, store_path)]),
                     public_key,
                     substitutor,
+                    priority: priority.into(),
                 },
             )
             .await?;

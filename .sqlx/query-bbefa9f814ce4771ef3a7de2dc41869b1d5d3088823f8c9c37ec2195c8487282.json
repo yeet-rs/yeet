@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT store_path,public_key,substitutor FROM update_request_history\n        JOIN nix_remotes ON update_request_history.remote = nix_remotes.id\n        WHERE host_id = $1\n        ORDER BY update_time DESC LIMIT 1",
+  "query": "\n        SELECT\n            store_path,\n            public_key,\n            substitutor,\n            priority as \"priority: api::UpdatePriority\"\n        FROM update_request_history\n        JOIN\n            nix_remotes ON update_request_history.remote = nix_remotes.id\n        WHERE host_id = $1\n        ORDER BY update_time DESC LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,17 @@
             "name": "substitutor"
           }
         }
+      },
+      {
+        "name": "priority: api::UpdatePriority",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "update_request_history",
+            "name": "priority"
+          }
+        }
       }
     ],
     "parameters": {
@@ -43,8 +54,9 @@
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "faa225354b9ed23a436647635a9113ef91deb46c20b7add24b664a4519e4ffde"
+  "hash": "bbefa9f814ce4771ef3a7de2dc41869b1d5d3088823f8c9c37ec2195c8487282"
 }
