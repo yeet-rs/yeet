@@ -5,9 +5,8 @@ use color_eyre::{
     eyre::{Context as _, bail, eyre},
 };
 use log::info;
-use yeet::{cachix, nix};
 
-use crate::{cli::common, cli_args::Config, sig::ssh};
+use crate::{cachix, cli::common, cli_args::Config, sig::ssh};
 
 #[tracing::instrument(skip(config), err)]
 pub async fn publish(
@@ -39,14 +38,14 @@ pub async fn publish(
     };
 
     let host = if host.is_empty() {
-        nix::get_hosts(&path.to_string_lossy(), darwin)?
+        crate::nix::get_hosts(&path.to_string_lossy(), darwin)?
     } else {
         host
     };
 
     info!("Building {host:?}");
 
-    let hosts = nix::build_hosts(&path.to_string_lossy(), host, darwin, variant)?;
+    let hosts = crate::nix::build_hosts(&path.to_string_lossy(), host, darwin, variant)?;
 
     if hosts.is_empty() {
         bail!("No hosts found - did you commit your files?")

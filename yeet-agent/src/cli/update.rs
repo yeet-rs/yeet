@@ -1,5 +1,5 @@
 use clap::Args;
-use color_eyre::Result;
+use color_eyre::{Result, eyre::bail};
 use log::info;
 use std::io::{self};
 
@@ -10,10 +10,8 @@ pub struct UpdateArgs {
     /// Say yes to every prompt
     #[arg(long)]
     yes: bool,
-    /// Does not actually download it
-    #[arg(long)]
-    dry_run: bool, // #[command(subcommand)]
-                   // pub command: UpdateCommands,
+    // #[command(subcommand)]
+    // pub command: UpdateCommands,
 }
 
 #[tracing::instrument(err)]
@@ -44,7 +42,10 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
     }
 
     if !args.yes && matches!(dry_run_result, varlink::DownloadUpdateResult::DryRun) {
-        if !inquire::Confirm::new("Do you want to download this update?").prompt()? {
+        if !inquire::Confirm::new("Do you want to download this update (without installing)?")
+            .with_default(true)
+            .prompt()?
+        {
             // User does not want to update yet
             return Ok(());
         }
@@ -61,6 +62,56 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
         )
         .await?;
     }
+
+    let dry_run_result = varlink::activate_update(
+        !args.yes,
+        vec![
+            nix::unistd::dup(&io::stdout())?,
+            nix::unistd::dup(&io::stderr())?,
+        ],
+    )
+    .await?;
+    match dry_run_result {
+        varlink::ActivateUpdateResult::DryRun => {}
+        varlink::ActivateUpdateResult::NotDownloaded => {
+            bail!("Downloading the update was not succesfull")
+        }
+        varlink::ActivateUpdateResult::Activated
+        | varlink::ActivateUpdateResult::AlreadySwitched => {
+            info!("You are already running on the newest version");
+            return Ok(());
+        }
+
+        varlink::ActivateUpdateResult::Detached => {
+            info!("You are currently detached");
+            return Ok(());
+        }
+    }
+
+    if !args.yes && matches!(dry_run_result, varlink::ActivateUpdateResult::DryRun) {
+        if !inquire::Confirm::new("Do you want to install this update (might cause a logout)?")
+            .with_default(true)
+            .prompt()?
+        {
+            // User does not want to update yet
+            return Ok(());
+        }
+    }
+
+    varlink::activate_update(
+        false,
+        vec![
+            nix::unistd::dup(&io::stdout())?,
+            nix::unistd::dup(&io::stderr())?,
+        ],
+    )
+    .await?;
+    let version = crate::nix::nixos_version()?;
+    info!(
+        "Updated to {}: {}",
+        version.nixos_version,
+        crate::nix::nixos_variant_name()?
+    );
 
     Ok(())
 }

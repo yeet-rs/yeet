@@ -43,6 +43,12 @@ pub trait YeetProxy {
         dry_run: bool,
         #[zlink(fds)] fds: Vec<OwnedFd>,
     ) -> zlink::Result<Result<DownloadUpdateResult, YeetDaemonError>>;
+
+    async fn activate_update(
+        &mut self,
+        dry_run: bool,
+        #[zlink(fds)] fds: Vec<OwnedFd>,
+    ) -> zlink::Result<Result<ActivateUpdateResult, YeetDaemonError>>;
     async fn detach(
         &mut self,
         version: api::StorePath,
@@ -64,6 +70,7 @@ varlink_method!(config() -> AgentConfig);
 varlink_method!(detach(version: api::StorePath) -> ());
 varlink_method!(attach() -> ());
 varlink_method!(download_update(dry_run: bool, fds: Vec<OwnedFd>) -> DownloadUpdateResult);
+varlink_method!(activate_update(dry_run: bool, fds: Vec<OwnedFd>) -> ActivateUpdateResult);
 
 struct YeetVarlinkService {
     pub config: cli_args::AgentConfig,
@@ -157,7 +164,7 @@ where
         info!("System detached. Switching");
 
         // Switch to version
-        let _err = agent::switch_to(&version);
+        let _err = crate::nix::detach(&version);
 
         info!("Switched to detached version");
 
@@ -199,7 +206,7 @@ where
         let stdout = fds.pop().ok_or_eyre("Not fd for stderr sent")?;
         let stderr = fds.pop().ok_or_eyre("Not fd for stdout sent")?;
 
-        yeet::nix::realise_store_path(
+        crate::nix::realise_store_path(
             &store_path,
             &self.config.server,
             &self.key,
@@ -213,6 +220,56 @@ where
             Ok(DownloadUpdateResult::Downloaded)
         } else {
             Ok(DownloadUpdateResult::DryRun)
+        }
+    }
+
+    pub async fn activate_update(
+        &self,
+        dry_run: bool,
+        #[zlink(fds)] mut fds: Vec<OwnedFd>,
+    ) -> Result<ActivateUpdateResult, YeetDaemonError> {
+        if !self.config.attended {
+            return Err(YeetDaemonError::UnattendedSystem);
+        }
+
+        let Ok(store_path) = version::get_active_version() else {
+            return Err(YeetDaemonError::NoCurrentSystem);
+        };
+
+        let agent_action = api::check_system(
+            &self.config.server,
+            &self.key,
+            api::VersionRequest { store_path },
+        )
+        .await?;
+        let store_path = match agent_action {
+            AgentAction::Nothing => return Ok(ActivateUpdateResult::AlreadySwitched),
+            AgentAction::Detach => return Ok(ActivateUpdateResult::Detached),
+            AgentAction::SwitchTo(remote_store_path) => remote_store_path,
+        };
+
+        // User first needs to download -> does not happen normally with `yeet update`
+        if !std::fs::exists(&store_path.store_path)? {
+            return Ok(ActivateUpdateResult::NotDownloaded);
+        }
+
+        let stdout = fds.pop().ok_or_eyre("Not fd for stderr sent")?;
+        let stderr = fds.pop().ok_or_eyre("Not fd for stdout sent")?;
+
+        if dry_run {
+            crate::nix::activate_system(&store_path.store_path, stderr, stdout, dry_run)?;
+            Ok(ActivateUpdateResult::DryRun)
+        } else {
+            agent::activate_system_with_secrets(
+                &store_path,
+                &self.config.server,
+                &self.key,
+                stderr,
+                stdout,
+                dry_run,
+            )
+            .await?;
+            Ok(ActivateUpdateResult::Activated)
         }
     }
 }
@@ -274,6 +331,15 @@ pub enum DownloadUpdateResult {
     DryRun,
     Downloaded,
     UpToDate,
+    Detached,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ActivateUpdateResult {
+    DryRun,
+    NotDownloaded,
+    Activated,
+    AlreadySwitched,
     Detached,
 }
 

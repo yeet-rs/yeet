@@ -6,7 +6,7 @@ use std::{
     io::{self, Write as _},
     os::unix::fs::{PermissionsExt as _, chown, symlink},
     path::{Path, PathBuf},
-    process::Command,
+    process::Stdio,
     sync::OnceLock,
     time::Duration,
 };
@@ -22,7 +22,6 @@ use httpsig_hyper::prelude::SecretKey;
 use log::{error, info};
 use tokio::time;
 use url::Url;
-use yeet::nix;
 
 use crate::{cli_args::AgentConfig, notification, varlink, version::get_active_version};
 
@@ -83,7 +82,7 @@ async fn agent_loop(
 
         let nixos_facter = if facter {
             info!("Collecting nixos-facter information");
-            let facts = Some(nix::facter()?);
+            let facts = Some(crate::nix::facter()?);
             info!("Done collecting facts");
             facts
         } else {
@@ -153,12 +152,25 @@ async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> R
 
 #[tracing::instrument(err, skip(key))]
 async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
-    nix::realise_store_path(version, url, key, io::stderr(), io::stdout(), false).await?;
+    crate::nix::realise_store_path(version, url, key, io::stderr(), io::stdout(), false).await?;
+    activate_system_with_secrets(version, url, key, io::stderr(), io::stdout(), false).await?;
+    Ok(())
+}
+
+#[tracing::instrument(err, skip(key, stderr, stdout))]
+pub async fn activate_system_with_secrets(
+    version: &api::RemoteStorePath,
+    url: &Url,
+    key: &SecretKey,
+    stderr: impl Into<Stdio>,
+    stdout: impl Into<Stdio>,
+    dry_run: bool,
+) -> Result<()> {
     let current_gen = read_link("/etc/yeet/secret");
     activate_secrets(version, url, key).await?;
     let next_gen = read_link("/etc/yeet/secret");
 
-    let activation_err = activate(&version.store_path);
+    let activation_err = crate::nix::activate_system(&version.store_path, stderr, stdout, false);
     // switch did not go correct
     if get_active_version()? == version.store_path {
         if let Ok(next_gen) = next_gen {
@@ -179,7 +191,7 @@ async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> R
         }
         activation_err?;
     }
-    let variant = nix::nixos_variant_name()?;
+    let variant = crate::nix::nixos_variant_name()?;
     notification::notify_all(
         &format!("System has been updated to `{variant}`"),
         "System Update",
@@ -197,18 +209,6 @@ fn remove_all_dirs_unless<P: AsRef<Path>>(base: P, dirname: &OsStr) -> Result<()
         }
     }
 
-    Ok(())
-}
-
-/// Used for detaching
-#[tracing::instrument(err)]
-pub fn switch_to(store_path: &api::StorePath) -> Result<()> {
-    activate(store_path)?;
-    let variant = nix::nixos_variant_name()?;
-    notification::notify_all(
-        &format!("System has been updated to `{variant}`"),
-        "System Update",
-    )?;
     Ok(())
 }
 
@@ -324,45 +324,5 @@ fn create_secret_generation(generation: &Path, secrets: Vec<(api::Secret, Vec<u8
         .note(format!("File to chown: {}", file_name.to_string_lossy()))?;
     }
 
-    Ok(())
-}
-
-#[tracing::instrument(err)]
-fn set_system_profile(store_path: &api::StorePath) -> Result<()> {
-    info!("Setting system profile to {store_path}");
-    let profile = Command::new("nix-env")
-        .args([
-            "--profile",
-            "/nix/var/nix/profiles/system",
-            "--set",
-            store_path,
-        ])
-        .output()?;
-    if !profile.status.success() {
-        bail!("{}", String::from_utf8(profile.stderr)?);
-    }
-    Ok(())
-}
-
-#[cfg(target_os = "macos")]
-#[tracing::instrument(err)]
-fn activate(store_path: &api::StorePath) -> Result<()> {
-    set_system_profile(store_path)?;
-    info!("Activating {}", store_path);
-    Command::new(Path::new(&store_path).join("activate"))
-        .spawn()?
-        .wait()?;
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-#[tracing::instrument(err)]
-fn activate(store_path: &api::StorePath) -> Result<()> {
-    info!("Activating {store_path}");
-    set_system_profile(store_path)?;
-    Command::new(Path::new(&store_path).join("bin/switch-to-configuration"))
-        .arg("switch")
-        .spawn()?
-        .wait()?;
     Ok(())
 }

@@ -39,6 +39,8 @@ mod cli {
     pub mod update;
     pub mod user;
 }
+mod cachix;
+mod nix;
 mod notification;
 mod polkit;
 mod section_impls;

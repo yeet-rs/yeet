@@ -4,7 +4,6 @@ use color_eyre::{Result, eyre::Context as _};
 use colored::Colorize as _;
 use jiff::tz::TimeZone;
 use serde::{Deserialize, Serialize};
-use yeet::nix;
 
 use crate::{
     section::{self, DisplaySection, Section, section},
@@ -175,9 +174,9 @@ impl DisplaySection for SystemInfo {
 
 #[tracing::instrument(err, ret)]
 fn system_info() -> Result<SystemInfo> {
-    let nixos_version = nix::nixos_version().context("Could not fetch nixos version")?;
+    let nixos_version = crate::nix::nixos_version().context("Could not fetch nixos version")?;
     let nixos_generations =
-        nix::nixos_generations().context("Could not fetch nixos generations")?;
+        crate::nix::nixos_generations().context("Could not fetch nixos generations")?;
     let generation = nixos_generations
         .into_iter()
         .find(|generation| generation.current)
@@ -187,7 +186,7 @@ fn system_info() -> Result<SystemInfo> {
         kernel: generation.kernel_version,
         nixos_version: generation.nixos_version,
         build_date: generation.date,
-        variant: nix::nixos_variant_name()?,
+        variant: crate::nix::nixos_variant_name()?,
         configuration_revision: generation.configuration_revision,
         nixpkgs_revision: nixos_version.nixpkgs_revision,
         current_generation: generation.generation,

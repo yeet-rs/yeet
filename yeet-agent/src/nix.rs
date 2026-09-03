@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tempfile::NamedTempFile;
 
+use crate::notification;
+
 #[tracing::instrument(err, fields(program = %program.as_ref()))]
 pub fn cmd_exists<T: AsRef<str>>(program: T) -> io::Result<()> {
     let mut cmd = Command::new("sh");
@@ -45,35 +47,6 @@ fn nom_or_nix() -> String {
         "nix"
     }
     .to_owned()
-}
-
-// This command is used to run the virtual machine of a particular system
-// WARNING: currently is just shelling out. In future we need to valide if
-// the system is in the flake or not
-// TODO: split build and run into different parts
-#[tracing::instrument(err)]
-pub fn run_vm(flake_path: &Path, system: &str) -> Result<()> {
-    let flake_path = flake_path.canonicalize()?; // Maybe check if its a dir and if it contains a flake.nix
-    let flake_path = flake_path.to_string_lossy();
-    #[cfg(target_arch = "x86_64")]
-    let flake_target = format!("nixosConfigurations.{system}.config.formats.vm");
-    #[cfg(target_arch = "aarch64")]
-    let flake_target = format!("darwinConfigurations.{system}.config.formats.vm");
-    let build_output = Command::new(nom_or_nix())
-        .args(["build", "-f", &flake_path, &flake_target])
-        .stderr(io::stderr())
-        .stdout(io::stdout())
-        .spawn()?
-        .wait()?;
-    if !build_output.success() {
-        bail!("Could not build the Virtual Machine");
-    }
-    Command::new(format!("{flake_path}/result/run-nixos-vm"))
-        .stderr(io::stderr())
-        .stdout(io::stdout())
-        .spawn()?
-        .wait()?;
-    Ok(())
 }
 
 // TODO: build multiple hosts at once
@@ -349,5 +322,57 @@ pub async fn realise_store_path(
                     .join(" ")
             )));
     }
+    Ok(())
+}
+
+#[tracing::instrument(err)]
+fn set_system_profile(store_path: &api::StorePath) -> Result<()> {
+    info!("Setting system profile to {store_path}");
+    let profile = Command::new("nix-env")
+        .args([
+            "--profile",
+            "/nix/var/nix/profiles/system",
+            "--set",
+            store_path,
+        ])
+        .output()?;
+    if !profile.status.success() {
+        bail!("{}", String::from_utf8(profile.stderr)?);
+    }
+    Ok(())
+}
+
+#[tracing::instrument(err, skip(stderr, stdout))]
+pub fn activate_system(
+    store_path: &api::StorePath,
+    stderr: impl Into<Stdio>,
+    stdout: impl Into<Stdio>,
+    dry_run: bool,
+) -> Result<()> {
+    info!("Activating {store_path}");
+    let cmd = if dry_run {
+        "dry-activate"
+    } else {
+        set_system_profile(store_path)?;
+        "switch"
+    };
+    Command::new(Path::new(&store_path).join("bin/switch-to-configuration"))
+        .arg(cmd)
+        .stderr(stderr)
+        .stdout(stdout)
+        .spawn()?
+        .wait()?;
+    Ok(())
+}
+
+/// Used for detaching
+#[tracing::instrument(err)]
+pub fn detach(store_path: &api::StorePath) -> Result<()> {
+    activate_system(store_path, io::stderr(), io::stdout(), false)?;
+    let variant = nixos_variant_name()?;
+    notification::notify_all(
+        &format!("System has been updated to `{variant}`"),
+        "System Update",
+    )?;
     Ok(())
 }
