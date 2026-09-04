@@ -269,7 +269,6 @@ where
                 &self.key,
                 stderr,
                 stdout,
-                dry_run,
             )
             .await?;
             Ok(ActivateUpdateResult::Activated)

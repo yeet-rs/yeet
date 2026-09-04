@@ -154,7 +154,7 @@ async fn agent_action(action: api::AgentAction, url: &Url, key: &SecretKey) -> R
 #[tracing::instrument(err, skip(key))]
 async fn update(version: &api::RemoteStorePath, url: &Url, key: &SecretKey) -> Result<()> {
     crate::nix::realise_store_path(version, url, key, io::stderr(), io::stdout(), false).await?;
-    activate_system_with_secrets(version, url, key, io::stderr(), io::stdout(), false).await?;
+    activate_system_with_secrets(version, url, key, io::stderr(), io::stdout()).await?;
     Ok(())
 }
 
@@ -165,7 +165,6 @@ pub async fn activate_system_with_secrets(
     key: &SecretKey,
     stderr: impl Into<Stdio>,
     stdout: impl Into<Stdio>,
-    dry_run: bool,
 ) -> Result<()> {
     let current_gen = read_link("/etc/yeet/secret");
     activate_secrets(version, url, key).await?;
