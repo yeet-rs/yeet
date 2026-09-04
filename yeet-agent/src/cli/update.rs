@@ -1,4 +1,7 @@
-use std::io;
+use std::{
+    io,
+    process::{Command, Stdio},
+};
 
 use clap::Args;
 use color_eyre::{Result, eyre::bail};
@@ -30,7 +33,6 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
     match dry_run_result {
         varlink::DownloadUpdateResult::UpToDate => {
             info!("You are Up To Date");
-            return Ok(());
         }
         varlink::DownloadUpdateResult::Detached => {
             info!("You are currently detached");
@@ -74,7 +76,6 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
 
         varlink::ActivateUpdateResult::AlreadySwitched => {
             info!("You are already running on the newest version");
-            return Ok(());
         }
 
         varlink::ActivateUpdateResult::Detached => {
@@ -108,5 +109,37 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
         crate::nix::nixos_variant_name()?
     );
 
+    if !home_manager_exists()? {
+        return Ok(());
+    }
+
+    let switch = args.yes
+        || inquire::Confirm::new(
+            "Do you want to run `home-manager switch` (will not update your npins)?",
+        )
+        .with_default(true)
+        .prompt()?;
+
+    if switch {
+        Command::new("home-manager").arg("switch").status()?;
+    }
+
     Ok(())
+}
+
+fn home_manager_exists() -> Result<bool> {
+    match Command::new("home-manager")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(_) => Ok(true),
+        Err(e) => {
+            if let io::ErrorKind::NotFound = e.kind() {
+                Ok(false)
+            } else {
+                Err(e.into())
+            }
+        }
+    }
 }
