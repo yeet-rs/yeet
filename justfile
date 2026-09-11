@@ -73,4 +73,4 @@ vm-installer:
     ./result/bin/run-nixos-vm
 
 build-installer:
-    nom build -f . installer.config.system.build.diskoImages
+    nom build -f . installer.config.system.build.image

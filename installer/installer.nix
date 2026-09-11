@@ -7,8 +7,7 @@
   ...
 }:
 let
-
-  presetLanzabooteLuks = import ./presets/systems/lanzaboote-luks.nix {  inherit nixpkgs;};
+  presetLanzabooteLuks = import ./presets/systems/lanzaboote-luks.nix { inherit nixpkgs; };
   getty = {
     ExecStart = [
       ""
@@ -28,43 +27,30 @@ let
 in
 {
   imports = [
-    "${fetchTarball "https://github.com/nix-community/disko/archive/master.tar.gz"}/module.nix"
-    "${fetchTarball "https://github.com/nix-community/disko/archive/master.tar.gz"}/example/simple-efi.nix"
     "${modulesPath}/profiles/minimal.nix"
+    ./image.nix
+
     "${modulesPath}/installer/cd-dvd/channel.nix"
   ];
 
-  boot.loader.grub.efiSupport = true;
-  boot.loader.grub.efiInstallAsRemovable = true;
-  disko.devices.disk.main.imageSize = "4000M";
-
   nixpkgs.hostPlatform = "x86_64-linux";
   system.stateVersion = "26.05"; # initial nixos state
-
-  environment.etc."yeet".source = ./presets;
-
-  boot.initrd.availableKernelModules = [
-    "xhci_pci"
-    "ehci_pci"
-    "usb_storage"
-    "usbhid"
-    "sd_mod"
-  ];
-
-  # image.baseName = lib.mkForce "yeet-installer-${config.system.stateVersion}-${pkgs.stdenv.hostPlatform.system}";
-  # system.nixos.variant_id = "yeet-installer";
-  # system.nixos.distroName = lib.mkForce "Yeet Installer";
-
-  boot.zfs.forceImportRoot = false;
 
   nixpkgs.config.allowUnfree = true;
   hardware.enableAllFirmware = true;
 
   nix.settings.substituters = lib.mkForce [ ];
 
-  users.users.me.isNormalUser = true;
-  users.users.me.password = "test";
-  users.users.me.extraGroups = [ "wheel" ];
+  users.users.nixos = {
+    isNormalUser = true;
+    extraGroups = [
+      "wheel"
+    ];
+    initialHashedPassword = "";
+  };
+
+  users.users.root.initialHashedPassword = "";
+  nix.settings.trusted-users = [ "nixos" ];
 
   environment.systemPackages = [
     pkgs.nix-output-monitor
@@ -97,6 +83,45 @@ in
   # download-using-manifests.pl from forking even if there is
   # plenty of free memory.
   boot.kernel.sysctl."vm.overcommit_memory" = "1";
+
+  # faster networking
+  networking.useNetworkd = true;
+  networking.dhcpcd.enable = false;
+
+
+
+  # --- scratch space, sized to the stick, not to RAM ----------------------
+  # Doesn't exist (or exists at token size) in the distributed image —
+  # created/grown the first time this boots on real hardware, against
+  # whatever's left on that specific disk.
+
+  # systemd.repart.partitions."scratch" = {
+  #   repartConfig = {
+  #     Type = "linux-generic";
+  #     Label = "YEET_SCRATCH";
+  #     Format = "ext4";
+  #     SizeMinBytes = "1G";
+  #     # no SizeMaxBytes: grows to consume whatever's left on the disk
+  #   };
+  # };
+
+  # fileSystems."/mnt/scratch" = {
+  #   device = "/dev/disk/by-partlabel/YEET_SCRATCH";
+  #   fsType = "ext4";
+  #   options = [
+  #     "rw"
+  #     "nofail"
+  #   ];
+  # };
+
+  # One list, not two — repeating the `systemd.tmpfiles.rules =` binding
+  # in the same file would be a duplicate-attribute error, not a merge.
+  # systemd.tmpfiles.rules = [
+  #   "d /nix/.rw-store/store 0755 root root -" # overlay upperdir — created explicitly rather than assumed
+  #   "d /nix/.rw-store/work 0755 root root -" # overlay workdir — same reason
+  #   "d /mnt/scratch/tmp 0755 root root -"
+  # ];
+  # environment.variables.TMPDIR = "/mnt/scratch/tmp";
 
   virtualisation.vmVariant.virtualisation = {
     memorySize = 4096;
