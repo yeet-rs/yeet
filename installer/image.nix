@@ -3,12 +3,31 @@
   pkgs,
   lib,
   modulesPath,
+  utils,
   ...
 }:
+let
+
+  repartWithDisk = pkgs.writeShellScript "systemd-repart-yeet" ''
+    set -eu
+    part=$(${pkgs.coreutils}/bin/readlink -f /dev/disk/by-partlabel/YEET_ROOTFS)
+    part_sysfs=$(${pkgs.coreutils}/bin/readlink -f "/sys/class/block/$(${pkgs.coreutils}/bin/basename "$part")")
+    disk="/dev/$(${pkgs.coreutils}/bin/basename "$(${pkgs.coreutils}/bin/dirname "$part_sysfs")")"
+
+    exec ${config.boot.initrd.systemd.package}/bin/systemd-repart \
+      --definitions=/etc/repart.d \
+      --dry-run=no \
+      --empty=${config.boot.initrd.systemd.repart.empty} \
+      --discard=${lib.boolToString config.boot.initrd.systemd.repart.discard} \
+      ${utils.escapeSystemdExecArgs config.boot.initrd.systemd.repart.extraArgs} \
+      "$disk"
+  '';
+in
 {
   imports = [ "${modulesPath}/image/repart.nix" ];
 
   boot.loader.grub.enable = false;
+  boot.kernelParams = [ "systemd.setenv=SYSTEMD_SULOGIN_FORCE=1" ];
 
   boot.initrd.availableKernelModules = [
     "xhci_pci"
@@ -28,11 +47,10 @@
     partitions = {
       "10-esp" = {
         contents = {
-          "/EFI/BOOT/BOOTX64.EFI".source =
-            "${pkgs.systemd}/lib/systemd/boot/efi/systemd-bootx64.efi";
+          "/EFI/BOOT/BOOTX64.EFI".source = "${pkgs.systemd}/lib/systemd/boot/efi/systemd-bootx64.efi";
 
-            "/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
-              "${config.system.build.uki}/${config.system.boot.loader.ukiFile}";
+          "/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
+            "${config.system.build.uki}/${config.system.boot.loader.ukiFile}";
         };
         repartConfig = {
           Type = "esp";
@@ -55,11 +73,13 @@
         };
       };
 
-
       "30-rootfs" = {
         storePaths = [ config.system.build.toplevel ];
+        nixStorePrefix = "/";
         contents = {
-          "/nix/store/nix-path-registration".source = "${pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; }}/registration";
+          "/nix-path-registration".source = "${
+            pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; }
+          }/registration";
         };
         repartConfig = {
           Type = "linux-generic";
@@ -68,14 +88,6 @@
           Minimize = "best";
         };
       };
-
-      # "40-nix-rw" = {
-      #   repartConfig = {
-      #     Type = "linux-generic";
-      #     Label = "YEET_NIX_STORE";
-      #     Format = "vfat";
-      #   };
-      # };
     };
   };
 
@@ -107,6 +119,30 @@
     '';
   };
 
+  boot.initrd.systemd.repart.enable = true;
+  boot.initrd.systemd.services.systemd-repart = {
+    # disk can't be set because / is tmpfs
+    unitConfig.RequiresMountsFor = "/sysroot/nix/.ro-store";
+    serviceConfig.ExecStart = lib.mkForce [
+      " " # reset the upstream ExecStart
+      "${repartWithDisk}"
+    ];
+  };
+
+  # include the repartWithDisk
+  boot.initrd.systemd.storePaths = [
+    "${repartWithDisk}"
+    pkgs.runtimeShell
+    pkgs.coreutils
+  ];
+
+  systemd.repart.partitions."40-nix-rw" = {
+    Type = "3db01e4f-d3f4-4b3a-85c6-572a140ca6d7"; # random uuid
+    Label = "YEET_NIX_STORE";
+    Format = "ext4";
+    SizeMinBytes = "1G";
+    GrowFileSystem = "yes";
+  };
 
   fileSystems."/" = {
     device = "tmpfs";
@@ -122,16 +158,19 @@
   };
 
   fileSystems."/nix/.rw-store" = {
-    fsType = "tmpfs";
-    options = [ "mode=0755" ];
+    device = "/dev/disk/by-partlabel/YEET_NIX_STORE";
+    fsType = "ext4";
+    options = [
+      "rw"
+    ];
     neededForBoot = true;
   };
 
   fileSystems."/nix/store" = {
     overlay = {
-      lowerdir= ["/nix/.ro-store/nix/store"];
-      upperdir="/nix/.rw-store/store";
-      workdir="/nix/.rw-store/work";
+      lowerdir = [ "/nix/.ro-store" ];
+      upperdir = "/nix/.rw-store/store";
+      workdir = "/nix/.rw-store/work";
     };
   };
 

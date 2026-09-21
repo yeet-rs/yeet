@@ -6,7 +6,7 @@
 
   # Load the blueprint
   # outputs = inputs: inputs.blueprint { inherit inputs; };
-  outputs = inputs: {};
+  outputs = inputs: { };
 }
 # {
 #   inputs = {

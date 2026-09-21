@@ -88,41 +88,6 @@ in
   networking.useNetworkd = true;
   networking.dhcpcd.enable = false;
 
-
-
-  # --- scratch space, sized to the stick, not to RAM ----------------------
-  # Doesn't exist (or exists at token size) in the distributed image —
-  # created/grown the first time this boots on real hardware, against
-  # whatever's left on that specific disk.
-
-  # systemd.repart.partitions."scratch" = {
-  #   repartConfig = {
-  #     Type = "linux-generic";
-  #     Label = "YEET_SCRATCH";
-  #     Format = "ext4";
-  #     SizeMinBytes = "1G";
-  #     # no SizeMaxBytes: grows to consume whatever's left on the disk
-  #   };
-  # };
-
-  # fileSystems."/mnt/scratch" = {
-  #   device = "/dev/disk/by-partlabel/YEET_SCRATCH";
-  #   fsType = "ext4";
-  #   options = [
-  #     "rw"
-  #     "nofail"
-  #   ];
-  # };
-
-  # One list, not two — repeating the `systemd.tmpfiles.rules =` binding
-  # in the same file would be a duplicate-attribute error, not a merge.
-  # systemd.tmpfiles.rules = [
-  #   "d /nix/.rw-store/store 0755 root root -" # overlay upperdir — created explicitly rather than assumed
-  #   "d /nix/.rw-store/work 0755 root root -" # overlay workdir — same reason
-  #   "d /mnt/scratch/tmp 0755 root root -"
-  # ];
-  # environment.variables.TMPDIR = "/mnt/scratch/tmp";
-
   virtualisation.vmVariant.virtualisation = {
     memorySize = 4096;
     # cores = 8;

@@ -59,11 +59,14 @@ let
         };
       };
   };
-  nixos = nixpkgs: configuration: import "${nixpkgs}/nixos" {inherit configuration;
-    specialArgs = {
-      inherit cargo_nix nixpkgs;
+  nixos =
+    nixpkgs: configuration:
+    import "${nixpkgs}/nixos" {
+      inherit configuration;
+      specialArgs = {
+        inherit cargo_nix nixpkgs;
+      };
     };
-  };
 
 in
 rec {
