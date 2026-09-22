@@ -238,7 +238,6 @@ async fn activate_secrets(
             // short circuit if the artifact exists on the server
             if let Some(data) = api::get_artifact_by_name(url, key, name.clone()).await? {
                 log::info!("Retrieved generated secret {name}");
-                let data = template_secret(secret.template.as_deref(), data);
                 secrets.push((secret, data));
                 continue;
             }
@@ -250,7 +249,6 @@ async fn activate_secrets(
             log::info!("Generated secret {name}");
             api::store_artifact(url, key, &name, data.as_slice()).await?;
 
-            let data = template_secret(secret.template.as_deref(), data);
             secrets.push((secret, data));
         } else {
             log::info!("Fetching secret {name}");
@@ -258,7 +256,6 @@ async fn activate_secrets(
                 bail!("Secret {name} not found! Unable to switch to derivation");
             };
 
-            let data = template_secret(secret.template.as_deref(), data);
             secrets.push((secret, data));
         }
     }
@@ -327,6 +324,7 @@ fn create_secret_generation(generation: &Path, secrets: Vec<(api::Secret, Vec<u8
             8,
         )?))?;
 
+        let content = template_secret(secret.template.as_deref(), content);
         secret_file.write_all(&content)?;
         secret_file.flush()?;
 
