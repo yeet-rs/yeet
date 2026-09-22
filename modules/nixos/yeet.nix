@@ -77,6 +77,14 @@ let
             Ignored if format is null
           '';
         };
+        template = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = ''
+            Instead of just writing the password into the file, replaces every occurence of {yeet_secret} with the secret content
+          '';
+          example = "DB_PASSWORD={yeet_secret}";
+        };
       };
     }
   );

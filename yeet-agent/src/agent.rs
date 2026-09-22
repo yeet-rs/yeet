@@ -248,12 +248,16 @@ async fn activate_secrets(
             };
             log::info!("Generated secret {name}");
             api::store_artifact(url, key, &name, data.as_slice()).await?;
+
+            let data = template_secret(secret.template.as_deref(), data);
             secrets.push((secret, data));
         } else {
             log::info!("Fetching secret {name}");
             let Some(data) = api::get_secret(url, key, name.clone()).await? else {
                 bail!("Secret {name} not found! Unable to switch to derivation");
             };
+
+            let data = template_secret(secret.template.as_deref(), data);
             secrets.push((secret, data));
         }
     }
@@ -290,6 +294,15 @@ async fn activate_secrets(
     symlink(&generation, "/etc/yeet/secret")?;
 
     Ok(())
+}
+
+fn template_secret(template: Option<&str>, secret: Vec<u8>) -> Vec<u8> {
+    match template {
+        Some(template) => template
+            .replace("{yeet_secret}", &String::from_utf8_lossy(&secret))
+            .into_bytes(),
+        None => secret,
+    }
 }
 
 #[tracing::instrument(err, skip(secrets))]

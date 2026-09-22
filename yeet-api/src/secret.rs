@@ -35,6 +35,9 @@ pub struct Secret {
 
     /// Format to generate
     pub format: Option<Format>,
+
+    /// Secret template
+    pub template: Option<String>,
 }
 
 impl Secret {
