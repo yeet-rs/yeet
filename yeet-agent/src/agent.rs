@@ -238,6 +238,7 @@ async fn activate_secrets(
             // short circuit if the artifact exists on the server
             if let Some(data) = api::get_artifact_by_name(url, key, name.clone()).await? {
                 log::info!("Retrieved generated secret {name}");
+                let data = template_secret(secret.template.as_deref(), data);
                 secrets.push((secret, data));
                 continue;
             }
