@@ -22,6 +22,8 @@ tempfile.workspace = true
 tracing-appender = "0.2.5"
 env_logger.workspace = true
 log.workspace = true
+blake3 = "1.8.7"
+merkle_hash = "3.9.0"
 
 
 [lints]

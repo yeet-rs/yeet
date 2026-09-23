@@ -4,27 +4,38 @@ use std::{
     fs::{self, read_to_string},
     io::{Write, stderr, stdout},
     os::unix::fs::PermissionsExt,
+    path::PathBuf,
     process::Command,
 };
 
-use color_eyre::{
-    Result,
-    eyre::{OptionExt, bail},
-};
-use log::info;
+use color_eyre::{Result, eyre::bail};
+
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use tracing::instrument;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
+use crate::cache::Cache;
+
+mod cache;
+mod nix;
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub nix_system: Option<String>,
+    /// path to the nix fail that gets built
+    pub nix_system: Option<PathBuf>,
+    /// nix attr that should get build to get the disko script
     #[serde(default = "nix_disko_attr")]
     pub nix_disko_attr: String,
+    /// directories that empty cache if they get modified
+    #[serde(default = "default_cache")]
+    pub cache: Vec<String>,
 }
 fn nix_disko_attr() -> String {
     "config.system.build.diskoScript".to_owned()
+}
+fn default_cache() -> Vec<String> {
+    vec!["/etc/yeet/systems".to_owned(), "/etc/yeet/disko".to_owned()]
 }
 
 fn init_tracing() {
@@ -50,6 +61,13 @@ fn init_tracing() {
     log_builder.init();
 }
 
+struct DisplayPathBuf(pub PathBuf);
+impl std::fmt::Display for DisplayPathBuf {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.display())
+    }
+}
+
 #[instrument(err)]
 fn main() -> Result<()> {
     init_tracing();
@@ -70,19 +88,22 @@ fn main() -> Result<()> {
     let toml = args.next().unwrap_or("/etc/yeet/installer.toml".to_owned());
 
     let config: Config = toml::from_str(&read_to_string(toml)?)?;
+    let mut cache = Cache::from_file(config.cache, PathBuf::from("/etc/yeet/cache.toml"))?;
 
     let nix_system = match config.nix_system {
         Some(system) => system,
         None => {
             let systems = fs::read_dir("/etc/yeet/systems")?
                 .flat_map(|dir| dir.ok())
-                .map(|dir| dir.path().to_string_lossy().to_string())
+                .map(|p| DisplayPathBuf(p.path()))
                 .collect::<Vec<_>>();
-            inquire::Select::new("Which system do you want to install?", systems).prompt()?
+            inquire::Select::new("Which system do you want to install?", systems)
+                .prompt()?
+                .0
         }
     };
 
-    let disko = nix_eval_disko(nix_system, config.nix_disko_attr)?;
+    let disko = read_to_string(cache.nix_build(nix_system, config.nix_disko_attr)?)?;
 
     let disks = list_devices()?;
     let anchors = get_disko_anchors(&disko)?;
@@ -113,32 +134,6 @@ fn run_disko(disko: String) -> Result<()> {
     }
 
     Ok(())
-}
-
-#[instrument(err, ret)]
-fn nix_eval_disko(nix_system: String, disko_attr: String) -> Result<String> {
-    info!("Building disko script");
-    let output = Command::new("nom")
-        .arg("build")
-        .arg("-f")
-        .arg(nix_system)
-        .arg(disko_attr)
-        .arg("--no-link")
-        .arg("--json")
-        .stderr(stderr())
-        .output()?;
-    if !output.status.success() {
-        bail!("Could not build the disko script")
-    }
-    let nixout =
-        serde_json::from_str::<serde_json::Value>(&String::from_utf8_lossy(&output.stdout))?;
-    let path = nixout
-        .pointer("/0/outputs/out")
-        .ok_or_eyre("Disko script built but did not contain output")?
-        .as_str()
-        .ok_or_eyre("Nix build output was of unexpected type")?;
-
-    Ok(read_to_string(path)?)
 }
 
 /// creates a mapping between available disks and the disko anchors
