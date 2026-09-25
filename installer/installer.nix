@@ -64,6 +64,11 @@ in
 
   # build speed improvements
   system.extraDependencies = [
+    # add disko so that we do not have to download it again
+    (fetchTarball {
+      url = "https://github.com/nix-community/disko/archive/master.tar.gz";
+      sha256 = "sha256-uZkBR7yHdIKUFB5SZdfgh1qkGfI3XmYmI/lTiquxbck=";
+    })
     presetLanzabooteLuks.config.system.build.diskoScript
     pkgs.stdenvNoCC # for runCommand
     pkgs.busybox

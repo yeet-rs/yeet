@@ -9,6 +9,7 @@ use std::{
 use tracing::instrument;
 
 use serde::{Deserialize, Serialize};
+use serde_json_any_key::*;
 
 use crate::nix;
 
@@ -25,7 +26,8 @@ pub struct Cache {
     /// Resulting hash if all component directories get recursively traversed and the file contents hashed
     hash: String,
     /// (evaluated file, evaluated attribute) -> eval result
-    evals: HashMap<(PathBuf, String), PathBuf>,
+    #[serde(with = "any_key_map")]
+    evals: HashMap<(String, String), PathBuf>,
 }
 
 impl Drop for Cache {
@@ -78,7 +80,7 @@ impl Cache {
     /// Build a nix attr through the cache.
     /// Make sure you run `refresh` beforehand!
     #[instrument(err, ret)]
-    pub fn nix_build(&mut self, nix_file: PathBuf, attr: String) -> Result<PathBuf> {
+    pub fn nix_build(&mut self, nix_file: String, attr: String) -> Result<PathBuf> {
         let cache = self.evals.get(&(nix_file.clone(), attr.clone()));
         match cache {
             Some(cache_hit) => Ok(cache_hit.clone()),

@@ -1,5 +1,9 @@
 {
   nixpkgs ? <nixpkgs>,
+  disko ? fetchTarball {
+    url = "https://github.com/nix-community/disko/archive/master.tar.gz";
+    sha256 = "sha256-uZkBR7yHdIKUFB5SZdfgh1qkGfI3XmYmI/lTiquxbck=";
+  },
   # pkgs ? import nixpkgs { },
   # modulesPath ? "${toString <nixpkgs>}/nixos/modules",
   ...
@@ -7,7 +11,7 @@
 import "${nixpkgs}/nixos" {
   configuration = {
     imports = [
-      "${fetchTarball "https://github.com/nix-community/disko/archive/master.tar.gz"}/module.nix"
+      "${disko}/module.nix"
       ../disko/luks-btrfs-subvolumes.nix
       # "${modulesPath}/profiles/minimal.nix"
     ];

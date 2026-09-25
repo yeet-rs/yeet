@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     env::args,
-    fs::{self, read_to_string},
+    fs::{self, read_link, read_to_string},
     io::{Write, stderr, stdout},
     os::unix::fs::PermissionsExt,
     path::PathBuf,
@@ -10,6 +10,7 @@ use std::{
 
 use color_eyre::{Result, eyre::bail};
 
+use log::info;
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use tracing::instrument;
@@ -23,7 +24,7 @@ mod nix;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     /// path to the nix fail that gets built
-    pub nix_system: Option<PathBuf>,
+    pub nix_system: Option<String>,
     /// nix attr that should get build to get the disko script
     #[serde(default = "nix_disko_attr")]
     pub nix_disko_attr: String,
@@ -61,13 +62,6 @@ fn init_tracing() {
     log_builder.init();
 }
 
-struct DisplayPathBuf(pub PathBuf);
-impl std::fmt::Display for DisplayPathBuf {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.display())
-    }
-}
-
 #[instrument(err)]
 fn main() -> Result<()> {
     init_tracing();
@@ -95,11 +89,9 @@ fn main() -> Result<()> {
         None => {
             let systems = fs::read_dir("/etc/yeet/systems")?
                 .flat_map(|dir| dir.ok())
-                .map(|p| DisplayPathBuf(p.path()))
+                .map(|p| p.path().to_string_lossy().to_string())
                 .collect::<Vec<_>>();
-            inquire::Select::new("Which system do you want to install?", systems)
-                .prompt()?
-                .0
+            inquire::Select::new("Which system do you want to install?", systems).prompt()?
         }
     };
 
@@ -198,6 +190,9 @@ fn get_disko_anchors(disko: &str) -> Result<HashSet<String>> {
 #[instrument(err, ret)]
 fn list_devices() -> Result<Vec<String>> {
     let mut out = Vec::new();
+    let usb_partition = fs::canonicalize("/dev/disk/by-partlabel/YEET_ROOTFS")?;
+
+    info!("Detected Installer running on {}", usb_partition.display());
     for entry in fs::read_dir("/sys/block")? {
         let entry = entry?;
         let path = entry.path();
@@ -209,6 +204,19 @@ fn list_devices() -> Result<Vec<String>> {
 
         // skip hidden gendisks
         if fs::read_to_string(path.join("hidden")).is_ok_and(|gendisk| gendisk.trim() == "1") {
+            continue;
+        }
+
+        // skip the usb device
+        // use string starts_with instead of path starts_with because else it would not match because of the partition
+        if usb_partition
+            .to_string_lossy()
+            .to_string()
+            .starts_with(&format!(
+                "/dev/{}",
+                entry.file_name().to_string_lossy().to_string()
+            ))
+        {
             continue;
         }
 

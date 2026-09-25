@@ -24,6 +24,7 @@ env_logger.workspace = true
 log.workspace = true
 blake3 = "1.8.7"
 merkle_hash = "3.9.0"
+serde_json_any_key = "2.1.0"
 
 
 [lints]
