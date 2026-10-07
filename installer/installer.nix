@@ -16,6 +16,18 @@ let
     ];
   };
 
+  # raw image has no free space. emulate a stick
+  vmStick =
+    let
+      vmCfg = config.virtualisation.vmVariant;
+    in
+    pkgs.runCommand "yeet-installer-vm-stick" { nativeBuildInputs = [ pkgs.qemu-utils ]; } ''
+      mkdir $out
+      qemu-img create -f qcow2 \
+        -b ${vmCfg.system.build.image}/${vmCfg.image.fileName} -F raw \
+        $out/stick.qcow2 ${toString vmCfg.virtualisation.diskSize}M
+    '';
+
   getty = {
     ExecStart = [
       ""
@@ -99,11 +111,43 @@ in
   networking.dhcpcd.enable = false;
 
   virtualisation.vmVariant.virtualisation = {
+    diskImage = null; # don't create the qcow2 root
+    useDefaultFilesystems = false; # use reparted image
+    fileSystems = config.fileSystems;
+    useBootLoader = true; # use the UKI
+    # eval tries to pull out efi vars failing in "can only be used with partition table of type.."
+    efi.keepVariables = false;
+    # OVMF required for UKI
+    useEFIBoot = true;
+    # remove qemu's ESP
+    bootPartition = null;
+
+    qemu.drives = [
+      {
+        name = "stick";
+        file = "${vmStick}/stick.qcow2";
+        driveExtraOpts = {
+          format = "qcow2";
+          snapshot = "on"; # don't write into the nix store
+        };
+        deviceExtraOpts.bootindex = "0";
+      }
+    ];
+
+    # where the new system gets installed
+    emptyDiskImages = [
+      (20 * 1024)
+      (20 * 1024)
+    ];
+
     memorySize = 4096;
     # cores = 8;
-    # diskSize = lib.mkForce 10 * 1024;
+    diskSize = 10 * 1024; # virtual size of the stick
     graphics = false;
-    qemu.options = lib.optionals (config.virtualisation.vmVariant.virtualisation.graphics) [
+    qemu.options = [
+      "-smbios type=11,value=io.systemd.stub.kernel-cmdline-extra=console=ttyS0"
+    ]
+    ++ lib.optionals (config.virtualisation.vmVariant.virtualisation.graphics) [
       "-display sdl,gl=on"
     ];
   };

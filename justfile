@@ -68,7 +68,6 @@ test:
     cargo test -p yeet
 
 vm-installer:
-    rm -f nixos.qcow2
     nom build -f . installer.config.system.build.vm
     ./result/bin/run-nixos-vm
 

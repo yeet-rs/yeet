@@ -37,3 +37,4 @@ yeet.db
 *.html
 *.profraw
 *.qcow2
+nixos-efi-vars.fd
