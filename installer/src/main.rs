@@ -23,8 +23,9 @@ mod nix;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    /// path to the nix fail that gets built
-    pub nix_system: Option<String>,
+    /// List of modules that need to be imported
+    #[serde(default = "Vec::new")]
+    pub modules: Vec<String>,
     /// nix attr that should get build to get the disko script
     #[serde(default = "nix_disko_attr")]
     pub nix_disko_attr: String,
@@ -35,12 +36,9 @@ pub struct Config {
 fn nix_disko_attr() -> String {
     "config.system.build.diskoScript".to_owned()
 }
+
 fn default_cache() -> Vec<String> {
-    vec![
-        "/etc/yeet/systems".to_owned(),
-        "/etc/yeet/disko".to_owned(),
-        "/etc/yeet/modules".to_owned(),
-    ]
+    vec!["/etc/yeet/disko".to_owned(), "/etc/yeet/modules".to_owned()]
 }
 
 fn init_tracing() {
@@ -88,18 +86,20 @@ fn main() -> Result<()> {
     let config: Config = toml::from_str(&read_to_string(toml)?)?;
     let mut cache = Cache::from_file(config.cache, PathBuf::from("/etc/yeet/cache.toml"))?;
 
-    let nix_system = match config.nix_system {
-        Some(system) => system,
-        None => {
-            let systems = fs::read_dir("/etc/yeet/systems")?
-                .flat_map(|dir| dir.ok())
-                .map(|p| p.path().to_string_lossy().to_string())
-                .collect::<Vec<_>>();
-            inquire::Select::new("Which system do you want to install?", systems).prompt()?
-        }
+    let modules = if config.modules.is_empty() {
+        let modules = fs::read_dir("/etc/yeet/modules")?
+            .chain(fs::read_dir("/etc/yeet/disko")?)
+            .flat_map(|dir| dir.ok())
+            .map(|p| p.path().to_string_lossy().into_owned())
+            .map(|path| path.trim_start_matches("/etc/yeet/").to_owned())
+            .map(|path| path.trim_end_matches(".nix").to_owned())
+            .collect::<Vec<_>>();
+        inquire::MultiSelect::new("Which modules do you want to install?", modules).prompt()?
+    } else {
+        config.modules
     };
 
-    let disko = read_to_string(cache.nix_build(&nix_system, &config.nix_disko_attr)?)?;
+    let disko = read_to_string(cache.nix_build(&modules, &config.nix_disko_attr)?)?;
 
     let disks = list_devices()?;
     let anchors = get_disko_anchors(&disko)?;
@@ -108,7 +108,7 @@ fn main() -> Result<()> {
     run_disko(disko)?;
 
     // now after partitioning we need to build the system
-    let system = cache.nix_build(&nix_system, "config.system.build.toplevel")?;
+    let system = cache.nix_build(&modules, "config.system.build.toplevel")?;
     nix::nixos_install(system)?;
     Ok(())
 }

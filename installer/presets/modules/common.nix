@@ -1,5 +1,5 @@
 {
-  nixpkgs ? <nixpkgs>,
+  nixpkgs,
   pkgs ? import nixpkgs { },
   ...
 }:

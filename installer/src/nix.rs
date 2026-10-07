@@ -3,21 +3,29 @@ use color_eyre::{
     eyre::{OptionExt as _, bail},
 };
 use log::info;
-use std::{
-    fmt::Debug,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{fmt::Debug, path::PathBuf, process::Command};
 
 use tracing::instrument;
 
 #[instrument(err, ret)]
-pub fn build<P: AsRef<Path> + Debug>(nix_file: P, attr: &str) -> Result<PathBuf> {
+pub fn build(modules: &[String], attr: &str) -> Result<PathBuf> {
     info!("Building {attr}");
+    // --expr resolves relative paths against CWD. pin it down
+
+    let expr = format!(
+        "import <nixpkgs/nixos/lib/eval-config.nix> {{ system = null; modules = [ {} ]; }}",
+        modules
+            .into_iter()
+            .map(|module| format!("{}.nix", module))
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
     let output = Command::new("nom")
+        .current_dir("/etc/yeet")
         .arg("build")
-        .arg("-f")
-        .arg(nix_file.as_ref())
+        .arg("--impure")
+        .arg("--expr")
+        .arg(&expr)
         .arg(attr)
         .arg("--no-link")
         .arg("--json")

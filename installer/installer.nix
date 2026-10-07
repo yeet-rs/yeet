@@ -1,5 +1,4 @@
 {
-  nixpkgs,
   pkgs,
   lib,
   modulesPath,
@@ -7,8 +6,16 @@
   ...
 }:
 let
-  presetLanzabooteLuks = import ./presets/systems/lanzaboote-luks.nix { inherit nixpkgs; };
-  presetBtrfs = import ./presets/systems/btrfs.nix { inherit nixpkgs; };
+
+  preset = import (pkgs.path + "/nixos/lib/eval-config.nix") {
+    system = "x86_64-linux";
+    modules = [
+      ./presets/modules/disko.nix
+      ./presets/modules/common.nix
+      ./presets/disko/btrfs-subvolumes.nix
+    ];
+  };
+
   getty = {
     ExecStart = [
       ""
@@ -66,13 +73,8 @@ in
   # build speed improvements
   system.extraDependencies = [
     # add disko so that we do not have to download it again
-    (fetchTarball {
-      url = "https://github.com/nix-community/disko/archive/master.tar.gz";
-      sha256 = "sha256-uZkBR7yHdIKUFB5SZdfgh1qkGfI3XmYmI/lTiquxbck=";
-    })
-    presetLanzabooteLuks.config.system.build.diskoScript
-    presetBtrfs.config.system.build.diskoScript
-    presetBtrfs.config.system.build.toplevel
+    preset.config.system.build.diskoScript
+    preset.config.system.build.toplevel
     pkgs.stdenvNoCC # for runCommand
     pkgs.busybox
     # For boot.initrd.systemd

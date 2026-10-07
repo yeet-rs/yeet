@@ -25,9 +25,9 @@ pub struct Cache {
     components: Vec<String>,
     /// Resulting hash if all component directories get recursively traversed and the file contents hashed
     hash: String,
-    /// (evaluated file, evaluated attribute) -> eval result
+    /// (evaluated modules, evaluated attribute) -> eval result
     #[serde(with = "any_key_map")]
-    evals: HashMap<(String, String), PathBuf>,
+    evals: HashMap<(Vec<String>, String), PathBuf>,
 }
 
 impl Drop for Cache {
@@ -80,14 +80,14 @@ impl Cache {
     /// Build a nix attr through the cache.
     /// Make sure you run `refresh` beforehand!
     #[instrument(err, ret)]
-    pub fn nix_build(&mut self, nix_file: &str, attr: &str) -> Result<PathBuf> {
-        let cache = self.evals.get(&(nix_file.to_owned(), attr.to_owned()));
+    pub fn nix_build(&mut self, modules: &[String], attr: &str) -> Result<PathBuf> {
+        let cache = self.evals.get(&(modules.to_owned(), attr.to_owned()));
         match cache {
             Some(cache_hit) => Ok(cache_hit.clone()),
             None => {
-                let result = nix::build(&nix_file, &attr)?;
+                let result = nix::build(&modules, &attr)?;
                 self.evals
-                    .insert((nix_file.to_owned(), attr.to_owned()), result.clone());
+                    .insert((modules.to_owned(), attr.to_owned()), result.clone());
                 Ok(result)
             }
         }
