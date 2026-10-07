@@ -80,13 +80,14 @@ impl Cache {
     /// Build a nix attr through the cache.
     /// Make sure you run `refresh` beforehand!
     #[instrument(err, ret)]
-    pub fn nix_build(&mut self, nix_file: String, attr: String) -> Result<PathBuf> {
-        let cache = self.evals.get(&(nix_file.clone(), attr.clone()));
+    pub fn nix_build(&mut self, nix_file: &str, attr: &str) -> Result<PathBuf> {
+        let cache = self.evals.get(&(nix_file.to_owned(), attr.to_owned()));
         match cache {
             Some(cache_hit) => Ok(cache_hit.clone()),
             None => {
                 let result = nix::build(&nix_file, &attr)?;
-                self.evals.insert((nix_file, attr), result.clone());
+                self.evals
+                    .insert((nix_file.to_owned(), attr.to_owned()), result.clone());
                 Ok(result)
             }
         }

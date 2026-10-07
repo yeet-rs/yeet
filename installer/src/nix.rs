@@ -36,3 +36,19 @@ pub fn build<P: AsRef<Path> + Debug>(nix_file: P, attr: &str) -> Result<PathBuf>
 
     Ok(PathBuf::from(path))
 }
+
+#[instrument(err, ret)]
+pub fn nixos_install<P: AsRef<std::ffi::OsStr> + Debug>(system: P) -> Result<()> {
+    let output = Command::new("nixos-install")
+        .arg("--system")
+        .arg(system)
+        .arg("--no-root-passwd")
+        .arg("--cores")
+        .arg("0")
+        .stderr(std::io::stderr())
+        .output()?;
+    if !output.status.success() {
+        bail!("Could not install the NixOS system")
+    }
+    Ok(())
+}

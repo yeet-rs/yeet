@@ -8,6 +8,7 @@
 }:
 let
   presetLanzabooteLuks = import ./presets/systems/lanzaboote-luks.nix { inherit nixpkgs; };
+  presetBtrfs = import ./presets/systems/btrfs.nix { inherit nixpkgs; };
   getty = {
     ExecStart = [
       ""
@@ -70,6 +71,8 @@ in
       sha256 = "sha256-uZkBR7yHdIKUFB5SZdfgh1qkGfI3XmYmI/lTiquxbck=";
     })
     presetLanzabooteLuks.config.system.build.diskoScript
+    presetBtrfs.config.system.build.diskoScript
+    presetBtrfs.config.system.build.toplevel
     pkgs.stdenvNoCC # for runCommand
     pkgs.busybox
     # For boot.initrd.systemd
@@ -103,11 +106,24 @@ in
     ];
   };
 
+  nix.package = pkgs.lixPackageSets.stable.lix;
+  nixpkgs.overlays = [
+    (final: prev: {
+      inherit (prev.lixPackageSets.stable)
+        nixpkgs-review
+        nix-eval-jobs
+        nix-fast-build
+        colmena
+        ;
+    })
+  ];
+
   systemd.services."getty@tty1" = {
     overrideStrategy = "asDropin";
     path = [
       pkgs.nix-output-monitor
       pkgs.nix
+      pkgs.nixos-install
     ];
     environment.NIX_PATH = "nixpkgs=/nix/var/nix/profiles/per-user/root/channels/nixos";
     serviceConfig = getty // {
@@ -121,6 +137,7 @@ in
     path = [
       pkgs.nix-output-monitor
       pkgs.nix
+      pkgs.nixos-install
     ];
     environment.NIX_PATH = "nixpkgs=/nix/var/nix/profiles/per-user/root/channels/nixos";
     serviceConfig = getty // {

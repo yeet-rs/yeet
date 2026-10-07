@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     env::args,
-    fs::{self, read_link, read_to_string},
+    fs::{self, read_to_string},
     io::{Write, stderr, stdout},
     os::unix::fs::PermissionsExt,
     path::PathBuf,
@@ -36,7 +36,11 @@ fn nix_disko_attr() -> String {
     "config.system.build.diskoScript".to_owned()
 }
 fn default_cache() -> Vec<String> {
-    vec!["/etc/yeet/systems".to_owned(), "/etc/yeet/disko".to_owned()]
+    vec![
+        "/etc/yeet/systems".to_owned(),
+        "/etc/yeet/disko".to_owned(),
+        "/etc/yeet/modules".to_owned(),
+    ]
 }
 
 fn init_tracing() {
@@ -95,13 +99,17 @@ fn main() -> Result<()> {
         }
     };
 
-    let disko = read_to_string(cache.nix_build(nix_system, config.nix_disko_attr)?)?;
+    let disko = read_to_string(cache.nix_build(&nix_system, &config.nix_disko_attr)?)?;
 
     let disks = list_devices()?;
     let anchors = get_disko_anchors(&disko)?;
     let map = map_disko_anchors(anchors, disks)?;
     let disko = replace_disko_devices(disko, map);
     run_disko(disko)?;
+
+    // now after partitioning we need to build the system
+    let system = cache.nix_build(&nix_system, "config.system.build.toplevel")?;
+    nix::nixos_install(system)?;
     Ok(())
 }
 

@@ -11,7 +11,7 @@ import "${nixpkgs}/nixos" {
     imports = [
       "${disko}/module.nix"
       ../modules/common.nix
-      ../disko/luks-btrfs-subvolumes.nix
+      ../disko/btrfs-subvolumes.nix
     ];
   };
 }
