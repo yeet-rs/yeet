@@ -1,18 +1,15 @@
 use std::{
     collections::{HashMap, HashSet},
     env::args,
-    fmt::Display,
     fs::{self, read_to_string},
-    io::{Write, stderr, stdout},
-    iter,
+    io::{BufRead, BufReader, Write},
     os::unix::fs::PermissionsExt,
     path::PathBuf,
-    process::{self, Command},
+    process::{self, Command, Stdio},
 };
 
 use color_eyre::{Result, eyre::bail};
 
-use log::info;
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use tracing::instrument;
@@ -23,7 +20,7 @@ use crate::cache::Cache;
 mod cache;
 mod nix;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 pub struct Preset {
     pub modules: Vec<String>,
     pub description: String,
@@ -78,6 +75,8 @@ fn init_tracing() {
 fn main() -> Result<()> {
     init_tracing();
     color_eyre::install()?;
+    cliclack::clear_screen()?;
+    cliclack::intro("Yeet Installer")?;
     // 1. Get a list of system configurations
     // 1.2 build disko configuration
     // 2. query all devices in this disko configuration
@@ -113,19 +112,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum PresetOption {
     Preset(Preset),
     ManualSelect,
-}
-impl Display for PresetOption {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PresetOption::Preset(preset) => {
-                write!(f, "{} [{}]", preset.description, preset.modules.join(", "))
-            }
-            PresetOption::ManualSelect => write!(f, "<Select modules manually>"),
-        }
-    }
 }
 
 #[instrument(err)]
@@ -138,12 +128,23 @@ fn get_modules(presets: Vec<Preset>) -> Result<Vec<String>> {
     }
     let preset_options = presets
         .into_iter()
-        .map(PresetOption::Preset)
-        .chain(iter::once(PresetOption::ManualSelect))
+        .map(|preset| {
+            (
+                PresetOption::Preset(preset.clone()),
+                preset.description,
+                preset.modules.join(" "),
+            )
+        })
         .collect::<Vec<_>>();
 
-    let preset =
-        inquire::Select::new("Which preset do you want to load?", preset_options).prompt()?;
+    let preset = cliclack::select("Select a preset")
+        .item(
+            PresetOption::ManualSelect,
+            "<Select modules manually>".to_owned(),
+            "".to_owned(),
+        )
+        .items(&preset_options)
+        .interact()?;
 
     match preset {
         PresetOption::Preset(preset) => Ok(preset.modules),
@@ -158,19 +159,20 @@ fn manual_preset() -> Result<Vec<String>> {
         .map(|p| p.path().to_string_lossy().into_owned())
         .map(|path| path.trim_start_matches("/etc/yeet/").to_owned())
         .map(|path| path.trim_end_matches(".nix").to_owned())
+        .map(|path| (path.clone(), path, ""))
         .collect::<Vec<_>>();
     Ok(
-        inquire::MultiSelect::new("Which modules do you want to install?", modules)
-            .with_validator(
-                inquire::validator::MinLengthValidator::new(1)
-                    .with_message("Select at least one module"),
-            )
-            .prompt()?,
+        cliclack::multiselect("Select the modules you want to install")
+            .items(&modules)
+            .interact()?,
     )
 }
 
 #[instrument(err)]
 fn run_disko(disko: String) -> Result<()> {
+    let spinner = cliclack::spinner();
+    spinner.start("Formatting...");
+
     let path = {
         let mut tmp = NamedTempFile::new()?;
         tmp.write_all(disko.as_bytes())?;
@@ -181,13 +183,39 @@ fn run_disko(disko: String) -> Result<()> {
         file.set_permissions(permissions)?;
         path
     };
-    let status = Command::new(path)
-        .stderr(stderr())
-        .stdout(stdout())
-        .status()?;
-    if !status.success() {
+
+    let (stdout_read, stdout_write) = std::io::pipe()?;
+    let child = Command::new(path)
+        .stderr(Stdio::piped())
+        .stdout(stdout_write)
+        .spawn()?;
+
+    // start reading the output continously
+    let mut stdout = BufReader::new(stdout_read);
+    // at the end print the whole report
+    let mut message = String::new();
+    loop {
+        let mut line = String::new();
+        if stdout.read_line(&mut line)? == 0 {
+            break;
+        }
+        if line.starts_with("The operation has completed") {
+            continue;
+        }
+        message.push_str(&line);
+        // show what it is currently doing
+        spinner.set_message(&line);
+    }
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        spinner.error("Formatting failed");
+        cliclack::log::error(String::from_utf8_lossy(&output.stderr))?;
+
         bail!("Disko script did not execute correctly. Aborting");
     }
+    spinner.stop("Formatting successful");
+    cliclack::log::remark(message)?;
 
     Ok(())
 }
@@ -215,8 +243,14 @@ fn map_disko_anchors(
     }
     let mut map = HashMap::new();
     for anchor in anchors {
-        let disk = inquire::Select::new(&format!("Select the disk for `{anchor}`"), disks.clone())
-            .prompt()?;
+        let disk = cliclack::select(&format!("Select the disk for `{anchor}`"))
+            .items(
+                &disks
+                    .iter()
+                    .map(|disk| (disk.clone(), disk, ""))
+                    .collect::<Vec<_>>(),
+            )
+            .interact()?;
         map.insert(anchor, disk.clone());
         disks.retain(|x| *x != disk);
     }
@@ -256,7 +290,10 @@ fn list_devices() -> Result<Vec<String>> {
     let mut out = Vec::new();
     let usb_partition = fs::canonicalize("/dev/disk/by-partlabel/YEET_ROOTFS")?;
 
-    info!("Detected Installer running on {}", usb_partition.display());
+    cliclack::log::remark(format!(
+        "Detected Installer running on {}",
+        usb_partition.display()
+    ))?;
     for entry in fs::read_dir("/sys/block")? {
         let entry = entry?;
         let path = entry.path();

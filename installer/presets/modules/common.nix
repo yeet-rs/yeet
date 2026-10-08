@@ -1,6 +1,5 @@
 {
-  nixpkgs,
-  pkgs ? import nixpkgs { },
+  pkgs,
   ...
 }:
 {

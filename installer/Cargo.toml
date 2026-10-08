@@ -9,7 +9,6 @@ license.workspace = true
 readme.workspace = true
 
 [dependencies]
-inquire.workspace = true
 color-eyre.workspace = true
 toml.workspace = true
 serde.workspace = true
@@ -25,6 +24,7 @@ log.workspace = true
 blake3 = "1.8.7"
 merkle_hash = "3.9.0"
 serde_json_any_key = "2.1.0"
+cliclack = "0.5.6"
 
 
 [lints]

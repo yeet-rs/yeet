@@ -60,8 +60,6 @@ in
   nixpkgs.config.allowUnfree = true;
   hardware.enableAllFirmware = true;
 
-  nix.settings.substituters = lib.mkForce [ ];
-
   users.users.nixos = {
     isNormalUser = true;
     extraGroups = [

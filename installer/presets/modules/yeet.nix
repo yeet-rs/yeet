@@ -1,16 +1,17 @@
 {
-  nixpkgs,
-  pkgs ? import nixpkgs { },
+  pkgs,
   ...
 }:
 let
+  version = "0.16.1";
   yeetSrc = fetchTarball {
-    url = "https://github.com/yeet-rs/yeet/archive/master.tar.gz";
-    sha256 = "sha256-YC0qdEZlA/x4MSVsaATN4xHTCD2NKRJjE4duzmMH8Bg=";
+    url = "https://github.com/yeet-rs/yeet/archive/refs/tags/v${version}.tar.gz";
+    sha256 = "sha256-oAnX9skjandoB90uAKCfc4uXe22ajkacOlJGVMrcOuE=";
   };
   yeet = import yeetSrc { inherit pkgs; };
 in
 {
+  system.extraDependencies = [ yeetSrc ];
   imports = [
     yeet.nixosModules.yeet
   ];
