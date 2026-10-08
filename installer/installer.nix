@@ -11,6 +11,7 @@ let
     system = "x86_64-linux";
     modules = [
       ./presets/modules/disko.nix
+      ./presets/modules/yeet.nix
       ./presets/modules/common.nix
       ./presets/disko/btrfs-subvolumes.nix
     ];
@@ -84,7 +85,7 @@ in
 
   # build speed improvements
   system.extraDependencies = [
-    # add disko so that we do not have to download it again
+    # add the btrfs target preset so that we do not have to build it
     preset.config.system.build.diskoScript
     preset.config.system.build.toplevel
     pkgs.stdenvNoCC # for runCommand

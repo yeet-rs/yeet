@@ -121,13 +121,7 @@ impl Display for PresetOption {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PresetOption::Preset(preset) => {
-                write!(
-                    f,
-                    "{}{} [{}]",
-                    if preset.default { "(DEFAULT) " } else { "" },
-                    preset.description,
-                    preset.modules.join(", ")
-                )
+                write!(f, "{} [{}]", preset.description, preset.modules.join(", "))
             }
             PresetOption::ManualSelect => write!(f, "<Select modules manually>"),
         }

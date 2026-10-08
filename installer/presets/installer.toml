@@ -1,8 +1,8 @@
 [[presets]]
-modules = ["modules/common", "modules/disko", "disko/btrfs-subvolumes"]
+modules = ["modules/common", "modules/yeet", "modules/disko", "disko/btrfs-subvolumes"]
 description = "Simple btrfs disk setup without luks"
 # default = true
 
 [[presets]]
-modules = ["modules/common", "modules/disko", "disko/luksbtrfs-subvolumes"]
+modules = ["modules/common", "modules/yeet", "modules/disko", "disko/luksbtrfs-subvolumes"]
 description = "System setup with lanzaboote and luks"

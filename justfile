@@ -73,3 +73,8 @@ vm-installer:
 
 build-installer:
     nom build -f . installer.config.system.build.image
+
+[working-directory('installer/presets')]
+installed-os +MODULES:
+    nom build --impure --expr 'import <nixpkgs/nixos/lib/eval-config.nix> { system = null; modules = [ {{ MODULES }} ]; }' config.system.build.vm
+    ./result/bin/run-nixos-vm
