@@ -9,7 +9,7 @@ use tracing::instrument;
 
 #[instrument(err, ret)]
 pub fn build(modules: &[String], attr: &str) -> Result<PathBuf> {
-    info!("Building {attr}");
+    info!("Building {attr} with {modules:?}");
     // --expr resolves relative paths against CWD. pin it down
 
     let expr = format!(

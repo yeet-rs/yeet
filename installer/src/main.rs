@@ -1,8 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
     env::args,
+    fmt::Display,
     fs::{self, read_to_string},
     io::{Write, stderr, stdout},
+    iter,
     os::unix::fs::PermissionsExt,
     path::PathBuf,
     process::Command,
@@ -22,10 +24,18 @@ mod cache;
 mod nix;
 
 #[derive(Debug, Deserialize)]
-pub struct Config {
-    /// List of modules that need to be imported
-    #[serde(default = "Vec::new")]
+pub struct Preset {
     pub modules: Vec<String>,
+    pub description: String,
+    #[serde(default)]
+    pub default: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    /// List of user-configured presets
+    #[serde(default = "Vec::new")]
+    pub presets: Vec<Preset>,
     /// nix attr that should get build to get the disko script
     #[serde(default = "nix_disko_attr")]
     pub nix_disko_attr: String,
@@ -86,18 +96,7 @@ fn main() -> Result<()> {
     let config: Config = toml::from_str(&read_to_string(toml)?)?;
     let mut cache = Cache::from_file(config.cache, PathBuf::from("/etc/yeet/cache.toml"))?;
 
-    let modules = if config.modules.is_empty() {
-        let modules = fs::read_dir("/etc/yeet/modules")?
-            .chain(fs::read_dir("/etc/yeet/disko")?)
-            .flat_map(|dir| dir.ok())
-            .map(|p| p.path().to_string_lossy().into_owned())
-            .map(|path| path.trim_start_matches("/etc/yeet/").to_owned())
-            .map(|path| path.trim_end_matches(".nix").to_owned())
-            .collect::<Vec<_>>();
-        inquire::MultiSelect::new("Which modules do you want to install?", modules).prompt()?
-    } else {
-        config.modules
-    };
+    let modules = get_modules(config.presets)?;
 
     let disko = read_to_string(cache.nix_build(&modules, &config.nix_disko_attr)?)?;
 
@@ -111,6 +110,68 @@ fn main() -> Result<()> {
     let system = cache.nix_build(&modules, "config.system.build.toplevel")?;
     nix::nixos_install(system)?;
     Ok(())
+}
+
+enum PresetOption {
+    Preset(Preset),
+    ManualSelect,
+}
+impl Display for PresetOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PresetOption::Preset(preset) => {
+                write!(
+                    f,
+                    "{}{} [{}]",
+                    if preset.default { "(DEFAULT) " } else { "" },
+                    preset.description,
+                    preset.modules.join(", ")
+                )
+            }
+            PresetOption::ManualSelect => write!(f, "<Select modules manually>"),
+        }
+    }
+}
+
+#[instrument(err)]
+fn get_modules(presets: Vec<Preset>) -> Result<Vec<String>> {
+    // if default is set use it
+    for preset in presets.iter() {
+        if preset.default {
+            return Ok(preset.modules.clone());
+        }
+    }
+    let preset_options = presets
+        .into_iter()
+        .map(PresetOption::Preset)
+        .chain(iter::once(PresetOption::ManualSelect))
+        .collect::<Vec<_>>();
+
+    let preset =
+        inquire::Select::new("Which preset do you want to load?", preset_options).prompt()?;
+
+    match preset {
+        PresetOption::Preset(preset) => Ok(preset.modules),
+        PresetOption::ManualSelect => manual_preset(),
+    }
+}
+
+fn manual_preset() -> Result<Vec<String>> {
+    let modules = fs::read_dir("/etc/yeet/modules")?
+        .chain(fs::read_dir("/etc/yeet/disko")?)
+        .flat_map(|dir| dir.ok())
+        .map(|p| p.path().to_string_lossy().into_owned())
+        .map(|path| path.trim_start_matches("/etc/yeet/").to_owned())
+        .map(|path| path.trim_end_matches(".nix").to_owned())
+        .collect::<Vec<_>>();
+    Ok(
+        inquire::MultiSelect::new("Which modules do you want to install?", modules)
+            .with_validator(
+                inquire::validator::MinLengthValidator::new(1)
+                    .with_message("Select at least one module"),
+            )
+            .prompt()?,
+    )
 }
 
 #[instrument(err)]

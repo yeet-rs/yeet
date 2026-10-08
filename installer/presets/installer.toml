@@ -1,1 +1,8 @@
-# nix_system = "/etc/yeet/systems/btrfs.nix"
+[[presets]]
+modules = ["modules/common", "modules/disko", "disko/btrfs-subvolumes"]
+description = "Simple btrfs disk setup without luks"
+# default = true
+
+[[presets]]
+modules = ["modules/common", "modules/disko", "disko/luksbtrfs-subvolumes"]
+description = "System setup with lanzaboote and luks"
