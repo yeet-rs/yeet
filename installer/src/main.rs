@@ -7,7 +7,7 @@ use std::{
     iter,
     os::unix::fs::PermissionsExt,
     path::PathBuf,
-    process::Command,
+    process::{self, Command},
 };
 
 use color_eyre::{Result, eyre::bail};
@@ -109,6 +109,7 @@ fn main() -> Result<()> {
     // now after partitioning we need to build the system
     let system = cache.nix_build(&modules, "config.system.build.toplevel")?;
     nix::nixos_install(system)?;
+    process::Command::new("systemctl").arg("reboot").status()?;
     Ok(())
 }
 
