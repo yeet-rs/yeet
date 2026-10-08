@@ -136,7 +136,7 @@ in
 
     # where the new system gets installed
     emptyDiskImages = [
-      (20 * 1024)
+      # (20 * 1024)
       (20 * 1024)
     ];
 

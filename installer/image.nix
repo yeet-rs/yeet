@@ -42,6 +42,7 @@ in
   boot.zfs.forceImportRoot = false;
 
   image.repart = {
+    enable = true;
     name = "yeet-installer";
 
     partitions = {

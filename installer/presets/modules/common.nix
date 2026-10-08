@@ -24,12 +24,12 @@
     "nix-command"
     "flakes"
   ];
-
-  services.journald.extraConfig = ''
-    ForwardToConsole=no
-    ForwardToWall=no
-    MaxLevelConsole=emerg
-  '';
+# services.journald.settings.Journal
+  # services.journald.extraConfig = ''
+  #   ForwardToConsole=no
+  #   ForwardToWall=no
+  #   MaxLevelConsole=emerg
+  # '';
 
   systemd.services."getty@tty1".enable = false;
   systemd.services."autovt@tty1".enable = false;
