@@ -77,12 +77,16 @@ pub fn nixos_install<P: AsRef<std::ffi::OsStr> + Debug>(system: P) -> Result<()>
         let size: u64 = {
             let mut size = String::new();
             stderr.read_line(&mut size)?;
-            size[6..]
-                .split_once(" ")
-                .map(|(l, _r)| l)
-                .unwrap_or("1000")
-                .parse::<u64>()?
-                + 20 // so it does not show 100% after copying
+            cliclack::log::remark(&size)?;
+            size.chars()
+                .skip_while(|ch| !ch.is_digit(10))
+                .take_while(|ch| ch.is_digit(10))
+                .map(|ch| ch.to_string())
+                .collect::<Vec<_>>()
+                .concat()
+                .parse::<u64>()
+                .unwrap_or(1000)
+                + 20
         };
         let bar = cliclack::progress_bar(size);
         bar.start("Starting installation");
