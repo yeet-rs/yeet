@@ -11,63 +11,26 @@ use std::{
     time::Duration,
 };
 
-use api::{get_secret_key, get_verify_key};
-use backon::{ConstantBuilder, Retryable as _};
 use color_eyre::{
     Result, Section as _,
     eyre::{bail, eyre},
 };
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::SecretKey;
-use log::{error, info};
+
 use tokio::time;
+use tracing::{error, info};
 use url::Url;
 
-use crate::{notification, varlink, version::get_active_version};
+use crate::{AgentConfig, notification, version::get_active_version};
 
 static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 
-/// When running the agent should do these things in order:
-/// 1. Check if agent is active aka if the key is enrolled with `/system/verify`
-///    if not:
-///    create a new verification request
-///    pull the verify endpoint in a time intervall
-/// 2. Continuosly pull the system endpoint and execute based on the provided
-#[tracing::instrument(err)]
-pub async fn agent(sleep: u64, facter: bool) -> Result<()> {
-    let key = get_secret_key(&config.key)?;
-    let pub_key = get_verify_key(&config.key)?;
-
-    log::info!("Spawning varlink daemon");
-    {
-        let key = key.clone();
-        tokio::task::spawn_local(async move {
-            if let Err(err) = varlink::start_service(config, key).await {
-                log::error!("Varlink failure:\n{err}");
-            }
-        })
-    };
-
-    (|| async { agent_loop(&key, pub_key, sleep, facter).await })
-        .retry(
-            ConstantBuilder::new()
-                .without_max_times()
-                .with_delay(Duration::from_secs(sleep)),
-        )
-        .notify(|err: &color_eyre::Report, dur: Duration| {
-            error!("{err} - retrying in {dur:?}");
-        })
-        .await?;
-
-    Ok(())
-}
-
 #[tracing::instrument(err, skip(key, pub_key))]
-async fn agent_loop(
+pub async fn agent_loop(
+    config: &AgentConfig,
     key: &SecretKey,
     pub_key: VerifyingKey,
-    sleep: u64,
-    facter: bool,
 ) -> Result<()> {
     let verified = api::is_host_verified(&config.server, key) //TODO unwrap
         .await?
@@ -78,7 +41,7 @@ async fn agent_loop(
             bail!("Verification requested but not yet approved. Code: {code}");
         }
 
-        let nixos_facter = if facter {
+        let nixos_facter = if config.facter {
             info!("Collecting nixos-facter information");
             let facts = Some(crate::nix::facter()?);
             info!("Done collecting facts");
@@ -134,7 +97,7 @@ async fn agent_loop(
         }
 
         last_action = Some(action);
-        time::sleep(Duration::from_secs(sleep)).await;
+        time::sleep(Duration::from_secs(config.sleep)).await;
     }
 }
 
@@ -220,7 +183,7 @@ async fn activate_secrets(
     let nix_secrets: api::Secrets = {
         let path = Path::new(&version.store_path).join("yeet-secrets.json");
         if !path.exists() {
-            log::info!(
+            info!(
                 "No yeet-secrets.json file found at {}",
                 path.to_string_lossy()
             );
@@ -235,7 +198,7 @@ async fn activate_secrets(
         if secret.is_generated() {
             // short circuit if the artifact exists on the server
             if let Some(data) = api::get_artifact_by_name(url, key, name.clone()).await? {
-                log::info!("Retrieved generated secret {name}");
+                info!("Retrieved generated secret {name}");
                 secrets.push((secret, data));
                 continue;
             }
@@ -244,12 +207,12 @@ async fn activate_secrets(
             let Some(data) = secret.generate() else {
                 bail!("Secret {name} not found! Unable to switch to derivation");
             };
-            log::info!("Generated secret {name}");
+            info!("Generated secret {name}");
             api::store_artifact(url, key, &name, data.as_slice()).await?;
 
             secrets.push((secret, data));
         } else {
-            log::info!("Fetching secret {name}");
+            info!("Fetching secret {name}");
             let Some(data) = api::get_secret(url, key, name.clone()).await? else {
                 bail!("Secret {name} not found! Unable to switch to derivation");
             };
@@ -266,11 +229,11 @@ async fn activate_secrets(
             path.file_name()
                 .map(|path| path.to_string_lossy().to_string())
         });
-        log::info!("Current Generation: {gen_str:?}");
+        info!("Current Generation: {gen_str:?}");
         let gen_num = gen_str
             .and_then(|str| str.parse::<u32>().ok().map(|i| i.wrapping_add(1)))
             .unwrap_or(0);
-        log::info!("Creating new Generation {gen_num}");
+        info!("Creating new Generation {gen_num}");
         PathBuf::from(format!("/etc/yeet/secret.d/{gen_num}"))
     };
 
@@ -280,7 +243,7 @@ async fn activate_secrets(
         if let Err(result) =
             remove_dir_all(&generation).note(generation.to_string_lossy().to_string())
         {
-            log::error!("could not remove generation: {result:?}");
+            error!("could not remove generation: {result:?}");
         }
         genration_result?;
     }

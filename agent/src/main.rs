@@ -1,17 +1,20 @@
 //! # Yeet Agent
 
 use std::{
-    env::args,
-    io::{IsTerminal as _, Write as _},
+    env::{self, args},
+    path::PathBuf,
+    time::Duration,
 };
 
-use opentelemetry_sdk::trace::SdkTracerProvider;
-use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
+use api::{get_secret_key, get_verify_key};
+use backon::{ConstantBuilder, Retryable as _};
+use color_eyre::{Result, eyre::OptionExt};
+use serde::{Deserialize, Serialize};
+use tracing::{error, info};
 
-use crate::cli_args::Commands;
+use crate::agent::agent_loop;
 
 mod agent;
-mod cli_args;
 
 mod nix;
 mod notification;
@@ -19,95 +22,77 @@ mod notification;
 mod varlink;
 mod version;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentConfig {
+    /// URL of the Yeet Server
+    server: url::Url,
+    /// Path to ed25519 key which is used for authentication
+    key: PathBuf,
+    /// Seconds to wait between updates.
+    /// Lower bound, may be higher between switching versions
+    sleep: u64,
+    /// Collect facter with nixos-facter
+    facter: bool,
+    /// In unattended mode all updates are installed immediately
+    attended: bool,
+}
+
+/// When running the agent should do these things in order:
+/// 1. Check if agent is active aka if the key is enrolled with `/system/verify`
+///    if not:
+///    create a new verification request
+///    pull the verify endpoint in a time intervall
+/// 2. Continuosly pull the system endpoint and execute based on the provided
 #[tokio::main(flavor = "local")]
-async fn main() -> color_eyre::Result<()> {
+async fn main() -> Result<()> {
+    let mut args = args();
+    args.next(); // ignore arg0
+    if let Some(arg1) = args.next()
+        && arg1 == "notify"
+    {
+        let body = args.next().ok_or_eyre("No notification body provided")?;
+        let summary = args.next().ok_or_eyre("No notification summary provided")?;
+        notification::notify(&body, &summary)?;
+        return Ok(());
+    }
     color_eyre::install()?;
 
-    let (provider, _guard) = init_tracer();
-    let result = run().await;
-    // this is required because `color_eyre` holds a ref to the current span
-    if let Err(ref err) = result {
-        tracing::error!(error = ?err);
-    }
-    tokio::task::yield_now().await;
-    provider.force_flush()?;
-    provider.shutdown()?;
+    let config = get_agent_config()?;
 
-    result?;
-    Ok(())
-}
+    let key = get_secret_key(&config.key)?;
+    let pub_key = get_verify_key(&config.key)?;
 
-#[tracing::instrument(err)]
-async fn run() -> color_eyre::Result<()> {
-    let args = Yeet::try_parse()?;
-
-    let command = match args.command {
-        Commands::Notify { body, summary } => notification::notify(&body, &summary),
-        Commands::Agent {
-            server,
-            sleep,
-            facter,
-            key,
-            attended,
-        } => {
-            let config = AgentConfig {
-                server,
-                sleep,
-                facter,
-                key,
-                attended,
-            };
-            agent::agent(&config, sleep, facter).await
-        }
+    info!("Spawning varlink daemon");
+    {
+        let key = key.clone();
+        let config = config.clone();
+        tokio::task::spawn_local(async move {
+            if let Err(err) = varlink::start_service(config, key).await {
+                error!("Varlink failure:\n{err}");
+            }
+        })
     };
+
+    (|| async { agent_loop(&config, &key, pub_key).await })
+        .retry(
+            ConstantBuilder::new()
+                .without_max_times()
+                .with_delay(Duration::from_secs(config.sleep)),
+        )
+        .notify(|err: &color_eyre::Report, dur: Duration| {
+            error!("{err} - retrying in {dur:?}");
+        })
+        .await?;
+
     Ok(())
 }
 
-fn init_tracer() -> (
-    SdkTracerProvider,
-    tracing_appender::non_blocking::WorkerGuard,
-) {
-    // let exporter = opentelemetry_otlp::SpanExporter::builder()
-    //     .build()
-    //     .expect("Could not build SpanExporter");
-
-    let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
-        // .with_resource(resource())
-        // .with_batch_exporter(exporter)
-        .build();
-
-    // let tracer = provider.tracer("yeet");
-
-    let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
-
-    if std::io::stderr().is_terminal() && args().nth(1) != Some("agent".to_owned()) {
-        let mut log_builder =
-            env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
-        log_builder.format(|buf, record| {
-            write!(buf, "{}", buf.default_level_style(record.level()))?;
-            write!(buf, "{}", record.level())?;
-            write!(buf, "{:#}", buf.default_level_style(record.level()))?;
-            writeln!(buf, ": {}", record.args())
-        });
-        log_builder.init();
-    } else {
-        let format = tracing_subscriber::fmt::format().pretty();
-        tracing_subscriber::registry()
-            .with(
-                tracing_subscriber::EnvFilter::builder()
-                    .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
-                    .from_env_lossy(),
-            )
-            .with(tracing_error::ErrorLayer::default())
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .with_target(false)
-                    .event_format(format)
-                    .with_writer(non_blocking),
-            )
-            // .with(tracing_opentelemetry::OpenTelemetryLayer::new(tracer))
-            .init();
-    }
-
-    (provider, guard)
+fn get_agent_config() -> Result<AgentConfig> {
+    Ok(AgentConfig {
+        server: env::var("YEET_SERVER")?.parse()?,
+        key: env::var("YEET_KEY")?.parse()?,
+        sleep: env::var("YEET_SLEEP")?.parse()?,
+        facter: env::var("YEET_FACTER")?.parse()?,
+        attended: env::var("YEET_ATTENDED")?.parse()?,
+    })
 }

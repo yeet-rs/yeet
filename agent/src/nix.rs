@@ -10,10 +10,8 @@ use color_eyre::{
     eyre::{Context as _, Result, bail, eyre},
 };
 
-use log::info;
-use serde::{Deserialize, Serialize};
-
 use tempfile::NamedTempFile;
+use tracing::{error, info};
 
 use crate::notification;
 
@@ -32,65 +30,6 @@ pub fn facter() -> Result<String> {
         .context("Facter did collect the data but `facter.json` does not exist")?;
     remove_file("facter.json").context("`facter.json` read but could not clean up")?;
     Ok(facter)
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct NixOSVersion {
-    pub configuration_revision: String,
-    pub nixos_version: String,
-    pub nixpkgs_revision: Option<String>,
-}
-
-#[tracing::instrument(err, ret)]
-pub fn nixos_version() -> Result<NixOSVersion> {
-    let output = Command::new("nixos-version")
-        .arg("--json")
-        .stdout(Stdio::piped())
-        .spawn()
-        .context("Could not spawn `nixos-version`")?
-        .wait_with_output()?;
-
-    Ok(serde_json::from_slice(&output.stdout)?)
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct NixOSGeneration {
-    pub generation: u32,
-    pub date: jiff::civil::DateTime,
-    pub nixos_version: String,
-    pub kernel_version: String,
-    pub configuration_revision: String,
-    pub specialisations: Vec<String>,
-    pub current: bool,
-}
-
-impl Default for NixOSGeneration {
-    fn default() -> Self {
-        Self {
-            generation: 0,
-            date: Default::default(),
-            nixos_version: "unknown".to_owned(),
-            kernel_version: "unknown".to_owned(),
-            configuration_revision: "unknown".to_owned(),
-            specialisations: Default::default(),
-            current: Default::default(),
-        }
-    }
-}
-
-#[tracing::instrument(err, ret)]
-pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
-    let output = Command::new("nixos-rebuild")
-        .arg("list-generations")
-        .arg("--json")
-        .stdout(Stdio::piped())
-        .spawn()
-        .context("Could not spawn `nixos-rebuild`")?
-        .wait_with_output()?;
-
-    Ok(serde_json::from_slice(&output.stdout)?)
 }
 
 #[tracing::instrument(err, ret)]
@@ -165,7 +104,7 @@ pub async fn realise_store_path(
     let netrc = match api::get_secret(url, key, "netrc".into()).await {
         Ok(secret) => secret,
         Err(err) => {
-            log::error!("could not get netrc secret: {err}");
+            error!("could not get netrc secret: {err}");
             None
         }
     };

@@ -14,26 +14,24 @@ use color_eyre::{
     eyre::{Context as _, OptionExt as _, Result, eyre},
 };
 use httpsig_hyper::prelude::SecretKey;
-use log::info;
+
 use nix::unistd::Group;
 use serde::{Deserialize, Serialize};
 use tokio::fs::{self, remove_file};
+use tracing::{debug, info};
 use url::Url;
 use zlink::{Connection, ReplyError, connection::socket::FetchPeerCredentials, proxy, unix};
 
 shadow_rs::shadow!(build);
 
-use crate::{
-    agent,
-    cli_args::{self},
-    version,
-};
+use crate::{AgentConfig, agent, version};
 
 const SOCKET_PATH: &str = "/run/yeet/agent.varlink";
 
 #[proxy("ch.yeetme.yeet")]
 pub trait YeetProxy {
     async fn status(&mut self) -> zlink::Result<Result<DaemonStatus, YeetDaemonError>>;
+    async fn config(&mut self) -> zlink::Result<Result<AgentConfig, YeetDaemonError>>;
 
     async fn download_update(
         &mut self,
@@ -55,7 +53,7 @@ pub trait YeetProxy {
 
 #[tracing::instrument(err, ret)]
 pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
-    log::debug!("Connecting to {SOCKET_PATH}");
+    debug!("Connecting to {SOCKET_PATH}");
     Ok(unix::connect(SOCKET_PATH)
         .await
         .context("Trying to set up the varlink connection\nMake sure you are in the `yeet` group and the daemon is running")
@@ -63,14 +61,14 @@ pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
 }
 
 varlink_method!(status() -> DaemonStatus);
-
+varlink_method!(config() -> AgentConfig);
 varlink_method!(detach(version: api::StorePath) -> ());
 varlink_method!(attach() -> ());
 varlink_method!(download_update(dry_run: bool, fds: Vec<OwnedFd>) -> DownloadUpdateResult);
 varlink_method!(activate_update(dry_run: bool, fds: Vec<OwnedFd>) -> ActivateUpdateResult);
 
 struct YeetVarlinkService {
-    pub config: cli_args::AgentConfig,
+    pub config: AgentConfig,
     pub key: SecretKey,
 }
 
@@ -81,7 +79,7 @@ where
 {
     #[zlink(interface = "ch.yeetme.yeet")]
     pub async fn status(&self) -> Result<DaemonStatus, YeetDaemonError> {
-        log::debug!("Varlink: Daemon status requested");
+        debug!("Varlink: Daemon status requested");
 
         //TODO unwrap
         let verified = match api::is_host_verified(&self.config.server, &self.key).await {
@@ -275,13 +273,13 @@ where
 }
 
 #[tracing::instrument(err, skip(key))]
-pub async fn start_service(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
+pub async fn start_service(config: AgentConfig, key: SecretKey) -> Result<()> {
     YeetVarlinkService::start(config, key).await
 }
 
 impl YeetVarlinkService {
     #[tracing::instrument(err, skip(key))]
-    pub async fn start(config: cli_args::AgentConfig, key: SecretKey) -> Result<()> {
+    pub async fn start(config: AgentConfig, key: SecretKey) -> Result<()> {
         let listener = {
             let _err = remove_file(SOCKET_PATH).await;
             #[expect(clippy::unwrap_used)]
@@ -296,9 +294,9 @@ impl YeetVarlinkService {
             listener
         };
 
-        log::debug!("Socket created at {SOCKET_PATH}");
+        debug!("Socket created at {SOCKET_PATH}");
         let server = zlink::Server::new(listener, Self { config, key });
-        log::info!("Listening for varlink connections");
+        info!("Listening for varlink connections");
         server.run().await.map_err(std::convert::Into::into)
     }
 }
@@ -413,7 +411,7 @@ async fn setup_socket_permissions(path: &str, group_name: &str) -> Result<()> {
         .await
         .context("Trying to set file permission")?;
 
-    log::debug!("Socket permissions set: Group '{group_name}' can now access {path}");
+    debug!("Socket permissions set: Group '{group_name}' can now access {path}");
     Ok(())
 }
 
