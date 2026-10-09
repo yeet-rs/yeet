@@ -62,6 +62,7 @@ let
             lib.types.enum [
               "hex"
               "base64"
+              "wordlist"
             ]
           );
           default = null;
@@ -69,11 +70,12 @@ let
             format of the generated secret
           '';
         };
-        bytes = lib.mkOption {
+        length = lib.mkOption {
           type = lib.types.ints.positive;
           default = 32;
           description = ''
             length of the generated secret.
+            careful when using wordlist
             Ignored if format is null
           '';
         };

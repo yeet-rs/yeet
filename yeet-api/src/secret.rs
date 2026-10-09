@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use base64::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::eff_large_wordlist::EFF_LARGE_WORDLIST;
 /// The key is the name of the Secret, not to be confused with `Secret.name`
 pub type Secrets = HashMap<String, Secret>;
 
@@ -31,7 +33,8 @@ pub struct Secret {
     /// length of the generated secret.
     /// Default is 32 bytes
     /// Ignored if format is None
-    pub bytes: usize,
+    #[serde(alias = "bytes")]
+    pub length: usize,
 
     /// Format to generate
     pub format: Option<Format>,
@@ -53,17 +56,30 @@ impl Secret {
             return None;
         };
 
-        // create random data with the specified length
-        let mut data = vec![0; self.bytes];
-        rand::rng().fill_bytes(&mut data);
-
         // convert the data to the required format
         Some(match format {
-            Format::Base64 => BASE64_STANDARD.encode(data).into_bytes(),
-            Format::Hex => data
-                .iter()
-                .flat_map(|byte| format!("{byte:X}").into_bytes())
-                .collect::<Vec<_>>(),
+            Format::Base64 => {
+                let mut data = vec![0; self.length];
+                rand::rng().fill_bytes(&mut data);
+                BASE64_STANDARD.encode(data).into_bytes()
+            }
+            Format::Hex => {
+                let mut data = vec![0; self.length];
+                rand::rng().fill_bytes(&mut data);
+                data.iter()
+                    .flat_map(|byte| format!("{byte:X}").into_bytes())
+                    .collect::<Vec<_>>()
+            }
+            Format::Wordlist => {
+                let mut wordlist = String::new();
+                for _ in 0..self.length {
+                    let i = rand::rng().random_range(0..7777);
+                    wordlist.push_str(EFF_LARGE_WORDLIST[i]);
+                    wordlist.push(' ');
+                }
+                wordlist.pop(); // remove the last ' '
+                wordlist.into_bytes()
+            }
         })
     }
 }
@@ -73,4 +89,6 @@ impl Secret {
 pub enum Format {
     Base64,
     Hex,
+    /// Uses the EFF large wordlist
+    Wordlist,
 }

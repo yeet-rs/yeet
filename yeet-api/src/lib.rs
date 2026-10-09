@@ -1,9 +1,9 @@
 //! API for yeet
 
+mod eff_large_wordlist;
 mod httpsig;
 mod key;
 mod secret;
-
 mod routes {
     pub mod artifact;
     pub mod health;
