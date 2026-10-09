@@ -79,6 +79,10 @@ let
             Ignored if format is null
           '';
         };
+        bytes = lib.mkOption {
+          type = lib.types.ints.positive;
+          default = config.length;
+        };
         template = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
           default = null;
