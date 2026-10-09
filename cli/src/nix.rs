@@ -10,7 +10,7 @@ use inquire::{list_option::ListOption, validator::Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[tracing::instrument(err, fields(program = %program.as_ref()))]
+#[tracing::instrument( fields(program = %program.as_ref()))]
 pub fn cmd_exists<T: AsRef<str>>(program: T) -> io::Result<()> {
     let mut cmd = Command::new("sh");
 
@@ -43,7 +43,7 @@ fn nom_or_nix() -> String {
 
 // TODO: build multiple hosts at once
 // TODO: limit output
-#[tracing::instrument(err)]
+#[tracing::instrument]
 pub fn build_hosts(
     flake_path: &str,
     hosts: Vec<String>,
@@ -83,7 +83,7 @@ pub fn build_hosts(
     Ok(closures)
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(ret)]
 pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     let flavor = if darwin {
         "darwinConfigurations"
@@ -112,7 +112,7 @@ pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(ret)]
 pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     let detected_hosts = list_hosts(flake_path, darwin)?;
     Ok(
@@ -127,7 +127,7 @@ pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     )
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(ret)]
 pub fn get_host(flake_path: &str, darwin: bool) -> Result<String> {
     let detected_hosts = list_hosts(flake_path, darwin)?;
     Ok(inquire::Select::new("Which host would you like to build>", detected_hosts).prompt()?)
@@ -141,7 +141,7 @@ pub struct NixOSVersion {
     pub nixpkgs_revision: Option<String>,
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(ret)]
 pub fn nixos_version() -> Result<NixOSVersion> {
     let output = Command::new("nixos-version")
         .arg("--json")
@@ -179,7 +179,7 @@ impl Default for NixOSGeneration {
     }
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(ret)]
 pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
     let output = Command::new("nixos-rebuild")
         .arg("list-generations")
@@ -192,7 +192,7 @@ pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(ret)]
 pub fn nixos_variant_name() -> Result<String> {
     let output = Command::new("grep")
         .arg("^VARIANT=")

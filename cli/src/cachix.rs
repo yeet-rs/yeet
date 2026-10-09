@@ -19,7 +19,7 @@ pub struct CachixInfo {
     pub uri: String,
 }
 
-#[tracing::instrument(err, ret, fields(cache = %cache.as_ref()))]
+#[tracing::instrument(ret, fields(cache = %cache.as_ref()))]
 pub async fn get_cachix_info<S: AsRef<str>>(cache: S) -> Result<CachixInfo> {
     Ok(Client::new()
         .get(Url::parse("https://app.cachix.org/api/v1/cache/")?.join(cache.as_ref())?)
@@ -29,7 +29,7 @@ pub async fn get_cachix_info<S: AsRef<str>>(cache: S) -> Result<CachixInfo> {
         .await?)
 }
 
-#[tracing::instrument(err, fields(cache = %cache.as_ref()),skip(closures))]
+#[tracing::instrument(fields(cache = %cache.as_ref()),skip(closures))]
 pub async fn push_paths<I, S, C>(closures: I, cache: C) -> Result<()>
 where
     I: IntoIterator<Item = S>,

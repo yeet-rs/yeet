@@ -6,14 +6,14 @@ use std::{
 
 use color_eyre::Result;
 use inquire::validator::Validation;
-use log::info;
+use tracing::info;
 
 use crate::{
     cli::{self, common},
     cli_args::Config,
     sig::ssh,
 };
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 pub async fn approve(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;

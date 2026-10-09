@@ -4,6 +4,7 @@ use color_eyre::{Result, eyre::Context as _};
 use colored::Colorize as _;
 use jiff::tz::TimeZone;
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 use crate::{
     section::{self, DisplaySection, Section, section},
@@ -14,7 +15,7 @@ use crate::{
 shadow_rs::shadow!(build);
 
 #[expect(clippy::print_stdout)]
-#[tracing::instrument(err)]
+#[tracing::instrument]
 pub async fn status(json: bool) -> Result<()> {
     let yeet = yeet_info().await?;
     let system = system_info()?;
@@ -97,12 +98,12 @@ impl DisplaySection for YeetInfo {
     }
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(ret)]
 async fn yeet_info() -> Result<YeetInfo> {
     let daemon_status = match varlink::status().await {
         Ok(status) => Some(status),
         Err(err) => {
-            log::error!("Could not get status from daemon:\n{err}");
+            error!("Could not get status from daemon:\n{err}");
             None
         }
     };
@@ -171,7 +172,7 @@ impl DisplaySection for SystemInfo {
     }
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(ret)]
 fn system_info() -> Result<SystemInfo> {
     let nixos_version = crate::nix::nixos_version().context("Could not fetch nixos version")?;
     let nixos_generations =

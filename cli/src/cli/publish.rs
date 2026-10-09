@@ -4,11 +4,11 @@ use color_eyre::{
     Result,
     eyre::{Context as _, bail, eyre},
 };
-use log::info;
+use tracing::info;
 
 use crate::{cachix, cli::common, cli_args::Config, sig::ssh};
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 pub async fn publish(
     config: &Config,
     path: PathBuf,

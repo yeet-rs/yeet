@@ -5,6 +5,7 @@ use color_eyre::eyre::{Context as _, Result};
 
 use serde::{Deserialize, Serialize};
 
+use tracing::debug;
 use url::Url;
 use zlink::{Connection, ReplyError, proxy, unix};
 
@@ -37,9 +38,9 @@ pub trait YeetProxy {
     async fn attach(&mut self) -> zlink::Result<Result<(), YeetDaemonError>>;
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument]
 pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
-    log::debug!("Connecting to {SOCKET_PATH}");
+    debug!("Connecting to {SOCKET_PATH}");
     Ok(unix::connect(SOCKET_PATH)
         .await
         .context("Trying to set up the varlink connection\nMake sure you are in the `yeet` group and the daemon is running")
@@ -148,7 +149,7 @@ impl From<color_eyre::eyre::ErrReport> for YeetDaemonError {
 
 macro_rules! varlink_method {
     ($fn_name:ident($($param:ident: $param_ty:ty),* $(,)?) -> $ret:ty) => {
-        #[tracing::instrument(err)]
+        #[tracing::instrument]
         pub async fn $fn_name($($param: $param_ty),*) -> Result<$ret, VarlinkError> {
             let mut client = client().await?;
             client

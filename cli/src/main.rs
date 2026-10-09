@@ -1,10 +1,5 @@
 //! # Yeet Agent
 
-use std::{
-    env::args,
-    io::{IsTerminal as _, Write as _},
-};
-
 use clap::Parser as _;
 use color_eyre::Section as _;
 use colored::Colorize as _;
@@ -12,8 +7,7 @@ use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
 };
-use opentelemetry_sdk::trace::SdkTracerProvider;
-use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
+use tracing::info;
 
 use crate::cli_args::{Commands, Config, Yeet};
 
@@ -44,28 +38,70 @@ mod status;
 mod systemd;
 mod varlink;
 
-#[tokio::main(flavor = "local")]
-async fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
+fn install_tracing() {
+    use std::io::IsTerminal as _;
 
-    let (provider, _guard) = init_tracer();
-    let result = run().await;
-    // this is required because `color_eyre` holds a ref to the current span
-    if let Err(ref err) = result {
-        tracing::error!(error = ?err);
+    use tracing::Level;
+    use tracing_error::ErrorLayer;
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::fmt::{self, FmtContext, FormatEvent, FormatFields, format::Writer};
+    use tracing_subscriber::prelude::*;
+    use tracing_subscriber::registry::LookupSpan;
+
+    struct LevelPrefixFormat;
+
+    impl<S, N> FormatEvent<S, N> for LevelPrefixFormat
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+    {
+        fn format_event(
+            &self,
+            ctx: &FmtContext<'_, S, N>,
+            mut writer: Writer<'_>,
+            event: &tracing::Event<'_>,
+        ) -> std::fmt::Result {
+            let level = *event.metadata().level();
+            if writer.has_ansi_escapes() {
+                let styled = match level {
+                    Level::ERROR => "ERROR".red(),
+                    Level::WARN => "WARN".yellow(),
+                    Level::INFO => "INFO".green(),
+                    Level::DEBUG => "DEBUG".blue(),
+                    Level::TRACE => "TRACE".cyan(),
+                };
+                write!(writer, "{styled}: ")?;
+            } else {
+                write!(writer, "{level}: ")?;
+            }
+            ctx.field_format().format_fields(writer.by_ref(), event)?;
+            writeln!(writer)
+        }
     }
-    tokio::task::yield_now().await;
-    provider.force_flush()?;
-    provider.shutdown()?;
 
-    result?;
-    Ok(())
+    let fmt_layer = fmt::layer()
+        .event_format(LevelPrefixFormat)
+        .with_writer(std::io::stderr)
+        .with_ansi(std::io::stderr().is_terminal());
+
+    let filter_layer = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new(concat!("warn,", env!("CARGO_CRATE_NAME"), "=info")));
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .with(ErrorLayer::default())
+        .init();
 }
 
-#[tracing::instrument(err)]
-async fn run() -> color_eyre::Result<()> {
+#[tokio::main(flavor = "local")]
+async fn main() -> color_eyre::Result<()> {
+    install_tracing();
+    let args = Yeet::try_parse()?; // above color_eyre so it does not get formatted weird
+    color_eyre::install()?;
+
+    info!("test");
     let xdg_dirs = xdg::BaseDirectories::with_prefix("yeet");
-    let args = Yeet::try_parse()?;
 
     let config: Config = Figment::new()
         .merge(Toml::file(
@@ -129,53 +165,4 @@ async fn run() -> color_eyre::Result<()> {
             Err(err).note(server_health)
         }
     }
-}
-
-fn init_tracer() -> (
-    SdkTracerProvider,
-    tracing_appender::non_blocking::WorkerGuard,
-) {
-    // let exporter = opentelemetry_otlp::SpanExporter::builder()
-    //     .build()
-    //     .expect("Could not build SpanExporter");
-
-    let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
-        // .with_resource(resource())
-        // .with_batch_exporter(exporter)
-        .build();
-
-    // let tracer = provider.tracer("yeet");
-
-    let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
-
-    if std::io::stderr().is_terminal() && args().nth(1) != Some("agent".to_owned()) {
-        let mut log_builder =
-            env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"));
-        log_builder.format(|buf, record| {
-            write!(buf, "{}", buf.default_level_style(record.level()))?;
-            write!(buf, "{}", record.level())?;
-            write!(buf, "{:#}", buf.default_level_style(record.level()))?;
-            writeln!(buf, ": {}", record.args())
-        });
-        log_builder.init();
-    } else {
-        let format = tracing_subscriber::fmt::format().pretty();
-        tracing_subscriber::registry()
-            .with(
-                tracing_subscriber::EnvFilter::builder()
-                    .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
-                    .from_env_lossy(),
-            )
-            .with(tracing_error::ErrorLayer::default())
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .with_target(false)
-                    .event_format(format)
-                    .with_writer(non_blocking),
-            )
-            // .with(tracing_opentelemetry::OpenTelemetryLayer::new(tracer))
-            .init();
-    }
-
-    (provider, guard)
 }

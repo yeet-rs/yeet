@@ -5,7 +5,7 @@ use std::{
 
 use clap::Args;
 use color_eyre::{Result, eyre::bail};
-use log::info;
+use tracing::info;
 
 use crate::varlink;
 
@@ -18,7 +18,7 @@ pub struct UpdateArgs {
     // pub command: UpdateCommands,
 }
 
-#[tracing::instrument(err)]
+#[tracing::instrument]
 pub async fn update(args: UpdateArgs) -> Result<()> {
     // get a dry run to ask the user
     let dry_run_result = varlink::download_update(

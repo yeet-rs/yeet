@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
 use color_eyre::Result;
 use colored::Colorize as _;
-use log::info;
+use tracing::info;
 
 use crate::{
     cli::common,
@@ -40,7 +40,7 @@ pub async fn handle_command(args: UserArgs, config: &Config) -> Result<()> {
     }
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn create_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -78,7 +78,7 @@ async fn create_user(config: &Config) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn delete_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -111,7 +111,7 @@ This action is not reversable",
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn rename_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -131,7 +131,7 @@ async fn rename_user(config: &Config) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn tag_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -179,7 +179,7 @@ async fn tag_user(config: &Config) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn remove_tag_user(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -231,7 +231,7 @@ async fn remove_tag_user(config: &Config) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 pub async fn list_users(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;

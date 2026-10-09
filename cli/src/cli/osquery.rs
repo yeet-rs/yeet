@@ -1,5 +1,6 @@
 use color_eyre::Result;
 use colored::Colorize as _;
+use tracing::info;
 
 use crate::{
     cli::common,
@@ -8,7 +9,7 @@ use crate::{
     sig::ssh,
 };
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 pub async fn show_nodes(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -29,7 +30,7 @@ pub async fn show_nodes(config: &Config) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 pub async fn query(config: &Config, sql: String) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -62,6 +63,6 @@ pub async fn query(config: &Config, sql: String) -> Result<()> {
     //     println!("{table}");
     // }
 
-    log::info!("You can search for your query with `sid: {query}`");
+    info!("You can search for your query with `sid: {query}`");
     Ok(())
 }

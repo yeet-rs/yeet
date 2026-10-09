@@ -1,6 +1,7 @@
 use clap::{Args, Subcommand};
 use color_eyre::Result;
 use colored::Colorize as _;
+use tracing::info;
 
 use crate::{
     cli::common,
@@ -29,7 +30,7 @@ pub async fn handle_command(args: ArtifactArgs, config: &Config) -> Result<()> {
         ArtifactCommands::Delete => delete(config).await,
     }
 }
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn show(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -48,7 +49,7 @@ async fn show(config: &Config) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn delete(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -66,18 +67,18 @@ async fn delete(config: &Config) -> Result<()> {
     .prompt()?;
 
     if !confirm {
-        log::info!("Aborting...");
+        info!("Aborting...");
         return Ok(());
     }
 
-    log::info!("Deleting...");
+    info!("Deleting...");
 
     api::delete_artifact(&url, secret_key, artifact.id).await?;
-    log::info!("Done!");
+    info!("Done!");
 
     Ok(())
 }
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 pub async fn artifacts(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;

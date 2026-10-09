@@ -7,7 +7,7 @@ use clap::{Args, Subcommand};
 use color_eyre::Result;
 use colored::Colorize as _;
 use inquire::validator::Validation;
-use log::info;
+use tracing::{error, info};
 
 use crate::{cli::common, cli_args::Config, section, sig::ssh};
 
@@ -47,7 +47,7 @@ pub async fn handle_command(args: SecretArgs, config: &Config) -> Result<()> {
     }
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn create(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -67,14 +67,14 @@ async fn create(config: &Config) -> Result<()> {
     };
 
     api::create_secret(&url, secret_key, &name, secret.trim().as_bytes()).await?;
-    log::info!("Secret {name} created!");
+    info!("Secret {name} created!");
 
     allow(config).await?;
 
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn rename(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -86,15 +86,15 @@ async fn rename(config: &Config) -> Result<()> {
 
     let new = inquire::Text::new("What should the new name be?").prompt()?;
 
-    log::info!("Renaming {} to {new}...", secret.name);
+    info!("Renaming {} to {new}...", secret.name);
 
     api::rename_secret(&url, secret_key, secret.id, &new).await?;
-    log::info!("Done!");
+    info!("Done!");
 
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn remove(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -112,19 +112,19 @@ async fn remove(config: &Config) -> Result<()> {
     .prompt()?;
 
     if !confirm {
-        log::info!("Aborting...");
+        info!("Aborting...");
         return Ok(());
     }
 
-    log::info!("Deleting...");
+    info!("Deleting...");
 
     api::delete_secret(&url, secret_key, secret.id).await?;
-    log::info!("Done!");
+    info!("Done!");
 
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 pub async fn allow(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -149,25 +149,25 @@ pub async fn allow(config: &Config) -> Result<()> {
 
     hosts.retain(|host| selected.contains(&host.hostname));
 
-    log::info!("Allowing {hosts:?} to access {secrets:?}...");
+    info!("Allowing {hosts:?} to access {secrets:?}...");
 
     for host in hosts {
         for secret in &secrets {
             let response = api::allow_host(&url, secret_key, secret.id, host.id).await;
             if let Err(err) = response {
-                log::error!(
+                error!(
                     "Error adding access for {} from {secret}:\n{err}",
                     host.hostname
                 );
             }
         }
     }
-    log::info!("Done!");
+    info!("Done!");
 
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn deny(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -203,25 +203,25 @@ async fn deny(config: &Config) -> Result<()> {
 
     hosts.retain(|host| selected_hosts.contains(&host.hostname));
 
-    log::info!("Denying {hosts:?} to access {selected_secrets:?}...");
+    info!("Denying {hosts:?} to access {selected_secrets:?}...");
 
     for host in hosts {
         for secret in &selected_secrets {
             let response = api::block_host(&url, secret_key, secret.id, host.id).await;
             if let Err(err) = response {
-                log::error!(
+                error!(
                     "Error removing access for {} from {secret}:\n{err}",
                     host.id
                 );
             }
         }
     }
-    log::info!("Done!");
+    info!("Done!");
 
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 pub async fn list(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -229,7 +229,7 @@ pub async fn list(config: &Config) -> Result<()> {
     let secrets = api::list_secrets(&url, secret_key).await?;
 
     if secrets.is_empty() {
-        log::info!("No secrets yet!");
+        info!("No secrets yet!");
         return Ok(());
     }
 
@@ -278,7 +278,7 @@ pub async fn list(config: &Config) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
@@ -330,7 +330,7 @@ async fn tag(config: &Config) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip(config), err)]
+#[tracing::instrument(skip(config))]
 async fn remove_tag(config: &Config) -> Result<()> {
     let url = common::get_server_url(config).await?;
     let key = &ssh::key_by_url(&url)?;
