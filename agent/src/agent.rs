@@ -23,7 +23,7 @@ use log::{error, info};
 use tokio::time;
 use url::Url;
 
-use crate::{cli_args::AgentConfig, notification, varlink, version::get_active_version};
+use crate::{notification, varlink, version::get_active_version};
 
 static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 
@@ -34,13 +34,12 @@ static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 ///    pull the verify endpoint in a time intervall
 /// 2. Continuosly pull the system endpoint and execute based on the provided
 #[tracing::instrument(err)]
-pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<()> {
+pub async fn agent(sleep: u64, facter: bool) -> Result<()> {
     let key = get_secret_key(&config.key)?;
     let pub_key = get_verify_key(&config.key)?;
 
     log::info!("Spawning varlink daemon");
     {
-        let config = config.clone();
         let key = key.clone();
         tokio::task::spawn_local(async move {
             if let Err(err) = varlink::start_service(config, key).await {
@@ -49,7 +48,7 @@ pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<()>
         })
     };
 
-    (|| async { agent_loop(config, &key, pub_key, sleep, facter).await })
+    (|| async { agent_loop(&key, pub_key, sleep, facter).await })
         .retry(
             ConstantBuilder::new()
                 .without_max_times()
@@ -65,7 +64,6 @@ pub async fn agent(config: &AgentConfig, sleep: u64, facter: bool) -> Result<()>
 
 #[tracing::instrument(err, skip(key, pub_key))]
 async fn agent_loop(
-    config: &AgentConfig,
     key: &SecretKey,
     pub_key: VerifyingKey,
     sleep: u64,

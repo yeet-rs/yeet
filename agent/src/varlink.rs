@@ -25,8 +25,7 @@ shadow_rs::shadow!(build);
 
 use crate::{
     agent,
-    cli_args::{self, AgentConfig},
-    polkit::PolkitError,
+    cli_args::{self},
     version,
 };
 
@@ -35,7 +34,6 @@ const SOCKET_PATH: &str = "/run/yeet/agent.varlink";
 #[proxy("ch.yeetme.yeet")]
 pub trait YeetProxy {
     async fn status(&mut self) -> zlink::Result<Result<DaemonStatus, YeetDaemonError>>;
-    async fn config(&mut self) -> zlink::Result<Result<AgentConfig, YeetDaemonError>>;
 
     async fn download_update(
         &mut self,
@@ -65,7 +63,7 @@ pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
 }
 
 varlink_method!(status() -> DaemonStatus);
-varlink_method!(config() -> AgentConfig);
+
 varlink_method!(detach(version: api::StorePath) -> ());
 varlink_method!(attach() -> ());
 varlink_method!(download_update(dry_run: bool, fds: Vec<OwnedFd>) -> DownloadUpdateResult);
@@ -383,13 +381,6 @@ impl From<std::io::Error> for YeetDaemonError {
     }
 }
 
-impl From<PolkitError> for YeetDaemonError {
-    fn from(value: PolkitError) -> Self {
-        Self::PolkitError {
-            error: value.to_string(),
-        }
-    }
-}
 impl From<api::ResponseError> for YeetDaemonError {
     fn from(value: api::ResponseError) -> Self {
         Self::NoConnectionToServer {
