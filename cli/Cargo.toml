@@ -1,5 +1,5 @@
 [package]
-version.workspace = true
+version = "0.16.3"
 name = "yeet"
 categories.workspace = true
 edition.workspace = true
