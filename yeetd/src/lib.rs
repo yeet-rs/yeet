@@ -177,10 +177,7 @@ pub async fn launch(config: Config) -> tokio::task::JoinHandle<()> {
     #[expect(clippy::unwrap_used)]
     {
         let mut conn = config.pool.acquire().await.unwrap();
-        sqlx::migrate!("../migrations")
-            .run(&mut conn)
-            .await
-            .unwrap();
+        sqlx::migrate!("./migrations").run(&mut conn).await.unwrap();
     };
 
     let age_key = Arc::new(config.age_key);
@@ -370,9 +367,6 @@ fn get_osquery_packs(path: &Path) -> Result<IndexMap<String, serde_json::Value>,
 #[cfg(test)]
 async fn sql_conn(pool: sqlx::SqlitePool) -> sqlx::pool::PoolConnection<sqlx::Sqlite> {
     let mut conn = pool.acquire().await.unwrap();
-    sqlx::migrate!("../migrations")
-        .run(&mut conn)
-        .await
-        .unwrap();
+    sqlx::migrate!("./migrations").run(&mut conn).await.unwrap();
     conn
 }

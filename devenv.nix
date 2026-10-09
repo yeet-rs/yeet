@@ -24,5 +24,5 @@ in
     pkgs-unstable.cargo-tarpaulin
     just
   ];
-  env.DATABASE_URL = "sqlite:yeet.db";
+  env.DATABASE_URL = "sqlite:yeetd/yeet.db";
 }
