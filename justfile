@@ -34,7 +34,7 @@ certs:
 # removes files like database, certificate and encryption keys
 clean:
     #!/usr/bin/env sh
-    rm yeetd/yeet.db
+    rm server/yeet.db
     rm key.pem
     rm cert.pem
     rm age.key
@@ -43,8 +43,8 @@ clean:
 # deletes and creates a fresh database
 db-reset:
     #!/usr/bin/env sh
-    rm yeetd/yeet.db
-    cd yeetd
+    rm server/yeet.db
+    cd server
     sqlx database create
     sqlx migrate run
 
@@ -54,7 +54,7 @@ migrate:
 crate2nix:
     nix run nixpkgs#crate2nix -- generate
 
-[working-directory('yeetd')]
+[working-directory('server')]
 sqlx:
     cargo sqlx prepare -D sqlite:$PWD/yeet.db
     cargo sqlx prepare -D sqlite:$PWD/yeet.db -- --tests

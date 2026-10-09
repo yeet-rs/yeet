@@ -21662,7 +21662,7 @@ rec {
             requiredFeatures = [ ];
           }
         ];
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeet-agent; };
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./agent; };
         dependencies = [
           {
             name = "age";
@@ -21860,7 +21860,7 @@ rec {
         crateName = "yeet-api";
         version = "0.16.3";
         edition = "2024";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeet-api; };
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./api; };
         libName = "yeet_api";
         dependencies = [
           {
@@ -21986,7 +21986,7 @@ rec {
             requiredFeatures = [ ];
           }
         ];
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeetd; };
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./server; };
         dependencies = [
           {
             name = "age";
