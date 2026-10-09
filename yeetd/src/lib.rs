@@ -35,6 +35,7 @@ mod db {
 
 mod error;
 mod httpsig;
+mod splunk_hec;
 mod splunk_sender;
 
 use axum_server::tls_rustls::RustlsConfig;

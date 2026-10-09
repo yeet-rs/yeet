@@ -2,6 +2,8 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 
+use crate::splunk_hec;
+
 #[derive(Debug, Serialize, Deserialize, sqlx::Type)]
 pub enum SplunkStatus {
     /// The message has not yet been sent

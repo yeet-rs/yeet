@@ -53,16 +53,6 @@ rec {
       # File a bug if you depend on any for non-debug work!
       debug = internal.debugCrate { inherit packageId; };
     };
-    "splunk_hec" = rec {
-      packageId = "splunk_hec";
-      build = internal.buildRustCrateWithFeatures {
-        packageId = "splunk_hec";
-      };
-
-      # Debug support which might change between releases.
-      # File a bug if you depend on any for non-debug work!
-      debug = internal.debugCrate { inherit packageId; };
-    };
     "yeet" = rec {
       packageId = "yeet";
       build = internal.buildRustCrateWithFeatures {
@@ -14764,52 +14754,6 @@ rec {
         };
         resolvedDefaultFeatures = [ "alloc" "pem" "std" ];
       };
-      "splunk_hec" = rec {
-        crateName = "splunk_hec";
-        version = "0.16.3";
-        edition = "2024";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./splunk_hec; };
-        dependencies = [
-          {
-            name = "indexmap";
-            packageId = "indexmap";
-            features = [ "serde" ];
-          }
-          {
-            name = "jiff";
-            packageId = "jiff";
-            features = [ "serde" ];
-          }
-          {
-            name = "log";
-            packageId = "log";
-          }
-          {
-            name = "osquery-tls";
-            packageId = "osquery-tls";
-          }
-          {
-            name = "reqwest";
-            packageId = "reqwest";
-            features = [ "json" "query" "multipart" ];
-          }
-          {
-            name = "serde";
-            packageId = "serde";
-            features = [ "derive" ];
-          }
-          {
-            name = "serde_json";
-            packageId = "serde_json";
-          }
-          {
-            name = "url";
-            packageId = "url";
-            features = [ "serde" ];
-          }
-        ];
-
-      };
       "sqlx" = rec {
         crateName = "sqlx";
         version = "0.9.0";
@@ -22150,6 +22094,11 @@ rec {
             packageId = "rand 0.10.1";
           }
           {
+            name = "reqwest";
+            packageId = "reqwest";
+            features = [ "json" "query" "multipart" ];
+          }
+          {
             name = "serde";
             packageId = "serde";
             features = [ "derive" ];
@@ -22157,10 +22106,6 @@ rec {
           {
             name = "serde_json";
             packageId = "serde_json";
-          }
-          {
-            name = "splunk_hec";
-            packageId = "splunk_hec";
           }
           {
             name = "sqlx";
