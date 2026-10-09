@@ -1,0 +1,193 @@
+use std::fmt::Display;
+
+use color_eyre::{Result, eyre::Context as _};
+use colored::Colorize as _;
+use jiff::tz::TimeZone;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    section::{self, DisplaySection, Section, section},
+    systemd,
+    varlink::{self},
+};
+
+shadow_rs::shadow!(build);
+
+#[expect(clippy::print_stdout)]
+#[tracing::instrument(err)]
+pub async fn status(json: bool) -> Result<()> {
+    let yeet = yeet_info().await?;
+    let system = system_info()?;
+    if json {
+        println!("{}", serde_json::to_string(&Status { system, yeet })?);
+    } else {
+        section::print_sections(&[yeet.as_section(), system.as_section()]);
+    }
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize)]
+struct Status {
+    system: SystemInfo,
+    yeet: YeetInfo,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct YeetInfo {
+    pub systemd_status: String,
+    pub daemon_status: Option<varlink::DaemonStatus>,
+    pub cli_version_short: String,
+    pub cli_version_long: String,
+}
+
+impl Display for varlink::DaemonMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mode = match &self {
+            Self::Provisioned => "Provisioned".green().bold(),
+            Self::Detached => "Detached".yellow().bold(),
+            Self::NetworkError => "NetworkError".red().bold(),
+            Self::Unverified => "Unverified".red().bold(),
+        };
+        write!(f, "{mode}")
+    }
+}
+
+impl Display for varlink::UpToDate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let up_to_date = match &self {
+            Self::Yes => "Yes".green().bold(),
+            Self::No => "No".red().bold(),
+            Self::Detached => "Detached".yellow().bold(),
+        };
+        write!(f, "{up_to_date}")
+    }
+}
+
+impl DisplaySection for YeetInfo {
+    fn as_section(&self) -> Section {
+        let (up_to_date, mode, daemon_version) = if let Some(daemon_state) = &self.daemon_status {
+            let up_to_date = daemon_state.up_to_date.to_string();
+            let mode = format!(
+                "{} ({})",
+                daemon_state.mode,
+                daemon_state.server.to_string().underline()
+            );
+
+            (up_to_date, mode, daemon_state.version.clone())
+        } else {
+            let no_con = "No connection to daemon".red().bold().to_string();
+            (no_con.clone(), no_con.clone(), no_con)
+        };
+
+        let daemon_version = if daemon_version == self.cli_version_short {
+            daemon_version
+        } else {
+            daemon_version.red().bold().to_string()
+        };
+
+        section!(
+            "Yeet:".underline() => [
+                "Up to date", up_to_date,
+                "Mode", mode,
+                "Systemd Unit", self.systemd_status,
+                "Daemon version", daemon_version,
+                "CLI Version", self.cli_version_long,
+            ]
+        )
+    }
+}
+
+#[tracing::instrument(err, ret)]
+async fn yeet_info() -> Result<YeetInfo> {
+    let daemon_status = match varlink::status().await {
+        Ok(status) => Some(status),
+        Err(err) => {
+            log::error!("Could not get status from daemon:\n{err}");
+            None
+        }
+    };
+
+    Ok(YeetInfo {
+        cli_version_short: String::from(build::PKG_VERSION),
+        cli_version_long: String::from(build::CLAP_LONG_VERSION),
+        daemon_status,
+        systemd_status: systemd::systemd_status_value("Active", "yeet")?
+            .unwrap_or("Service health not found".to_owned()),
+    })
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SystemInfo {
+    pub kernel: String,
+    pub nixos_version: String,
+    pub build_date: jiff::civil::DateTime,
+    pub variant: String,
+    pub configuration_revision: String,
+    pub nixpkgs_revision: Option<String>,
+    pub current_generation: u32,
+}
+
+#[expect(clippy::string_slice)]
+impl DisplaySection for SystemInfo {
+    fn as_section(&self) -> Section {
+        #[expect(clippy::unwrap_used)]
+        let build_date_span = api::time_diff(
+            self.build_date
+                .to_zoned(TimeZone::system())
+                .unwrap()
+                .timestamp(),
+            jiff::Unit::Hour,
+            24_f64,
+            jiff::Unit::Minute,
+        );
+
+        let os_version = if self.nixos_version.starts_with("dirty") {
+            &self.nixos_version.red().bold()
+        } else {
+            &self.nixos_version.green()
+        };
+
+        let variant = if self.variant.starts_with("dirty") {
+            &self.variant.red().bold()
+        } else {
+            &self.variant.bold()
+        };
+
+        let nixpkgs_revision = self
+            .nixpkgs_revision
+            .as_ref()
+            .map_or("Unknown".red().to_string(), |rev| rev[..8].to_string());
+
+        section!(
+            "System:".underline() => [
+                "Kernel", self.kernel,
+                "NixOS version", format!("{} Generation {}", os_version, self.current_generation.to_string().bold()),
+                "Build date", format!("\u{2514}\u{2500}{}; {}",self.build_date, build_date_span),
+                "Variant", variant,
+                "Conf revision", self.configuration_revision[..8],
+                "Nixpkgs version", nixpkgs_revision,
+            ]
+        )
+    }
+}
+
+#[tracing::instrument(err, ret)]
+fn system_info() -> Result<SystemInfo> {
+    let nixos_version = crate::nix::nixos_version().context("Could not fetch nixos version")?;
+    let nixos_generations =
+        crate::nix::nixos_generations().context("Could not fetch nixos generations")?;
+    let generation = nixos_generations
+        .into_iter()
+        .find(|generation| generation.current)
+        .unwrap_or_default();
+
+    Ok(SystemInfo {
+        kernel: generation.kernel_version,
+        nixos_version: generation.nixos_version,
+        build_date: generation.date,
+        variant: crate::nix::nixos_variant_name()?,
+        configuration_revision: generation.configuration_revision,
+        nixpkgs_revision: nixos_version.nixpkgs_revision,
+        current_generation: generation.generation,
+    })
+}

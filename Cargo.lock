@@ -6171,6 +6171,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "yeeta"
+version = "0.16.3"
+dependencies = [
+ "age",
+ "backon",
+ "clap",
+ "color-eyre",
+ "colored",
+ "ed25519-dalek",
+ "env_logger",
+ "figment",
+ "futures-util",
+ "http",
+ "httpsig-hyper",
+ "inquire",
+ "jiff",
+ "log",
+ "nix",
+ "notify-rust",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "rand 0.10.1",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "shadow-rs",
+ "similar",
+ "ssh-key",
+ "ssh2-config",
+ "tabled",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-error",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "url",
+ "xdg",
+ "yeet-api",
+ "zbus",
+ "zbus_polkit",
+ "zlink",
+]
+
+[[package]]
 name = "yeetd"
 version = "0.16.3"
 dependencies = [

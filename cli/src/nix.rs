@@ -1,0 +1,378 @@
+use std::{
+    collections::HashMap,
+    fs::{read_to_string, remove_file},
+    io::{self, BufRead as _, Write as _},
+    path::Path,
+    process::{Command, Stdio},
+};
+
+use color_eyre::{
+    Section as _,
+    eyre::{Context as _, Result, bail, eyre},
+};
+use inquire::{list_option::ListOption, validator::Validation};
+use log::info;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use tempfile::NamedTempFile;
+
+use crate::notification;
+
+#[tracing::instrument(err, fields(program = %program.as_ref()))]
+pub fn cmd_exists<T: AsRef<str>>(program: T) -> io::Result<()> {
+    let mut cmd = Command::new("sh");
+
+    let arg = {
+        cmd.arg("-c"); // invocation flag
+        format!("command -v {}", program.as_ref())
+    };
+
+    if cmd
+        .arg(arg)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()?
+        .success()
+    {
+        Ok(())
+    } else {
+        Err(io::ErrorKind::NotFound.into())
+    }
+}
+
+fn nom_or_nix() -> String {
+    if cmd_exists("nom").is_ok() {
+        "nom"
+    } else {
+        "nix"
+    }
+    .to_owned()
+}
+
+// TODO: build multiple hosts at once
+// TODO: limit output
+#[tracing::instrument(err)]
+pub fn build_hosts(
+    flake_path: &str,
+    hosts: Vec<String>,
+    darwin: bool,
+    variant: Option<String>,
+) -> Result<HashMap<String, String>> {
+    let mut closures = HashMap::with_capacity(hosts.len());
+
+    let env = {
+        let mut env = HashMap::new();
+        if let Some(variant) = variant {
+            env.insert("NIXOS_VARIANT", variant);
+        }
+        env
+    };
+
+    for ref host in hosts {
+        let system = if darwin {
+            format!("darwinConfigurations.{host}.system")
+        } else {
+            format!("nixosConfigurations.{host}.config.system.build.toplevel")
+        };
+        let output = Command::new(nom_or_nix())
+            .args(["build", "--json", "--no-link", "-f", flake_path, &system])
+            .envs(&env)
+            .stdout(Stdio::piped())
+            .spawn()?
+            .wait_with_output()?;
+        let build = serde_json::from_slice::<Value>(&output.stdout)?;
+        #[expect(clippy::indexing_slicing)] // yeah ik
+        let closure = build[0]["outputs"]["out"]
+            .as_str()
+            .ok_or(eyre!("Build output did not contain a valid closure"))?;
+
+        closures.insert(host.clone(), closure.to_owned());
+    }
+    Ok(closures)
+}
+
+#[tracing::instrument(err, ret)]
+pub fn facter() -> Result<String> {
+    let exit = Command::new("nixos-facter")
+        .args(["-o", "facter.json"])
+        .spawn()
+        .context("Could not spawn `nixos-facter`")?
+        .wait()
+        .context("Could not wait for `nixos-facter`")?;
+    if !exit.success() {
+        bail!("nixos-facter did not exist successfully")
+    }
+    let facter = read_to_string("facter.json")
+        .context("Facter did collect the data but `facter.json` does not exist")?;
+    remove_file("facter.json").context("`facter.json` read but could not clean up")?;
+    Ok(facter)
+}
+
+#[tracing::instrument(err, ret)]
+pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
+    let flavor = if darwin {
+        "darwinConfigurations"
+    } else {
+        "nixosConfigurations"
+    };
+    let output = Command::new("nix")
+        .arg("eval")
+        .args([
+            "-f",
+            flake_path,
+            flavor,
+            "--apply",
+            "builtins.attrNames",
+            "--json",
+        ])
+        .stdout(Stdio::piped())
+        .spawn()?
+        .wait_with_output()
+        .context("Could not find nix systems in the current dir")?;
+
+    if !output.status.success() {
+        bail!("Could not find nix systems in the current dir");
+    }
+
+    Ok(serde_json::from_slice(&output.stdout)?)
+}
+
+#[tracing::instrument(err, ret)]
+pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
+    let detected_hosts = list_hosts(flake_path, darwin)?;
+    Ok(
+        inquire::MultiSelect::new("Which host(s) would you like to publish>", detected_hosts)
+            .with_validator(|list: &[ListOption<&String>]| {
+                if list.is_empty() {
+                    return Ok(Validation::Invalid("You must select a host!".into()));
+                }
+                Ok(Validation::Valid)
+            })
+            .prompt()?,
+    )
+}
+
+#[tracing::instrument(err, ret)]
+pub fn get_host(flake_path: &str, darwin: bool) -> Result<String> {
+    let detected_hosts = list_hosts(flake_path, darwin)?;
+    Ok(inquire::Select::new("Which host would you like to build>", detected_hosts).prompt()?)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct NixOSVersion {
+    pub configuration_revision: String,
+    pub nixos_version: String,
+    pub nixpkgs_revision: Option<String>,
+}
+
+#[tracing::instrument(err, ret)]
+pub fn nixos_version() -> Result<NixOSVersion> {
+    let output = Command::new("nixos-version")
+        .arg("--json")
+        .stdout(Stdio::piped())
+        .spawn()
+        .context("Could not spawn `nixos-version`")?
+        .wait_with_output()?;
+
+    Ok(serde_json::from_slice(&output.stdout)?)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct NixOSGeneration {
+    pub generation: u32,
+    pub date: jiff::civil::DateTime,
+    pub nixos_version: String,
+    pub kernel_version: String,
+    pub configuration_revision: String,
+    pub specialisations: Vec<String>,
+    pub current: bool,
+}
+
+impl Default for NixOSGeneration {
+    fn default() -> Self {
+        Self {
+            generation: 0,
+            date: Default::default(),
+            nixos_version: "unknown".to_owned(),
+            kernel_version: "unknown".to_owned(),
+            configuration_revision: "unknown".to_owned(),
+            specialisations: Default::default(),
+            current: Default::default(),
+        }
+    }
+}
+
+#[tracing::instrument(err, ret)]
+pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
+    let output = Command::new("nixos-rebuild")
+        .arg("list-generations")
+        .arg("--json")
+        .stdout(Stdio::piped())
+        .spawn()
+        .context("Could not spawn `nixos-rebuild`")?
+        .wait_with_output()?;
+
+    Ok(serde_json::from_slice(&output.stdout)?)
+}
+
+#[tracing::instrument(err, ret)]
+pub fn nixos_variant_name() -> Result<String> {
+    let output = Command::new("grep")
+        .arg("^VARIANT=")
+        .arg("/etc/os-release")
+        .stdout(Stdio::piped())
+        .spawn()
+        .context("Could not spawn `grep`")?
+        .wait_with_output()?;
+
+    let output = String::from_utf8_lossy(&output.stdout).to_string();
+    let output = output
+        .trim()
+        .trim_start_matches("VARIANT=")
+        .trim_matches('"')
+        .to_owned();
+    Ok(output)
+}
+
+#[tracing::instrument(err, ret)]
+fn trusted_public_keys() -> Result<Vec<String>> {
+    let file = std::fs::File::open("/etc/nix/nix.conf")?;
+    Ok(io::BufReader::new(file)
+        .lines()
+        .map_while(Result::ok)
+        .find(|line| line.starts_with("trusted-public-keys"))
+        .unwrap_or(String::from(
+            "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=",
+        ))
+        .split_whitespace()
+        .skip(2)
+        .map(str::to_owned)
+        .collect())
+}
+
+#[tracing::instrument(err, skip(key, stderr, stdout))]
+pub async fn realise_store_path(
+    version: &api::RemoteStorePath,
+    url: &url::Url,
+    key: &httpsig_hyper::prelude::SecretKey,
+    stderr: impl Into<Stdio>,
+    stdout: impl Into<Stdio>,
+    dry_run: bool,
+) -> Result<()> {
+    info!("Downloading {}", version.store_path);
+    let mut keys = trusted_public_keys()?;
+    keys.push(version.public_key.clone());
+    keys.sort();
+    keys.dedup();
+
+    let mut command = Command::new("nix-store");
+    command.stderr(stderr).stdout(stdout);
+    command.args(vec![
+        "--realise",
+        &version.store_path,
+        "--option",
+        "extra-substituters",
+        &version.substitutor,
+        "--option",
+        "trusted-public-keys",
+        &keys.join(" "),
+        "--option",
+        "narinfo-cache-negative-ttl",
+        "0",
+    ]);
+
+    // Even if we do not end up using the temp file we create it outside of the if scope.
+    // Else it would get dropped before nix-store can use it
+    let mut netrc_file = NamedTempFile::new().context("Could not create netrc temp file")?;
+    let netrc = match api::get_secret(url, key, "netrc".into()).await {
+        Ok(secret) => secret,
+        Err(err) => {
+            log::error!("could not get netrc secret: {err}");
+            None
+        }
+    };
+    if let Some(netrc) = netrc {
+        netrc_file
+            .write_all(&netrc)
+            .context("Could not write to the temp netrc file")?;
+        netrc_file.flush()?;
+        command.args([
+            "--option",
+            "netrc-file",
+            &netrc_file.path().to_string_lossy(),
+        ]);
+    }
+    if dry_run {
+        command.arg("--dry-run");
+    }
+
+    let download = command.output()?;
+
+    if !download.status.success() {
+        return Err(eyre!("{}", String::from_utf8(download.stderr)?)
+            .note("Could not realize new version")
+            .note(format!(
+                "Command: {}",
+                command
+                    .get_args()
+                    .map(|ostr| ostr.to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            )));
+    }
+    Ok(())
+}
+
+#[tracing::instrument(err)]
+fn set_system_profile(store_path: &api::StorePath) -> Result<()> {
+    info!("Setting system profile to {store_path}");
+    let profile = Command::new("nix-env")
+        .args([
+            "--profile",
+            "/nix/var/nix/profiles/system",
+            "--set",
+            store_path,
+        ])
+        .output()?;
+    if !profile.status.success() {
+        bail!("{}", String::from_utf8(profile.stderr)?);
+    }
+    Ok(())
+}
+
+#[tracing::instrument(err, skip(stderr, stdout))]
+pub fn activate_system(
+    store_path: &api::StorePath,
+    stderr: impl Into<Stdio>,
+    stdout: impl Into<Stdio>,
+    dry_run: bool,
+) -> Result<()> {
+    info!("Activating {store_path}");
+    let cmd = if dry_run {
+        "dry-activate"
+    } else {
+        set_system_profile(store_path)?;
+        "switch"
+    };
+    Command::new(Path::new(&store_path).join("bin/switch-to-configuration"))
+        .arg(cmd)
+        .stderr(stderr)
+        .stdout(stdout)
+        .spawn()?
+        .wait()?;
+    Ok(())
+}
+
+/// Used for detaching
+#[tracing::instrument(err)]
+pub fn detach(store_path: &api::StorePath) -> Result<()> {
+    activate_system(store_path, io::stderr(), io::stdout(), false)?;
+    let variant = nixos_variant_name()?;
+    notification::notify_all(
+        &format!("System has been updated to `{variant}`"),
+        "System Update",
+    )?;
+    Ok(())
+}

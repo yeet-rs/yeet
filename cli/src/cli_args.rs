@@ -1,0 +1,235 @@
+use std::{env::current_dir, fmt::Debug, path::PathBuf};
+
+use build::CLAP_LONG_VERSION;
+use clap::{Args, Parser, Subcommand, ValueEnum};
+use serde::{Deserialize, Serialize};
+use shadow_rs::shadow;
+use url::Url;
+
+shadow!(build);
+
+#[derive(Parser)]
+#[clap(long_version = CLAP_LONG_VERSION)]
+#[command(version, about, long_about = None)]
+pub struct Yeet {
+    #[command(flatten)]
+    pub config: ClapConfig,
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Args, Serialize, Deserialize)]
+pub struct ClapConfig {
+    /// Base URL of the Yeet Server
+    #[arg(long, global = true)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<Url>,
+
+    /// Cachix cache name
+    #[arg(long, global = true)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cachix: Option<String>,
+
+    /// Cachix signing key
+    #[arg(long, global = true)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cachix_key: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Config {
+    pub url: Option<Url>,
+    pub cachix: Option<String>,
+    pub cachix_key: Option<String>,
+}
+
+impl Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("url", &self.url)
+            .field("cachix", &self.cachix)
+            .field("cachix_key", &"***")
+            .finish()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AgentConfig {
+    pub server: Url,
+    pub sleep: u64,
+    pub facter: bool,
+    pub key: PathBuf,
+    pub attended: bool,
+}
+
+#[derive(Subcommand)]
+pub enum Commands {
+    #[command(hide = true)]
+    /// Used to notify all users
+    Notify {
+        #[arg(long)]
+        body: String,
+        #[arg(long)]
+        summary: String,
+    },
+    /// show all osquery nodes
+    Nodes,
+    /// Create an distributed osquery and wait for the result of all nodes
+    Query {
+        #[arg(index = 1)]
+        query: String,
+    },
+    Agent {
+        /// URL of the Yeet Server
+        #[arg(long)]
+        server: Url,
+
+        /// Path to ed25519 key which is used for authentication
+        #[arg(long)]
+        key: PathBuf,
+
+        /// Seconds to wait between updates.
+        /// Lower bound, may be higher between switching versions
+        #[arg(short, long, default_value = "30")]
+        sleep: u64,
+
+        /// Collect facter with nixos-facter
+        #[arg(long)]
+        facter: bool,
+
+        /// In unattended mode all updates are installed immediately
+        #[arg(long)]
+        attended: bool,
+    },
+    /// Approve a pending key verification with the corresponding code
+    Approve,
+    /// Build and then publish some or all hosts in a flake
+    Publish {
+        /// Path to flake
+        #[arg(long, default_value = current_dir().unwrap().into_os_string())]
+        path: PathBuf,
+
+        /// Hosts to build - default is all
+        #[arg(long)]
+        host: Vec<String>,
+
+        /// Sets the `NIXOS_VARIANT` variable when building NixOS. You have to set `system.nixos.variantName = lib.maybeEnv "NIXOS_VARIANT" "No VARIANT"`
+        #[arg(long)]
+        variant: Option<String>,
+
+        /// Default update are pushed with priority `Normal`. If the update should get forced use `Emergency`
+        #[arg(long, default_value_t, value_enum)]
+        priority: UpdatePriority,
+
+        /// Which hosts should be built? Defaults to current ARCH
+        #[arg(
+            long,
+            default_value_t = std::env::consts::ARCH == "aarch64",
+            default_missing_value = (std::env::consts::ARCH == "aarch64").to_string(),
+            num_args = 0..=1,
+            require_equals = false)]
+        darwin: bool,
+    },
+
+    /// Query the status of all or your local hosts
+    /// Requires either admin credentials or sudo
+    Status {
+        /// Instead of printing, output everything as json
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Detach your current system from the yeet server
+    Detach {
+        /// NixOS system path to switch to
+        #[arg(long)]
+        version: Option<api::StorePath>,
+        /// Which hosts should be built? Defaults to current ARCH
+        #[arg(
+            long,
+            default_value_t = std::env::consts::ARCH == "aarch64",
+            default_missing_value = (std::env::consts::ARCH == "aarch64").to_string(),
+            num_args = 0..=1,
+            require_equals = false)]
+        darwin: bool,
+        /// Path to flake
+        #[arg(long, default_value = current_dir().unwrap().into_os_string())]
+        path: PathBuf,
+    },
+    /// Attach your system to the server
+    Attach,
+
+    /// Query the status of all hosts
+    Hosts {
+        /// Filter for some hosts
+        #[arg(long)]
+        full: bool,
+    },
+    Host(crate::cli::host::HostArgs),
+    /// List all secrets
+    Secrets,
+    Secret(crate::cli::secret::SecretArgs),
+    /// List all users
+    Users,
+    User(crate::cli::user::UserArgs),
+    /// List all tags
+    Tags,
+    Tag(crate::cli::tag::TagArgs),
+    /// These are the raw subcommands to execute functions on the server
+    Server(ServerArgs),
+    /// List artifacts
+    Artifacts,
+    Artifact(crate::cli::artifact::ArtifactArgs),
+    Update(crate::cli::update::UpdateArgs),
+}
+
+#[derive(Args)]
+pub struct ServerArgs {
+    #[command(subcommand)]
+    pub command: ServerCommands,
+    /// Path to ed25519 key which is used for authentication
+    #[arg(long, global = true)]
+    pub httpsig_key: Option<PathBuf>,
+}
+
+#[derive(Subcommand)]
+pub enum ServerCommands {
+    /// Update a host e.g. push a new `store_path` TODO: batch update
+    Update {
+        /// Name of the host
+        #[arg(long)]
+        host: String,
+
+        /// The new store path
+        #[arg(long)]
+        store_path: String,
+
+        /// The public key the agent should use to verify the update
+        #[arg(long)]
+        public_key: String,
+
+        /// The substitutor the agent should use to fetch the update
+        #[arg(long)]
+        substitutor: String,
+
+        /// Default update are pushed with priority `Normal`. If the update should get forced use `Emergency`
+        #[arg(long, default_value_t, value_enum)]
+        priority: UpdatePriority,
+    },
+}
+
+#[derive(Debug, ValueEnum, Clone, Default)]
+pub enum UpdatePriority {
+    #[default]
+    Normal,
+    Emergency,
+}
+
+impl From<UpdatePriority> for api::UpdatePriority {
+    fn from(value: UpdatePriority) -> Self {
+        match value {
+            UpdatePriority::Normal => api::UpdatePriority::Normal,
+            UpdatePriority::Emergency => api::UpdatePriority::Emergency,
+        }
+    }
+}
