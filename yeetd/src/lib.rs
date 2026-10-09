@@ -32,7 +32,7 @@ mod db {
     pub mod user;
     pub mod verification;
 }
-pub mod defectdojo_sender;
+
 mod error;
 mod httpsig;
 mod splunk_sender;
@@ -47,7 +47,6 @@ struct YeetState {
     pub pool: sqlx::SqlitePool,
     pub age_key: Arc<age::x25519::Identity>,
     pub splunk_sender: Option<tokio::sync::mpsc::Sender<()>>,
-    pub defectdojo_sender: Option<tokio::sync::mpsc::Sender<defectdojo_sender::Action>>,
     pub osquery_packs: IndexMap<String, serde_json::Value>,
 }
 
@@ -64,8 +63,6 @@ pub struct Flags {
     /// Certificate required for tls
     pub cert_key: PathBuf,
     #[serde(flatten)]
-    pub defect_dojo_flags: Option<DefectDojoFlags>,
-    #[serde(flatten)]
     pub osquery_flags: Option<OsqueryFlags>,
 }
 
@@ -75,7 +72,6 @@ impl Default for Flags {
             addr: std::net::SocketAddrV6::new(std::net::Ipv6Addr::LOCALHOST, 4337, 0, 0).into(),
             cert: "cert.pem".into(),
             cert_key: "key.pem".into(),
-            defect_dojo_flags: None,
             osquery_flags: None,
         }
     }
@@ -84,7 +80,6 @@ impl Default for Flags {
 error_set::error_set! {
     ConfigError := {
         IO(std::io::Error),
-        DefectDojo(defectdojo::Error),
         SQLX(sqlx::Error)
     }
 }
@@ -119,21 +114,6 @@ impl Flags {
             log::info!("Not using splunk");
         }
 
-        let defectdojo = self
-            .defect_dojo_flags
-            .map(|flags| {
-                let client =
-                    defectdojo::Client::new(flags.defectdojo_url, &flags.defectdojo_token)?;
-                Ok::<_, defectdojo::Error>(defectdojo_sender::Config {
-                    client,
-                    organization: flags.defectdojo_org.into(),
-                })
-            })
-            .transpose()?;
-
-        if defectdojo.is_none() {
-            log::info!("Not using defectdojo");
-        }
         let pool = {
             let options = sqlx::sqlite::SqliteConnectOptions::new()
                 .filename("yeet.db")
@@ -151,7 +131,6 @@ impl Flags {
             tls: Some(tls),
             splunk,
             osquery_packs,
-            defectdojo,
         })
     }
 }
@@ -166,15 +145,6 @@ impl figment::Provider for Flags {
     ) -> Result<figment::value::Map<figment::Profile, figment::value::Dict>, figment::Error> {
         figment::providers::Serialized::defaults(Self::default()).data()
     }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct DefectDojoFlags {
-    /// `DefectDojo` api url
-    pub defectdojo_url: url::Url,
-    /// `DefectDojo` auth token
-    pub defectdojo_token: String,
-    pub defectdojo_org: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -198,7 +168,6 @@ pub struct Config {
     pub tls: Option<RustlsConfig>,
     pub splunk: Option<splunk_hec::SplunkConfig>,
     pub osquery_packs: IndexMap<String, serde_json::Value>,
-    pub defectdojo: Option<defectdojo_sender::Config>,
 }
 
 // TODO: too_many_arguments
@@ -224,21 +193,10 @@ pub async fn launch(config: Config) -> tokio::task::JoinHandle<()> {
         None
     };
 
-    let defectdojo_sender = if let Some(defectdojo) = config.defectdojo {
-        let (tx, rx) = tokio::sync::mpsc::channel(5);
-        let pool = config.pool.clone();
-        let _detached =
-            tokio::spawn(async move { defectdojo_sender::run(defectdojo, rx, pool).await });
-        Some(tx)
-    } else {
-        None
-    };
-
     let state = YeetState {
         pool: config.pool,
         age_key,
         splunk_sender,
-        defectdojo_sender,
         osquery_packs: config.osquery_packs,
     };
 
@@ -346,16 +304,6 @@ pub(crate) async fn wake_splunk(sender: Option<&tokio::sync::mpsc::Sender<()>>) 
     if let Some(sender) = sender {
         // TODO: log if we could not notify
         let _ignore = sender.send_timeout((), Duration::from_secs(1)).await;
-    }
-}
-
-pub(crate) async fn wake_defectdojo(
-    sender: Option<&tokio::sync::mpsc::Sender<defectdojo_sender::Action>>,
-    action: defectdojo_sender::Action,
-) {
-    if let Some(sender) = sender {
-        // TODO: log if we could not notify
-        let _ignore = sender.send_timeout(action, Duration::from_secs(1)).await;
     }
 }
 

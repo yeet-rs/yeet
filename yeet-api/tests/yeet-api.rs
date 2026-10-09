@@ -13,7 +13,6 @@ async fn api_e2e_with_credentials(pool: sqlx::SqlitePool) {
         tls: None,
         splunk: None,
         osquery_packs: indexmap::IndexMap::default(),
-        defectdojo: None,
     })
     .await;
 
@@ -289,7 +288,6 @@ async fn api_e2e_with_non_superuser(pool: sqlx::SqlitePool) {
         tls: None,
         splunk: None,
         osquery_packs: indexmap::IndexMap::default(),
-        defectdojo: None,
     })
     .await;
 
@@ -608,7 +606,6 @@ async fn api_secrets_with_tags(pool: sqlx::SqlitePool) {
         tls: None,
         splunk: None,
         osquery_packs: indexmap::IndexMap::default(),
-        defectdojo: None,
     })
     .await;
 

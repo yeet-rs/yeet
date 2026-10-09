@@ -9,7 +9,6 @@ use crate::{
     YeetState, db,
     error::InternalError as _,
     httpsig::{User, VerifiedJson},
-    wake_defectdojo,
 };
 
 pub async fn list_nodes(
@@ -54,12 +53,6 @@ pub async fn enroll(
     else {
         return Json(enroll_failure());
     };
-
-    wake_defectdojo(
-        state.defectdojo_sender.as_ref(),
-        crate::defectdojo_sender::Action::CreateNode(request.host_identifier),
-    )
-    .await;
 
     Json(osquery_tls::EnrollmentResponse {
         node_key: Some(node_key.to_string()),

@@ -43,16 +43,6 @@ rec {
   # You can override the features with
   # workspaceMembers."${crateName}".build.override { features = [ "default" "feature1" ... ]; }.
   workspaceMembers = {
-    "defectdojo" = rec {
-      packageId = "defectdojo";
-      build = internal.buildRustCrateWithFeatures {
-        packageId = "defectdojo";
-      };
-
-      # Debug support which might change between releases.
-      # File a bug if you depend on any for non-debug work!
-      debug = internal.debugCrate { inherit packageId; };
-    };
     "osquery-tls" = rec {
       packageId = "osquery-tls";
       build = internal.buildRustCrateWithFeatures {
@@ -2329,73 +2319,6 @@ rec {
           "tracing" = [ "dep:tracing" ];
         };
       };
-      "bon" = rec {
-        crateName = "bon";
-        version = "3.9.1";
-        edition = "2021";
-        sha256 = "1zmj96nj080arzvy35h3wxza2sygp7gi1hsk6djywxh6an9bwzgl";
-        dependencies = [
-          {
-            name = "bon-macros";
-            packageId = "bon-macros";
-          }
-          {
-            name = "rustversion";
-            packageId = "rustversion";
-          }
-        ];
-        features = {
-          "alloc" = [ "bon-macros/alloc" ];
-          "default" = [ "std" ];
-          "experimental-generics-setters" = [ "bon-macros/experimental-generics-setters" ];
-          "experimental-overwritable" = [ "bon-macros/experimental-overwritable" ];
-          "implied-bounds" = [ "bon-macros/implied-bounds" ];
-          "std" = [ "bon-macros/std" "alloc" ];
-        };
-        resolvedDefaultFeatures = [ "alloc" "default" "std" ];
-      };
-      "bon-macros" = rec {
-        crateName = "bon-macros";
-        version = "3.9.1";
-        edition = "2021";
-        sha256 = "0z66ygzjyr4ivp3mzn2y98yhs5yh2qnri7f2f99jvd7fd88x76si";
-        procMacro = true;
-        libName = "bon_macros";
-        dependencies = [
-          {
-            name = "darling";
-            packageId = "darling";
-          }
-          {
-            name = "ident_case";
-            packageId = "ident_case";
-          }
-          {
-            name = "prettyplease";
-            packageId = "prettyplease";
-          }
-          {
-            name = "proc-macro2";
-            packageId = "proc-macro2";
-          }
-          {
-            name = "quote";
-            packageId = "quote";
-          }
-          {
-            name = "rustversion";
-            packageId = "rustversion";
-          }
-          {
-            name = "syn";
-            packageId = "syn 2.0.117";
-            features = [ "full" "visit-mut" "visit" ];
-          }
-        ];
-        features = {
-        };
-        resolvedDefaultFeatures = [ "alloc" "default" "std" ];
-      };
       "bstr" = rec {
         crateName = "bstr";
         version = "1.12.1";
@@ -3817,139 +3740,6 @@ rec {
           {
             name = "syn";
             packageId = "syn 2.0.117";
-            features = [ "full" ];
-          }
-        ];
-
-      };
-      "darling" = rec {
-        crateName = "darling";
-        version = "0.23.0";
-        edition = "2021";
-        sha256 = "179fj6p6ajw4dnkrik51wjhifxwy02x5zhligyymcb905zd17bi5";
-        authors = [
-          "Ted Driggs <ted.driggs@outlook.com>"
-        ];
-        dependencies = [
-          {
-            name = "darling_core";
-            packageId = "darling_core";
-          }
-          {
-            name = "darling_macro";
-            packageId = "darling_macro";
-          }
-        ];
-        features = {
-          "default" = [ "suggestions" ];
-          "diagnostics" = [ "darling_core/diagnostics" ];
-          "serde" = [ "darling_core/serde" ];
-          "suggestions" = [ "darling_core/suggestions" ];
-        };
-        resolvedDefaultFeatures = [ "default" "suggestions" ];
-      };
-      "darling_core" = rec {
-        crateName = "darling_core";
-        version = "0.23.0";
-        edition = "2021";
-        sha256 = "1c033vrks38vpw8kwgd5w088dsr511kfz55n9db56prkgh7sarcq";
-        authors = [
-          "Ted Driggs <ted.driggs@outlook.com>"
-        ];
-        dependencies = [
-          {
-            name = "ident_case";
-            packageId = "ident_case";
-          }
-          {
-            name = "proc-macro2";
-            packageId = "proc-macro2";
-          }
-          {
-            name = "quote";
-            packageId = "quote";
-          }
-          {
-            name = "strsim";
-            packageId = "strsim";
-            optional = true;
-          }
-          {
-            name = "syn";
-            packageId = "syn 2.0.117";
-            features = [ "full" "extra-traits" ];
-          }
-        ];
-        features = {
-          "serde" = [ "dep:serde" ];
-          "strsim" = [ "dep:strsim" ];
-          "suggestions" = [ "strsim" ];
-        };
-        resolvedDefaultFeatures = [ "strsim" "suggestions" ];
-      };
-      "darling_macro" = rec {
-        crateName = "darling_macro";
-        version = "0.23.0";
-        edition = "2021";
-        sha256 = "13fvzji9xyp304mgq720z5l0xgm54qj68jibwscagkynggn88fdc";
-        procMacro = true;
-        authors = [
-          "Ted Driggs <ted.driggs@outlook.com>"
-        ];
-        dependencies = [
-          {
-            name = "darling_core";
-            packageId = "darling_core";
-          }
-          {
-            name = "quote";
-            packageId = "quote";
-          }
-          {
-            name = "syn";
-            packageId = "syn 2.0.117";
-          }
-        ];
-
-      };
-      "defectdojo" = rec {
-        crateName = "defectdojo";
-        version = "0.1.0";
-        edition = "2024";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./defectdojo; };
-        dependencies = [
-          {
-            name = "bon";
-            packageId = "bon";
-          }
-          {
-            name = "reqwest";
-            packageId = "reqwest";
-            features = [ "json" "query" "multipart" ];
-          }
-          {
-            name = "serde";
-            packageId = "serde";
-            features = [ "derive" ];
-          }
-          {
-            name = "serde_json";
-            packageId = "serde_json";
-          }
-          {
-            name = "thiserror";
-            packageId = "thiserror 2.0.18";
-          }
-          {
-            name = "url";
-            packageId = "url";
-            features = [ "serde" ];
-          }
-        ];
-        devDependencies = [
-          {
-            name = "tokio";
-            packageId = "tokio";
             features = [ "full" ];
           }
         ];
@@ -8036,16 +7826,6 @@ rec {
           "rayon" = [ "dep:rayon" ];
         };
         resolvedDefaultFeatures = [ "default" "std" ];
-      };
-      "ident_case" = rec {
-        crateName = "ident_case";
-        version = "1.0.1";
-        edition = "2015";
-        sha256 = "0fac21q6pwns8gh1hz3nbq15j8fi441ncl6w4vlnd1cmc55kiq5r";
-        authors = [
-          "Ted Driggs <ted.driggs@outlook.com>"
-        ];
-
       };
       "idna" = rec {
         crateName = "idna";
@@ -22299,11 +22079,6 @@ rec {
           {
             name = "curve25519-dalek";
             packageId = "curve25519-dalek";
-          }
-          {
-            name = "defectdojo";
-            packageId = "defectdojo";
-            rename = "defectdojo";
           }
           {
             name = "ed25519-dalek";

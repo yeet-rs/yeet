@@ -13,7 +13,6 @@ async fn artifacts(pool: sqlx::SqlitePool) {
         tls: None,
         splunk: None,
         osquery_packs: indexmap::IndexMap::default(),
-        defectdojo: None,
     })
     .await;
 
