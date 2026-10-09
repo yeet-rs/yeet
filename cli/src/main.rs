@@ -15,9 +15,8 @@ use figment::{
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
-use crate::cli_args::{AgentConfig, Commands, Config, Yeet};
+use crate::cli_args::{Commands, Config, Yeet};
 
-mod agent;
 mod cli_args;
 
 mod section;
@@ -40,13 +39,10 @@ mod cli {
 }
 mod cachix;
 mod nix;
-mod notification;
-mod polkit;
 mod section_impls;
 mod status;
 mod systemd;
 mod varlink;
-mod version;
 
 #[tokio::main(flavor = "local")]
 async fn main() -> color_eyre::Result<()> {
@@ -100,23 +96,6 @@ async fn run() -> color_eyre::Result<()> {
         } => cli::detach::detach(version, path, darwin).await,
         Commands::Attach => cli::detach::attach().await,
         Commands::Approve => cli::approve::approve(&config).await,
-        Commands::Notify { body, summary } => notification::notify(&body, &summary),
-        Commands::Agent {
-            server,
-            sleep,
-            facter,
-            key,
-            attended,
-        } => {
-            let config = AgentConfig {
-                server,
-                sleep,
-                facter,
-                key,
-                attended,
-            };
-            agent::agent(&config, sleep, facter).await
-        }
         Commands::Status { json } => status::status(json).await,
         Commands::Publish {
             path,

@@ -62,8 +62,9 @@ let
 in
 rec {
   packages = {
-    yeet = cargo_nix.workspaceMembers."yeet".build;
-    yeetd = cargo_nix.workspaceMembers."yeetd".build;
+    yeet = cargo_nix.workspaceMembers."agent".build;
+    yeet-cli = cargo_nix.workspaceMembers."cli".build;
+    yeetd = cargo_nix.workspaceMembers."server".build;
   };
   nixosModules = {
     yeet = {
