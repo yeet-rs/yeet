@@ -41,4 +41,4 @@ base64 = "0.22.1"
 axum-test.workspace = true
 sqlx.workspace = true
 tokio = { version = "1.47", features = ["macros"] }
-yeetd = {path = "../yeet-server"}
+yeetd = { path = "../yeetd"}

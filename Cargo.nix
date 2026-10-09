@@ -22267,7 +22267,7 @@ rec {
             requiredFeatures = [ ];
           }
         ];
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeet-server; };
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./yeetd; };
         dependencies = [
           {
             name = "age";

@@ -1,5 +1,5 @@
 [workspace]
-members = ["defectdojo","osquery-tls", "splunk_hec","yeet-agent", "yeet-api", "yeet-server"]
+members = ["defectdojo","osquery-tls", "splunk_hec","yeet-agent", "yeet-api", "yeetd"]
 resolver = "3"
 
 [profile.release]
