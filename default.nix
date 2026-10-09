@@ -1,6 +1,6 @@
 {
   system ? builtins.currentSystem,
-  sources ? import ./sources.nix,
+  sources ? import ./npins,
   pkgs ? import sources.nixpkgs {
     inherit system;
   },
@@ -67,11 +67,11 @@ rec {
   };
   nixosModules = {
     yeet = {
-      imports = [ ./modules/nixos/yeet.nix ];
+      imports = [ ./yeet.nix ];
       services.yeet.package = lib.mkDefault packages.yeet;
     };
     yeetd = {
-      imports = [ ./modules/nixos/yeetd.nix ];
+      imports = [ ./yeetd.nix ];
       services.yeetd.package = lib.mkDefault packages.yeet;
     };
   };

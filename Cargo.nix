@@ -43,16 +43,6 @@ rec {
   # You can override the features with
   # workspaceMembers."${crateName}".build.override { features = [ "default" "feature1" ... ]; }.
   workspaceMembers = {
-    "osquery-tls" = rec {
-      packageId = "osquery-tls";
-      build = internal.buildRustCrateWithFeatures {
-        packageId = "osquery-tls";
-      };
-
-      # Debug support which might change between releases.
-      # File a bug if you depend on any for non-debug work!
-      debug = internal.debugCrate { inherit packageId; };
-    };
     "yeet" = rec {
       packageId = "yeet";
       build = internal.buildRustCrateWithFeatures {
@@ -10527,7 +10517,12 @@ rec {
         crateName = "osquery-tls";
         version = "0.2.0";
         edition = "2024";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./osquery-tls; };
+        workspace_member = null;
+        src = pkgs.fetchgit {
+          url = "https://github.com/yeet-rs/osquery-tls.git";
+          rev = "efe9e2264fe22ba797fb47cd0a0231235240dcdb";
+          sha256 = "1gv4ivah2cizlz50vjcdbrnxqggbnbmwnnxgcbcq8qid8xz0jjws";
+        };
         libName = "osquery_tls";
         dependencies = [
           {
@@ -14030,9 +14025,9 @@ rec {
       };
       "serde_json" = rec {
         crateName = "serde_json";
-        version = "1.0.149";
+        version = "1.0.151";
         edition = "2021";
-        sha256 = "11jdx4vilzrjjd1dpgy67x5lgzr0laplz30dhv75lnf5ffa07z43";
+        sha256 = "051zww7lvpw147vvwss1ng6w587qyrkzg75fvj08q2dfrmgbahf8";
         authors = [
           "Erick Tryzelaar <erick.tryzelaar@gmail.com>"
           "David Tolnay <dtolnay@gmail.com>"
