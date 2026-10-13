@@ -90,7 +90,7 @@ impl DisplaySection for YeetInfo {
     }
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument]
 async fn yeet_info() -> Result<YeetInfo> {
     let daemon_status = match varlink::status().await {
         Ok(status) => Some(status),
@@ -164,7 +164,7 @@ impl DisplaySection for SystemInfo {
     }
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument]
 fn system_info() -> Result<SystemInfo> {
     let nixos_version = crate::nix::nixos_version().context("Could not fetch nixos version")?;
     let nixos_generations =

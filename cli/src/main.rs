@@ -7,7 +7,6 @@ use figment::{
     providers::{Env, Format as _, Serialized, Toml},
 };
 use owo_colors::OwoColorize as _;
-use tracing::info;
 
 use crate::cli_args::{Commands, Config, Yeet};
 
@@ -83,8 +82,8 @@ fn install_tracing() {
         .with_writer(std::io::stderr)
         .with_ansi(std::io::stderr().is_terminal());
 
-    let filter_layer = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(concat!("warn,", env!("CARGO_CRATE_NAME"), "=info")));
+    let filter_layer =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn,yeet=info"));
 
     tracing_subscriber::registry()
         .with(filter_layer)
@@ -93,13 +92,12 @@ fn install_tracing() {
         .init();
 }
 
-#[tokio::main(flavor = "local")]
+#[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     install_tracing();
     let args = Yeet::try_parse()?; // above color_eyre so it does not get formatted weird
     color_eyre::install()?;
 
-    info!("test");
     let xdg_dirs = xdg::BaseDirectories::with_prefix("yeet");
 
     let config: Config = Figment::new()

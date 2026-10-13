@@ -83,7 +83,7 @@ pub fn build_hosts(
     Ok(closures)
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument]
 pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     let flavor = if darwin {
         "darwinConfigurations"
@@ -112,7 +112,7 @@ pub fn list_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument]
 pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     let detected_hosts = list_hosts(flake_path, darwin)?;
     Ok(
@@ -127,7 +127,7 @@ pub fn get_hosts(flake_path: &str, darwin: bool) -> Result<Vec<String>> {
     )
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument]
 pub fn get_host(flake_path: &str, darwin: bool) -> Result<String> {
     let detected_hosts = list_hosts(flake_path, darwin)?;
     Ok(inquire::Select::new("Which host would you like to build>", detected_hosts).prompt()?)
@@ -141,7 +141,7 @@ pub struct NixOSVersion {
     pub nixpkgs_revision: Option<String>,
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument]
 pub fn nixos_version() -> Result<NixOSVersion> {
     let output = Command::new("nixos-version")
         .arg("--json")
@@ -179,7 +179,7 @@ impl Default for NixOSGeneration {
     }
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument]
 pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
     let output = Command::new("nixos-rebuild")
         .arg("list-generations")
@@ -192,7 +192,7 @@ pub fn nixos_generations() -> Result<Vec<NixOSGeneration>> {
     Ok(serde_json::from_slice(&output.stdout)?)
 }
 
-#[tracing::instrument(ret)]
+#[tracing::instrument]
 pub fn nixos_variant_name() -> Result<String> {
     let output = Command::new("grep")
         .arg("^VARIANT=")

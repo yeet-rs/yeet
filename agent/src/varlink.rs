@@ -38,7 +38,7 @@ pub trait YeetProxy {
     async fn attach(&mut self) -> zlink::Result<Result<(), YeetDaemonError>>;
 }
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(err)]
 pub async fn client() -> Result<Connection<zlink::unix::Stream>, VarlinkError> {
     debug!("Connecting to {SOCKET_PATH}");
     Ok(unix::connect(SOCKET_PATH)

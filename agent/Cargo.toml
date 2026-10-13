@@ -1,5 +1,5 @@
 [package]
-version = "0.16.3"
+version = "0.17.0"
 name = "yeet-agent"
 categories.workspace = true
 edition.workspace = true
@@ -15,39 +15,22 @@ api = { path = "../api", package="yeet-api"}
 notify-rust = "4.11"
 tokio = { version = "1.49", features = ["full"] } # TODO: maybe switch to smoll?
 
-xdg = "3.0.0"
-similar = { version = "2.7.0", features = ["unicode"] }
 backon = "1.6.0"
 tempfile = "3.23.0"
 shadow-rs = { version = "1.5", default-features = false }
 zlink = { version = "0.4.0", features= ["idl", "introspection"] }
-futures-util = "0.3.31"
 nix = {version = "0.31", features = ["user","fs"]}
-ssh2-config = "0.7"
-zbus_polkit = "5.0.0"
-zbus = "5.13.2"
 
-age.workspace = true
 httpsig-hyper.workspace = true
-reqwest.workspace = true
-jiff.workspace = true
 serde.workspace = true
-http.workspace = true
 ed25519-dalek = { workspace = true , features = ["serde", "pem", "pkcs8"]}
-ssh-key.workspace = true
 thiserror.workspace = true
 url.workspace = true
 color-eyre.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
-tracing-error.workspace = true
+# tracing-subscriber.workspace = true
+# tracing-error.workspace = true
 
-opentelemetry.workspace = true
-opentelemetry_sdk.workspace = true
-tracing-opentelemetry.workspace = true
-opentelemetry-otlp.workspace = true
-rand = "0.10.1"
-tracing-appender = "0.2.5"
 # TODO: ssh-agent-client-rs = "1.1.2"
 
 [build-dependencies]

@@ -19,7 +19,7 @@ pub struct CachixInfo {
     pub uri: String,
 }
 
-#[tracing::instrument(ret, fields(cache = %cache.as_ref()))]
+#[tracing::instrument(fields(cache = %cache.as_ref()))]
 pub async fn get_cachix_info<S: AsRef<str>>(cache: S) -> Result<CachixInfo> {
     Ok(Client::new()
         .get(Url::parse("https://app.cachix.org/api/v1/cache/")?.join(cache.as_ref())?)
