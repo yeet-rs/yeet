@@ -70,7 +70,7 @@ let
             format of the generated secret
           '';
         };
-        length = lib.mkOption {
+        bytes = lib.mkOption {
           type = lib.types.ints.positive;
           default = 32;
           description = ''
@@ -78,10 +78,6 @@ let
             careful when using wordlist
             Ignored if format is null
           '';
-        };
-        bytes = lib.mkOption {
-          type = lib.types.ints.positive;
-          default = config.length;
         };
         template = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
