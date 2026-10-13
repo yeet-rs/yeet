@@ -22,7 +22,7 @@ use tokio::time;
 use tracing::{error, info};
 use url::Url;
 
-use crate::{AgentConfig, notification, version::get_active_version};
+use crate::{AgentConfig, nix::get_active_version, notification};
 
 static VERIFICATION_CODE: OnceLock<u32> = OnceLock::new();
 

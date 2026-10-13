@@ -1,6 +1,7 @@
 use clap::{Args, Subcommand};
 use color_eyre::Result;
-use colored::Colorize as _;
+
+use owo_colors::OwoColorize as _;
 use tracing::info;
 
 use crate::{
@@ -60,9 +61,10 @@ async fn delete(config: &Config) -> Result<()> {
         inquire::Select::new("Which artifact do you want to delete?", artifacts).prompt()?;
 
     // The user has to confirm the action
-    let confirm = inquire::Confirm::new(
-        &format!("Are you sure you want to delete {artifact}. This action is not reversable").red(),
-    )
+    let confirm = inquire::Confirm::new(&format!(
+        "Are you sure you want to delete {}. This action is not reversable",
+        artifact.red()
+    ))
     .with_default(false)
     .prompt()?;
 

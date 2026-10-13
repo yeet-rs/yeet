@@ -19,6 +19,7 @@ mod routes {
 
 pub use httpsig::*;
 pub use key::*;
+use owo_colors::OwoColorize as _;
 pub use routes::{
     artifact::*, health::*, host::*, key::*, osquery::*, secret::*, system::*, tag, user::*,
     verify::*,
@@ -47,8 +48,6 @@ pub fn time_diff(
     threshold: f64,
     smallest: jiff::Unit,
 ) -> String {
-    use colored::Colorize as _;
-
     let span = (timestamp - jiff::Timestamp::now())
         .round(
             jiff::SpanRound::new()
@@ -60,9 +59,9 @@ pub fn time_diff(
         .unwrap();
 
     if span.total((unit, &jiff::Zoned::now())).unwrap().abs() < threshold {
-        format!("{span:#}").green().bold()
+        format!("{span:#}").green().bold().to_string()
     } else {
-        format!("{span:#}").red().bold()
+        format!("{span:#}").red().bold().to_string()
     }
     .to_string()
 }

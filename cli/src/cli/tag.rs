@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 use color_eyre::Result;
-use colored::Colorize as _;
+use owo_colors::OwoColorize as _;
 use tracing::info;
 
 use crate::{
@@ -58,14 +58,11 @@ async fn delete_tag(config: &Config) -> Result<()> {
     )
     .prompt()?;
 
-    let confirm = inquire::Confirm::new(
-        &format!(
-            "Are you sure you want to delete {}. It will delete every trace of this tag.
+    let confirm = inquire::Confirm::new(&format!(
+        "Are you sure you want to delete {}. It will delete every trace of this tag.
 This action is not reversable",
-            tag.name
-        )
-        .red(),
-    )
+        tag.name.red()
+    ))
     .with_default(false)
     .prompt()?;
 

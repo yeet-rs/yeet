@@ -7,7 +7,7 @@ use clap::Args;
 use color_eyre::{Result, eyre::bail};
 use tracing::info;
 
-use crate::varlink;
+use yeet_agent::varlink;
 
 #[derive(Args, Debug)]
 pub struct UpdateArgs {

@@ -1,4 +1,4 @@
-use colored::Colorize as _;
+use owo_colors::OwoColorize as _;
 
 use crate::section::{DisplaySection, DisplaySectionItem};
 
@@ -17,9 +17,9 @@ impl DisplaySection for api::Host {
         let mut items = Vec::new();
 
         let up_to_date = if self.version == self.latest_update {
-            "Yes".green().bold()
+            "Yes".green().bold().to_string()
         } else {
-            "No".red().bold()
+            "No".red().bold().to_string()
         };
         items.push(("Up to date".to_owned(), up_to_date.to_string()));
 

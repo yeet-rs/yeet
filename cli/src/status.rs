@@ -1,15 +1,13 @@
-use std::fmt::Display;
-
 use color_eyre::{Result, eyre::Context as _};
-use colored::Colorize as _;
 use jiff::tz::TimeZone;
+use owo_colors::OwoColorize as _;
 use serde::{Deserialize, Serialize};
 use tracing::error;
+use yeet_agent::varlink;
 
 use crate::{
     section::{self, DisplaySection, Section, section},
     systemd,
-    varlink::{self},
 };
 
 shadow_rs::shadow!(build);
@@ -41,36 +39,30 @@ struct YeetInfo {
     pub cli_version_long: String,
 }
 
-impl Display for varlink::DaemonMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mode = match &self {
-            Self::Provisioned => "Provisioned".green().bold(),
-            Self::Detached => "Detached".yellow().bold(),
-            Self::NetworkError => "NetworkError".red().bold(),
-            Self::Unverified => "Unverified".red().bold(),
-        };
-        write!(f, "{mode}")
+fn color_daemon_mode(mode: &varlink::DaemonMode) -> String {
+    match mode {
+        varlink::DaemonMode::Provisioned => "Provisioned".green().bold().to_string(),
+        varlink::DaemonMode::Detached => "Detached".yellow().bold().to_string(),
+        varlink::DaemonMode::NetworkError => "NetworkError".red().bold().to_string(),
+        varlink::DaemonMode::Unverified => "Unverified".red().bold().to_string(),
     }
 }
 
-impl Display for varlink::UpToDate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let up_to_date = match &self {
-            Self::Yes => "Yes".green().bold(),
-            Self::No => "No".red().bold(),
-            Self::Detached => "Detached".yellow().bold(),
-        };
-        write!(f, "{up_to_date}")
+fn color_up_to_date(up_to_date: &varlink::UpToDate) -> String {
+    match up_to_date {
+        varlink::UpToDate::Yes => "Yes".green().bold().to_string(),
+        varlink::UpToDate::No => "No".red().bold().to_string(),
+        varlink::UpToDate::Detached => "Detached".yellow().to_string(),
     }
 }
 
 impl DisplaySection for YeetInfo {
     fn as_section(&self) -> Section {
         let (up_to_date, mode, daemon_version) = if let Some(daemon_state) = &self.daemon_status {
-            let up_to_date = daemon_state.up_to_date.to_string();
+            let up_to_date = color_up_to_date(&daemon_state.up_to_date);
             let mode = format!(
                 "{} ({})",
-                daemon_state.mode,
+                color_daemon_mode(&daemon_state.mode),
                 daemon_state.server.to_string().underline()
             );
 
@@ -143,15 +135,15 @@ impl DisplaySection for SystemInfo {
         );
 
         let os_version = if self.nixos_version.starts_with("dirty") {
-            &self.nixos_version.red().bold()
+            &self.nixos_version.red().bold().to_string()
         } else {
-            &self.nixos_version.green()
+            &self.nixos_version.green().to_string()
         };
 
         let variant = if self.variant.starts_with("dirty") {
-            &self.variant.red().bold()
+            &self.variant.red().bold().to_string()
         } else {
-            &self.variant.bold()
+            &self.variant.bold().to_string()
         };
 
         let nixpkgs_revision = self

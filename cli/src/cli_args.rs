@@ -53,15 +53,6 @@ impl Debug for Config {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct AgentConfig {
-    pub server: Url,
-    pub sleep: u64,
-    pub facter: bool,
-    pub key: PathBuf,
-    pub attended: bool,
-}
-
 #[derive(Subcommand)]
 pub enum Commands {
     /// show all osquery nodes

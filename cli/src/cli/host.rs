@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 use color_eyre::Result;
-use colored::Colorize as _;
+use owo_colors::OwoColorize as _;
 use tracing::info;
 
 use crate::{
@@ -62,14 +62,11 @@ pub async fn remove(config: &Config) -> Result<()> {
         .unwrap();
 
     // The user has to confirm the action
-    let confirm = inquire::Confirm::new(
-        &format!(
-            "Are you sure you want to delete {}. It will delete every trace of this host.
+    let confirm = inquire::Confirm::new(&format!(
+        "Are you sure you want to delete {}. It will delete every trace of this host.
             This action is not reversable",
-            selected_host.hostname
-        )
-        .red(),
-    )
+        selected_host.hostname.red()
+    ))
     .with_default(false)
     .prompt()?;
 

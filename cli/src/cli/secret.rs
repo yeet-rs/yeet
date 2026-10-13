@@ -5,8 +5,8 @@ use std::{
 
 use clap::{Args, Subcommand};
 use color_eyre::Result;
-use colored::Colorize as _;
 use inquire::validator::Validation;
+use owo_colors::OwoColorize as _;
 use tracing::{error, info};
 
 use crate::{cli::common, cli_args::Config, section, sig::ssh};
@@ -105,9 +105,10 @@ async fn remove(config: &Config) -> Result<()> {
         inquire::Select::new("Which secret do you want to delete?", secret_list).prompt()?;
 
     // The user has to confirm the action
-    let confirm = inquire::Confirm::new(
-        &format!("Are you sure you want to delete {secret}. This action is not reversable").red(),
-    )
+    let confirm = inquire::Confirm::new(&format!(
+        "Are you sure you want to delete {}. This action is not reversable",
+        secret.red()
+    ))
     .with_default(false)
     .prompt()?;
 

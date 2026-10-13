@@ -32,10 +32,10 @@ error_set.workspace = true
 url.workspace = true
 age.workspace = true
 indexmap = { version = "2.13.0", features = ["serde"] }
-colored.workspace = true
 tracing.workspace = true
 rand = "0.10.1"
 base64 = "0.22.1"
+owo-colors.workspace = true
 
 [dev-dependencies]
 axum-test.workspace = true

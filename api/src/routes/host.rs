@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Display};
 
-use colored::Colorize as _;
 use ed25519_dalek::VerifyingKey;
+use owo_colors::OwoColorize as _;
 use serde::{Deserialize, Serialize};
 
 use crate::{StorePath, request, routes::system, tag};
@@ -21,13 +21,14 @@ pub enum ProvisionState {
 impl Display for ProvisionState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let colored = match self {
-            ProvisionState::NotSet => "Not set".blue(),
-            ProvisionState::Detached => "Detached".yellow(),
-            ProvisionState::Provisioned => "Provisioned".green(),
+            ProvisionState::NotSet => "Not set".blue().to_string(),
+            ProvisionState::Detached => "Detached".yellow().to_string(),
+            ProvisionState::Provisioned => "Provisioned".green().to_string(),
         };
         write!(f, "{colored}")
     }
 }
+
 // impl ColoredDisplay for api::ProvisionState {
 //     fn colored_display(&self) -> StyledObject<&'static str> {
 //         match self {
@@ -73,9 +74,9 @@ impl Display for Host {
         write!(f, "({commit_ver})")?;
 
         let up_to_date = if self.version == self.latest_update {
-            "Up to date ".green()
+            "Up to date ".green().to_string()
         } else {
-            "Outdated   ".red()
+            "Outdated   ".red().to_string()
         };
         write!(f, " {up_to_date}")?;
         write!(

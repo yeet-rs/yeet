@@ -2,40 +2,21 @@
 
 use std::{
     env::{self, args},
-    path::PathBuf,
     time::Duration,
 };
 
 use api::{get_secret_key, get_verify_key};
 use backon::{ConstantBuilder, Retryable as _};
 use color_eyre::{Result, eyre::OptionExt};
-use serde::{Deserialize, Serialize};
 use tracing::{error, info};
+use yeet_agent::AgentConfig;
 
 use crate::agent::agent_loop;
 
 mod agent;
-
 mod nix;
 mod notification;
-
-mod varlink;
-mod version;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentConfig {
-    /// URL of the Yeet Server
-    server: url::Url,
-    /// Path to ed25519 key which is used for authentication
-    key: PathBuf,
-    /// Seconds to wait between updates.
-    /// Lower bound, may be higher between switching versions
-    sleep: u64,
-    /// Collect facter with nixos-facter
-    facter: bool,
-    /// In unattended mode all updates are installed immediately
-    attended: bool,
-}
+mod varlink_server;
 
 /// When running the agent should do these things in order:
 /// 1. Check if agent is active aka if the key is enrolled with `/system/verify`
@@ -67,7 +48,7 @@ async fn main() -> Result<()> {
         let key = key.clone();
         let config = config.clone();
         tokio::task::spawn_local(async move {
-            if let Err(err) = varlink::start_service(config, key).await {
+            if let Err(err) = varlink_server::start_service(config, key).await {
                 error!("Varlink failure:\n{err}");
             }
         })

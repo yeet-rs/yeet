@@ -1,5 +1,6 @@
 use color_eyre::Result;
-use colored::Colorize as _;
+
+use owo_colors::OwoColorize as _;
 use tracing::info;
 
 use crate::{

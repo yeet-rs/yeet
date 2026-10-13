@@ -1,6 +1,6 @@
 [package]
 version = "0.16.3"
-name = "yeeta"
+name = "yeet-agent"
 categories.workspace = true
 edition.workspace = true
 repository.workspace = true

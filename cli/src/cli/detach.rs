@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use color_eyre::{Result, Section as _, eyre::eyre};
 use tracing::info;
 
-use crate::{varlink, varlink::YeetDaemonError};
+use yeet_agent::{varlink, varlink::YeetDaemonError};
 
 #[tracing::instrument]
 pub async fn detach(version: Option<api::StorePath>, path: PathBuf, darwin: bool) -> Result<()> {

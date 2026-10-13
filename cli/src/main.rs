@@ -2,11 +2,11 @@
 
 use clap::Parser as _;
 use color_eyre::Section as _;
-use colored::Colorize as _;
 use figment::{
     Figment,
     providers::{Env, Format as _, Serialized, Toml},
 };
+use owo_colors::OwoColorize as _;
 use tracing::info;
 
 use crate::cli_args::{Commands, Config, Yeet};
@@ -36,7 +36,6 @@ mod nix;
 mod section_impls;
 mod status;
 mod systemd;
-mod varlink;
 
 fn install_tracing() {
     use std::io::IsTerminal as _;
@@ -64,11 +63,11 @@ fn install_tracing() {
             let level = *event.metadata().level();
             if writer.has_ansi_escapes() {
                 let styled = match level {
-                    Level::ERROR => "ERROR".red(),
-                    Level::WARN => "WARN".yellow(),
-                    Level::INFO => "INFO".green(),
-                    Level::DEBUG => "DEBUG".blue(),
-                    Level::TRACE => "TRACE".cyan(),
+                    Level::ERROR => "ERROR".red().to_string(),
+                    Level::WARN => "WARN".yellow().to_string(),
+                    Level::INFO => "INFO".green().to_string(),
+                    Level::DEBUG => "DEBUG".blue().to_string(),
+                    Level::TRACE => "TRACE".cyan().to_string(),
                 };
                 write!(writer, "{styled}: ")?;
             } else {

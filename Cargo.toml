@@ -47,6 +47,7 @@ tracing = "0.1"
 tracing-error = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 indexmap = { version = "2.13.0", features = ["serde"] }
+owo-colors = "4.4.0"
 
 opentelemetry = "0.32.0"
 opentelemetry_sdk = "0.32.0"

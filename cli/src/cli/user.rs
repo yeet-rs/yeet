@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 use color_eyre::Result;
-use colored::Colorize as _;
+use owo_colors::OwoColorize as _;
 use tracing::info;
 
 use crate::{
@@ -89,14 +89,11 @@ async fn delete_user(config: &Config) -> Result<()> {
     )
     .prompt()?;
 
-    let confirm = inquire::Confirm::new(
-        &format!(
-            "Are you sure you want to delete {}. It will delete every trace of this user.
+    let confirm = inquire::Confirm::new(&format!(
+        "Are you sure you want to delete {}. It will delete every trace of this user.
 This action is not reversable",
-            user.username
-        )
-        .red(),
-    )
+        user.username.red()
+    ))
     .with_default(false)
     .prompt()?;
 

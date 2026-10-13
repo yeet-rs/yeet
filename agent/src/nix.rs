@@ -1,5 +1,5 @@
 use std::{
-    fs::{read_to_string, remove_file},
+    fs::{read_link, read_to_string, remove_file},
     io::{self, BufRead as _, Write as _},
     path::Path,
     process::{Command, Stdio},
@@ -14,6 +14,14 @@ use tempfile::NamedTempFile;
 use tracing::{error, info};
 
 use crate::notification;
+
+#[tracing::instrument(err, ret)]
+pub fn get_active_version() -> Result<String> {
+    Ok(read_link("/run/current-system")
+        .context("Current system has no `/run/current-system`")?
+        .to_string_lossy()
+        .to_string())
+}
 
 #[tracing::instrument(err, ret)]
 pub fn facter() -> Result<String> {

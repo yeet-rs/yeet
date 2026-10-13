@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
-use colored::Colorize as _;
 use ed25519_dalek::VerifyingKey;
+use owo_colors::OwoColorize as _;
 use serde::{Deserialize, Serialize};
 
 use crate::request;
@@ -26,9 +26,9 @@ pub enum AuthLevel {
 impl std::fmt::Display for AuthLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let colored = match self {
-            AuthLevel::Admin => "Admin".red(),
-            AuthLevel::Build => "Build".yellow(),
-            AuthLevel::Osquery => "Osquery".blue(),
+            AuthLevel::Admin => "Admin".red().to_string(),
+            AuthLevel::Build => "Build".yellow().to_string(),
+            AuthLevel::Osquery => "Osquery".blue().to_string(),
         };
         write!(f, "{colored}")
     }
@@ -55,10 +55,11 @@ impl Display for User {
             let tags = {
                 let tags = self.tags.iter().map(|tag| tag.name.as_str());
                 if tags.len() == 0 {
-                    "<no tags>".italic()
+                    "<no tags>".italic().to_string()
                 } else {
                     tags.fold(String::new(), |acc, x| format!("{acc}#{x} "))
                         .italic()
+                        .to_string()
                 }
             };
 
