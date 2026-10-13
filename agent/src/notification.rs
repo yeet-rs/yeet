@@ -31,11 +31,9 @@ pub fn notify_all(body: &str, summary: &str) -> Result<()> {
         let dbus_address = format!("unix:path=/run/user/{user}/bus");
         let current_exe = std::env::current_exe().unwrap_or_else(|_| "yeet".into());
         let _cmd = Command::new(current_exe)
-            .arg("notify")
             .uid(user)
-            .arg("--body")
+            .arg("notify")
             .arg(body)
-            .arg("--summary")
             .arg(summary)
             .env("DBUS_SESSION_BUS_ADDRESS", &dbus_address)
             // .env("DISPLAY", ":0")
