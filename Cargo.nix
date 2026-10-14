@@ -21472,6 +21472,15 @@ rec {
             packageId = "tracing";
           }
           {
+            name = "tracing-error";
+            packageId = "tracing-error";
+          }
+          {
+            name = "tracing-subscriber";
+            packageId = "tracing-subscriber";
+            features = [ "env-filter" ];
+          }
+          {
             name = "url";
             packageId = "url";
             features = [ "serde" ];

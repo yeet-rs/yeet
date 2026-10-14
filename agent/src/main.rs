@@ -7,7 +7,7 @@ use std::{
 
 use api::{get_secret_key, get_verify_key};
 use backon::{ConstantBuilder, Retryable as _};
-use color_eyre::{Result, eyre::OptionExt};
+use color_eyre::{Result, eyre::OptionExt, owo_colors::OwoColorize as _};
 use tracing::{error, info};
 use yeet_agent::AgentConfig;
 
@@ -18,6 +18,62 @@ mod nix;
 mod notification;
 mod varlink_server;
 
+fn install_tracing() {
+    use std::io::IsTerminal as _;
+
+    use tracing::Level;
+    use tracing_error::ErrorLayer;
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::fmt::{self, FmtContext, FormatEvent, FormatFields, format::Writer};
+    use tracing_subscriber::prelude::*;
+    use tracing_subscriber::registry::LookupSpan;
+
+    struct LevelPrefixFormat;
+
+    impl<S, N> FormatEvent<S, N> for LevelPrefixFormat
+    where
+        S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+        N: for<'a> FormatFields<'a> + 'static,
+    {
+        fn format_event(
+            &self,
+            ctx: &FmtContext<'_, S, N>,
+            mut writer: Writer<'_>,
+            event: &tracing::Event<'_>,
+        ) -> std::fmt::Result {
+            let level = *event.metadata().level();
+            if writer.has_ansi_escapes() {
+                let styled = match level {
+                    Level::ERROR => "ERROR".red().to_string(),
+                    Level::WARN => "WARN".yellow().to_string(),
+                    Level::INFO => "INFO".green().to_string(),
+                    Level::DEBUG => "DEBUG".blue().to_string(),
+                    Level::TRACE => "TRACE".cyan().to_string(),
+                };
+                write!(writer, "{styled}: ")?;
+            } else {
+                write!(writer, "{level}: ")?;
+            }
+            ctx.field_format().format_fields(writer.by_ref(), event)?;
+            writeln!(writer)
+        }
+    }
+
+    let fmt_layer = fmt::layer()
+        .event_format(LevelPrefixFormat)
+        .with_writer(std::io::stderr)
+        .with_ansi(std::io::stderr().is_terminal());
+
+    let filter_layer =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn,yeet=info"));
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .with(ErrorLayer::default())
+        .init();
+}
+
 /// When running the agent should do these things in order:
 /// 1. Check if agent is active aka if the key is enrolled with `/system/verify`
 ///    if not:
@@ -26,6 +82,7 @@ mod varlink_server;
 /// 2. Continuosly pull the system endpoint and execute based on the provided
 #[tokio::main(flavor = "local")]
 async fn main() -> Result<()> {
+    install_tracing();
     let mut args = args();
     args.next(); // ignore arg0
     if let Some(arg1) = args.next()

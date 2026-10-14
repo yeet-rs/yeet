@@ -28,8 +28,8 @@ thiserror.workspace = true
 url.workspace = true
 color-eyre.workspace = true
 tracing.workspace = true
-# tracing-subscriber.workspace = true
-# tracing-error.workspace = true
+tracing-subscriber.workspace = true
+tracing-error.workspace = true
 
 # TODO: ssh-agent-client-rs = "1.1.2"
 

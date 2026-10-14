@@ -6002,6 +6002,8 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "tracing-error",
+ "tracing-subscriber",
  "url",
  "yeet-api",
  "zlink",
