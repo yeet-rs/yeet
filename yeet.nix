@@ -179,7 +179,14 @@ in
       path = [ config.nix.package ];
       wantedBy = [ "multi-user.target" ];
 
-      environment.USER = "root";
+      environment = {
+        YEET_SERVER = cfg.server;
+        YEET_KEY = cfg.key;
+        YEET_FACTER = cfg.facter;
+        YEET_ATTENDED = cfg.attended;
+        YEET_SLEEP = cfg.sleep;
+        USER = "root";
+      };
 
       # don't stop the service if the unit disappears
       unitConfig.X-StopOnRemoval = false;
@@ -190,14 +197,7 @@ in
         Restart = "always";
         RestartSec = 5;
         RuntimeDirectory = "yeet";
-        ExecStart = ''
-          ${lib.getExe cfg.package} agent \
-          --sleep ${toString cfg.sleep} \
-          --server ${cfg.server} \
-          --key ${cfg.key} \
-          ${lib.optionalString cfg.facter "--facter"} \
-          ${lib.optionalString cfg.attended "--attended"}
-        '';
+        ExecStart = lib.getExe cfg.package;
       };
     };
 
