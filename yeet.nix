@@ -5,6 +5,7 @@
   ...
 }:
 let
+  inherit (lib) boolToString;
   cfg = config.services.yeet;
   cfg_secret = config.yeet;
   secretType = lib.types.submodule (
@@ -182,9 +183,9 @@ in
       environment = {
         YEET_SERVER = cfg.server;
         YEET_KEY = cfg.key;
-        YEET_FACTER = cfg.facter;
-        YEET_ATTENDED = cfg.attended;
-        YEET_SLEEP = cfg.sleep;
+        YEET_FACTER = boolToString cfg.facter;
+        YEET_ATTENDED = boolToString cfg.attended;
+        YEET_SLEEP = toString cfg.sleep;
         USER = "root";
       };
 
