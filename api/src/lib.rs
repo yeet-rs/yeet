@@ -13,6 +13,7 @@ mod routes {
     pub mod secret;
     pub mod system;
     pub mod tag;
+    pub mod task;
     pub mod user;
     pub mod verify;
 }
@@ -21,8 +22,8 @@ pub use httpsig::*;
 pub use key::*;
 use owo_colors::OwoColorize as _;
 pub use routes::{
-    artifact::*, health::*, host::*, key::*, osquery::*, secret::*, system::*, tag, user::*,
-    verify::*,
+    artifact::*, health::*, host::*, key::*, osquery::*, secret::*, system::*, tag, task::*,
+    user::*, verify::*,
 };
 pub use secret::*;
 

@@ -86,6 +86,8 @@ error_set::error_set! {
         EncryptError(age::EncryptError),
         #[display("Could not parse the provided identity: {error}")]
         IdentityError{error: &'static str},
+        #[display("Could not (de)serialize the task: {0}")]
+        JsonError(serde_json::Error),
     }
 }
 
