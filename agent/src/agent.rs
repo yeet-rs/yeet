@@ -17,7 +17,6 @@ use color_eyre::{
 };
 use ed25519_dalek::VerifyingKey;
 use httpsig_hyper::prelude::SecretKey;
-
 use tokio::time;
 use tracing::{error, info};
 use url::Url;

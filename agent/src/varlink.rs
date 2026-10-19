@@ -2,9 +2,7 @@
 use std::os::fd::OwnedFd;
 
 use color_eyre::eyre::{Context as _, Result};
-
 use serde::{Deserialize, Serialize};
-
 use tracing::debug;
 use url::Url;
 use zlink::{Connection, ReplyError, proxy, unix};

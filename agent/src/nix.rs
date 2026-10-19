@@ -9,7 +9,6 @@ use color_eyre::{
     Section as _,
     eyre::{Context as _, Result, bail, eyre},
 };
-
 use tempfile::NamedTempFile;
 use tracing::{error, info};
 

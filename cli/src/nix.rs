@@ -6,7 +6,6 @@ use std::{
 
 use color_eyre::eyre::{Context as _, Result, bail, eyre};
 use inquire::{list_option::ListOption, validator::Validation};
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

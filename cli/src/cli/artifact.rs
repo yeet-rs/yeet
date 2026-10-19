@@ -1,6 +1,5 @@
 use clap::{Args, Subcommand};
 use color_eyre::Result;
-
 use owo_colors::OwoColorize as _;
 use tracing::info;
 

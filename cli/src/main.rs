@@ -41,10 +41,12 @@ fn install_tracing() {
 
     use tracing::Level;
     use tracing_error::ErrorLayer;
-    use tracing_subscriber::EnvFilter;
-    use tracing_subscriber::fmt::{self, FmtContext, FormatEvent, FormatFields, format::Writer};
-    use tracing_subscriber::prelude::*;
-    use tracing_subscriber::registry::LookupSpan;
+    use tracing_subscriber::{
+        EnvFilter,
+        fmt::{self, FmtContext, FormatEvent, FormatFields, format::Writer},
+        prelude::*,
+        registry::LookupSpan,
+    };
 
     struct LevelPrefixFormat;
 

@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use color_eyre::{Result, Section as _, eyre::eyre};
 use tracing::info;
-
 use yeet_agent::{varlink, varlink::YeetDaemonError};
 
 #[tracing::instrument]

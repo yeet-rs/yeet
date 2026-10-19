@@ -14,11 +14,9 @@ use color_eyre::{
     eyre::{Context as _, OptionExt as _, Result, eyre},
 };
 use httpsig_hyper::prelude::SecretKey;
-
 use nix::unistd::Group;
 use tokio::fs::{self, remove_file};
 use tracing::{debug, info};
-
 use yeet_agent::varlink::*;
 use zlink::connection::socket::FetchPeerCredentials;
 
