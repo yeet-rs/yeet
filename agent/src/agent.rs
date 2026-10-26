@@ -77,6 +77,11 @@ pub async fn agent_loop(
 
         info!("{action:#?}");
 
+        // tasks never block updates, just log and move on
+        if let Err(err) = crate::tasks::run_pending_tasks(&config.server, key).await {
+            error!("Could not run pending tasks: {err:#}");
+        }
+
         // only update when unattended
         #[expect(clippy::else_if_without_else)]
         if !config.attended {

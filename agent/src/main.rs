@@ -13,9 +13,11 @@ use yeet_agent::AgentConfig;
 
 use crate::agent::agent_loop;
 
+mod accounts;
 mod agent;
 mod nix;
 mod notification;
+mod tasks;
 mod varlink_server;
 
 fn install_tracing() {
