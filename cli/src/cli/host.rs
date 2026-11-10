@@ -284,7 +284,6 @@ const SET_PASSWORD_POLL: std::time::Duration = std::time::Duration::from_secs(3)
 #[tracing::instrument(skip(config))]
 async fn set_password(config: &Config) -> Result<()> {
     use color_eyre::eyre::eyre;
-    use sha_crypt::{PasswordHasher as _, ShaCrypt};
 
     let url = common::get_server_url(config).await?;
     let secret_key = &ssh::key_by_url(&url)?;
@@ -305,11 +304,7 @@ async fn set_password(config: &Config) -> Result<()> {
         if password.is_empty() {
             return Err(eyre!("Password cannot be empty"));
         }
-        ShaCrypt::default()
-            .hash_password(password.as_bytes())
-            .map_err(|err| eyre!("Could not hash the password: {err}"))?
-            .as_str()
-            .to_owned()
+        crate::hash::hash_password(&password)?
     }; // plaintext password is dropped here, only the hash leaves this block
 
     let confirm = inquire::Confirm::new(&format!(

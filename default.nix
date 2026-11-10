@@ -66,6 +66,10 @@ rec {
     yeet = cargo_nix.workspaceMembers."yeet".build;
     yeetd = cargo_nix.workspaceMembers."yeetd".build;
   };
+  # vm tests, run with nix-build -A tests.set-password
+  tests = {
+    set-password = import ./nix/tests/set-password.nix { inherit pkgs; };
+  };
   nixosModules = {
     yeet = {
       imports = [ ./yeet.nix ];
