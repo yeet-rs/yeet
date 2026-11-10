@@ -26,6 +26,8 @@ pub enum HostCommands {
     Tag,
     /// Remove a tag from this host
     RemoveTag,
+    /// Change the password of a local user on a host. Applied on the next agent poll
+    SetPassword,
 }
 
 pub async fn handle_command(args: HostArgs, config: &Config) -> Result<()> {
@@ -34,6 +36,7 @@ pub async fn handle_command(args: HostArgs, config: &Config) -> Result<()> {
         HostCommands::Rename => rename(config).await,
         HostCommands::Tag => tag(config).await,
         HostCommands::RemoveTag => remove_tag(config).await,
+        HostCommands::SetPassword => set_password(config).await,
     }
 }
 
@@ -271,4 +274,95 @@ async fn remove_tag(config: &Config) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// How long to wait for the agent before reporting the task as queued
+const SET_PASSWORD_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
+/// How often to ask the server whether the agent has reported back
+const SET_PASSWORD_POLL: std::time::Duration = std::time::Duration::from_secs(3);
+
+#[tracing::instrument(skip(config))]
+async fn set_password(config: &Config) -> Result<()> {
+    use color_eyre::eyre::eyre;
+    use sha_crypt::{PasswordHasher as _, ShaCrypt};
+
+    let url = common::get_server_url(config).await?;
+    let secret_key = &ssh::key_by_url(&url)?;
+
+    let hosts = api::list_hosts(&url, secret_key).await?;
+    let host = inquire::Select::new("On which host?", hosts).prompt()?;
+
+    let username = inquire::Text::new("Which user?").prompt()?;
+    if username.is_empty() {
+        return Err(eyre!("Username cannot be empty"));
+    }
+    if username == "root" {
+        return Err(eyre!("Changing the password of root is not permitted"));
+    }
+
+    let hashed_password = {
+        let password = inquire::Password::new("New password:").prompt()?;
+        if password.is_empty() {
+            return Err(eyre!("Password cannot be empty"));
+        }
+        ShaCrypt::default()
+            .hash_password(password.as_bytes())
+            .map_err(|err| eyre!("Could not hash the password: {err}"))?
+            .as_str()
+            .to_owned()
+    }; // plaintext password is dropped here, only the hash leaves this block
+
+    let confirm = inquire::Confirm::new(&format!(
+        "Change the password of {} on {}?",
+        username.bold(),
+        host.hostname.bold()
+    ))
+    .with_default(false)
+    .prompt()?;
+
+    if !confirm {
+        info!("Aborting...");
+        return Ok(());
+    }
+
+    let task = api::HostTask::SetPassword {
+        username,
+        hashed_password,
+    };
+    let id = api::create_task(&url, secret_key, host.id, &task).await?;
+    info!("Queued, waiting for {} to pick it up...", host.hostname);
+
+    let start = tokio::time::Instant::now();
+    loop {
+        let status = api::task_status(&url, secret_key, id).await?;
+        match status.state {
+            api::TaskState::Pending if start.elapsed() >= SET_PASSWORD_TIMEOUT => {
+                info!(
+                    "{} has not picked up the task yet (last seen {}). It will be applied when the host next polls, until {}",
+                    host.hostname,
+                    api::time_diff(host.last_ping, jiff::Unit::Minute, 5.0, jiff::Unit::Second),
+                    status.expires_at
+                );
+                return Ok(());
+            }
+            api::TaskState::Pending => tokio::time::sleep(SET_PASSWORD_POLL).await,
+            api::TaskState::Done => {
+                info!("Password changed on {}", host.hostname.green());
+                return Ok(());
+            }
+            api::TaskState::Failed => {
+                return Err(eyre!(
+                    "{} refused: {}",
+                    host.hostname,
+                    status.message.unwrap_or_default()
+                ));
+            }
+            api::TaskState::Expired => {
+                return Err(eyre!(
+                    "The task expired before {} picked it up",
+                    host.hostname
+                ));
+            }
+        }
+    }
 }

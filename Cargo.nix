@@ -11317,6 +11317,34 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
+      "mcf" = rec {
+        crateName = "mcf";
+        version = "0.6.0";
+        edition = "2024";
+        sha256 = "01nb0ffirgav16lz4hb595dhqyya617lyci92m5fsb97vsxbsi10";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "base64ct";
+            packageId = "base64ct";
+            optional = true;
+          }
+        ];
+        features = {
+          "alloc" = [ "base64ct?/alloc" ];
+          "base64" = [ "dep:base64ct" ];
+          "default" = [
+            "alloc"
+            "base64"
+          ];
+        };
+        resolvedDefaultFeatures = [
+          "alloc"
+          "base64"
+        ];
+      };
       "md-5" = rec {
         crateName = "md-5";
         version = "0.11.0";
@@ -14252,6 +14280,43 @@ rec {
           "petgraph" = [ "dep:petgraph" ];
         };
       };
+      "password-hash" = rec {
+        crateName = "password-hash";
+        version = "0.6.1";
+        edition = "2024";
+        sha256 = "0fvjsi13hdxyzv6nfl3yvhwqx6ggavppizwwrpzxd60n0ck1id5a";
+        libName = "password_hash";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "getrandom";
+            packageId = "getrandom 0.4.2";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "phc";
+            packageId = "phc";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "alloc" = [ "phc?/alloc" ];
+          "getrandom" = [
+            "dep:getrandom"
+            "phc?/getrandom"
+          ];
+          "phc" = [ "dep:phc" ];
+          "rand_core" = [
+            "dep:rand_core"
+            "phc?/rand_core"
+          ];
+        };
+        resolvedDefaultFeatures = [ "getrandom" ];
+      };
       "paste" = rec {
         crateName = "paste";
         version = "1.0.15";
@@ -14426,6 +14491,38 @@ rec {
           "default"
           "std"
         ];
+      };
+      "phc" = rec {
+        crateName = "phc";
+        version = "0.6.1";
+        edition = "2024";
+        sha256 = "14p8mwc1ikrllbrz1xv63vzxwb99hpb15yn7v3fzsfprfndpdp24";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "base64ct";
+            packageId = "base64ct";
+          }
+          {
+            name = "ctutils";
+            packageId = "ctutils";
+          }
+          {
+            name = "getrandom";
+            packageId = "getrandom 0.4.2";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "alloc" = [ "base64ct/alloc" ];
+          "default" = [ "rand_core" ];
+          "getrandom" = [ "dep:getrandom" ];
+          "rand_core" = [ "dep:rand_core" ];
+        };
+        resolvedDefaultFeatures = [ "getrandom" ];
       };
       "pin-project" = rec {
         crateName = "pin-project";
@@ -19015,6 +19112,72 @@ rec {
         resolvedDefaultFeatures = [
           "default"
           "parsed-types"
+        ];
+      };
+      "sha-crypt" = rec {
+        crateName = "sha-crypt";
+        version = "0.6.0";
+        edition = "2024";
+        sha256 = "044qybbx482s71wpl8qayhr8aclrdb1jl0vbs9kc778g37h33vij";
+        libName = "sha_crypt";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "base64ct";
+            packageId = "base64ct";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "ctutils";
+            packageId = "ctutils";
+            optional = true;
+          }
+          {
+            name = "mcf";
+            packageId = "mcf";
+            optional = true;
+            usesDefaultFeatures = false;
+            features = [ "base64" ];
+          }
+          {
+            name = "password-hash";
+            packageId = "password-hash";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "sha2";
+            packageId = "sha2 0.11.0";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "alloc" = [
+            "base64ct/alloc"
+            "mcf?/alloc"
+          ];
+          "default" = [
+            "alloc"
+            "password-hash"
+          ];
+          "getrandom" = [
+            "password-hash/getrandom"
+            "password-hash"
+          ];
+          "password-hash" = [
+            "dep:ctutils"
+            "dep:mcf"
+            "dep:password-hash"
+          ];
+          "rand_core" = [ "password-hash/rand_core" ];
+        };
+        resolvedDefaultFeatures = [
+          "alloc"
+          "default"
+          "getrandom"
+          "password-hash"
         ];
       };
       "sha1" = rec {
@@ -29400,6 +29563,11 @@ rec {
             packageId = "serde_json";
           }
           {
+            name = "sha-crypt";
+            packageId = "sha-crypt";
+            features = [ "getrandom" ];
+          }
+          {
             name = "shadow-rs";
             packageId = "shadow-rs";
             usesDefaultFeatures = false;
@@ -29556,6 +29724,10 @@ rec {
             rename = "api";
           }
           {
+            name = "zbus";
+            packageId = "zbus";
+          }
+          {
             name = "zlink";
             packageId = "zlink";
             features = [
@@ -29650,6 +29822,10 @@ rec {
             name = "serde";
             packageId = "serde";
             features = [ "derive" ];
+          }
+          {
+            name = "serde_json";
+            packageId = "serde_json";
           }
           {
             name = "sqlx";
@@ -30217,6 +30393,8 @@ rec {
           "async-process"
           "async-task"
           "blocking"
+          "blocking-api"
+          "default"
         ];
       };
       "zbus_macros" = rec {
@@ -30272,7 +30450,10 @@ rec {
             "zvariant_utils/gvariant"
           ];
         };
-        resolvedDefaultFeatures = [ "default" ];
+        resolvedDefaultFeatures = [
+          "blocking-api"
+          "default"
+        ];
       };
       "zbus_names" = rec {
         crateName = "zbus_names";
