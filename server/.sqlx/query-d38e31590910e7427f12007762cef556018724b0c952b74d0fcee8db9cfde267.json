@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            t.id AS \"id: api::TaskID\",\n            t.payload,\n            t.expires_at AS \"expires_at: jiff_sqlx::Timestamp\"\n        FROM host_tasks t\n        WHERE t.host_id = $1\n          AND (SELECT h.state FROM host_task_history h\n               WHERE h.task_id = t.id\n               ORDER BY h.update_time DESC, h.id DESC\n               LIMIT 1) = $2\n        ORDER BY t.creation_time",
+  "describe": {
+    "columns": [
+      {
+        "name": "id: api::TaskID",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "payload",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "payload"
+          }
+        }
+      },
+      {
+        "name": "expires_at: jiff_sqlx::Timestamp",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d38e31590910e7427f12007762cef556018724b0c952b74d0fcee8db9cfde267"
+}

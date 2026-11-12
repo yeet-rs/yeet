@@ -19,6 +19,7 @@ mod routes {
     pub mod secret;
     pub mod system;
     pub mod tag;
+    pub mod task;
     pub mod user;
     pub mod verify;
 }
@@ -29,6 +30,7 @@ mod db {
     pub mod osquery;
     pub mod secrets;
     pub mod tag;
+    pub mod task;
     pub mod user;
     pub mod verification;
 }
@@ -53,7 +55,7 @@ struct YeetState {
 
 use serde::{Deserialize, Serialize};
 
-use crate::routes::{osquery, tag, user};
+use crate::routes::{osquery, tag, task, user};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Flags {
@@ -279,7 +281,12 @@ fn routes(state: YeetState) -> axum::Router {
         .route("/host/{id}/rename/{name}", put(host::rename_host))
         // `api::auth::Host::Update`
         .route("/host/update", post(host::update_hosts)) // TODO: use put and make it non batch
+        // === Tasks
+        .route("/task/create/{host_id}", post(task::create))
+        .route("/task/{task_id}", get(task::status))
         // === System - Public
+        .route("/system/tasks", post(task::pending))
+        .route("/system/tasks/{task_id}", put(task::report))
         .route("/system/self/detach", put(system::detach))
         .route("/system/self/attach", put(system::attach))
         .route("/system/check", post(system::system_check)) // locked

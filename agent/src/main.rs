@@ -16,6 +16,7 @@ use crate::agent::agent_loop;
 mod agent;
 mod nix;
 mod notification;
+mod tasks;
 mod varlink_server;
 
 fn install_tracing() {
