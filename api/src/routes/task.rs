@@ -14,12 +14,34 @@ crate::db_id!(TaskID);
 ///
 /// Can contain secrets, so this only ever goes over the wire age encrypted.
 /// Never as plain json in a request body
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum HostTask {
+    /// Set the password of a local user via accounts-daemon
+    SetPassword {
+        username: String,
+        /// crypt(3) hash, so something like $6$... and never the plaintext
+        hashed_password: String,
+    },
     /// Task type this version doesn't know about. Agents report it as unsupported
     #[serde(other)]
     Unknown,
+}
+
+impl std::fmt::Debug for HostTask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SetPassword {
+                username,
+                hashed_password: _redacted,
+            } => f
+                .debug_struct("SetPassword")
+                .field("username", username)
+                .field("hashed_password", &"<redacted>")
+                .finish(),
+            Self::Unknown => f.write_str("Unknown"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]

@@ -93,6 +93,24 @@ let
   );
 
   secrets = pkgs.writeText "yeet-secrets.json" (builtins.toJSON cfg_secret.secrets);
+
+  # users with a password set in the config. a remote change would just get reverted on the next switch
+  declarativeUsers =
+    if !config.users.mutableUsers then
+      lib.attrNames config.users.users
+    else
+      lib.attrNames (
+        lib.filterAttrs (
+          _: user: user.hashedPassword != null || user.hashedPasswordFile != null || user.password != null
+        ) config.users.users
+      );
+
+  passwordPolicy = pkgs.writeText "yeet-password-policy.json" (
+    builtins.toJSON {
+      enable = cfg.passwordChange.enable;
+      declarative_users = declarativeUsers;
+    }
+  );
 in
 {
   meta.maintainers = [ lib.maintainers.Srylax ];
@@ -165,6 +183,12 @@ in
       description = "ED25519 key used as the hosts identity";
     };
 
+    passwordChange.enable = lib.mkEnableOption ''
+      remote password changes through yeet host set-password.
+      Runs accounts-daemon. Users with a password declared in the
+      NixOS configuration can't be changed remotely
+    '';
+
     package = lib.mkPackageOption pkgs "yeet" { };
   };
 
@@ -202,9 +226,20 @@ in
       };
     };
 
-    system.systemBuilderCommands = lib.mkIf (cfg_secret.secrets != { }) ''
-      ln -s ${secrets} $out/yeet-secrets.json
-    '';
+    services.accounts-daemon.enable = lib.mkIf cfg.passwordChange.enable true;
+    security.polkit.enable = lib.mkIf cfg.passwordChange.enable true;
 
+    warnings =
+      lib.optional (cfg.passwordChange.enable && !config.users.mutableUsers)
+        "services.yeet.passwordChange is enabled but users.mutableUsers = false: every remote password change will be refused";
+
+    system.systemBuilderCommands = lib.mkMerge [
+      (lib.mkIf (cfg_secret.secrets != { }) ''
+        ln -s ${secrets} $out/yeet-secrets.json
+      '')
+      ''
+        ln -s ${passwordPolicy} $out/yeet-password-policy.json
+      ''
+    ];
   };
 }

@@ -56,6 +56,13 @@ fn status_code(err: api::ResponseError) -> http::StatusCode {
     }
 }
 
+fn password_task() -> api::HostTask {
+    api::HostTask::SetPassword {
+        username: "alice".into(),
+        hashed_password: "$6$salt$hash".into(),
+    }
+}
+
 fn report(state: api::TaskState, message: Option<&str>) -> api::TaskReport {
     api::TaskReport {
         state,
@@ -96,6 +103,7 @@ async fn tasks_e2e(pool: sqlx::SqlitePool) {
     .unwrap();
 
     let (host_a, host_a_id) = enroll(&url, &admin, 3, "host-a").await;
+    let (host_b, _) = enroll(&url, &admin, 5, "host-b").await;
 
     // === task types the server doesn't know are rejected right away
     let err = api::create_task(&url, &admin, host_a_id, &api::HostTask::Unknown)
@@ -156,4 +164,74 @@ async fn tasks_e2e(pool: sqlx::SqlitePool) {
     .await
     .unwrap_err();
     assert_eq!(status_code(err), http::StatusCode::BAD_REQUEST);
+
+    // === happy path
+    let task = api::create_task(&url, &admin, host_a_id, &password_task())
+        .await
+        .unwrap();
+    let status = api::task_status(&url, &admin, task).await.unwrap();
+    assert_eq!(status.state, api::TaskState::Pending);
+    assert_eq!(status.host, host_a_id);
+
+    // if this works the whole encryption chain admin -> server -> agent works
+    let tasks = api::get_tasks(&url, &host_a).await.unwrap();
+    assert_eq!(tasks, vec![(task, password_task())]);
+
+    api::report_task(&url, &host_a, task, report(api::TaskState::Done, None))
+        .await
+        .unwrap();
+    // a finished task is not delivered again
+    assert_eq!(api::get_tasks(&url, &host_a).await.unwrap(), []);
+    assert_eq!(
+        api::task_status(&url, &admin, task).await.unwrap().state,
+        api::TaskState::Done
+    );
+
+    // === the failure message makes it back to the admin
+    let failing = api::create_task(&url, &admin, host_a_id, &password_task())
+        .await
+        .unwrap();
+    api::report_task(
+        &url,
+        &host_a,
+        failing,
+        report(api::TaskState::Failed, Some("user does not exist")),
+    )
+    .await
+    .unwrap();
+    let status = api::task_status(&url, &admin, failing).await.unwrap();
+    assert_eq!(status.state, api::TaskState::Failed);
+    assert_eq!(status.message.as_deref(), Some("user does not exist"));
+
+    // === host B can't fetch or report the task of host A
+    let isolated = api::create_task(&url, &admin, host_a_id, &password_task())
+        .await
+        .unwrap();
+    assert_eq!(api::get_tasks(&url, &host_b).await.unwrap(), []);
+    let err = api::report_task(&url, &host_b, isolated, report(api::TaskState::Done, None))
+        .await
+        .unwrap_err();
+    assert_eq!(status_code(err), http::StatusCode::NOT_FOUND);
+    // so the task is still pending
+    assert_eq!(
+        api::task_status(&url, &admin, isolated)
+            .await
+            .unwrap()
+            .state,
+        api::TaskState::Pending
+    );
+
+    // === reporting twice
+    for _ in 0..2 {
+        api::report_task(&url, &host_a, isolated, report(api::TaskState::Done, None))
+            .await
+            .unwrap();
+    }
+    assert_eq!(
+        api::task_status(&url, &admin, isolated)
+            .await
+            .unwrap()
+            .state,
+        api::TaskState::Done
+    );
 }

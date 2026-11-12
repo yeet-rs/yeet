@@ -14,6 +14,7 @@ serde_json = "1.0"
 api = { path = "../api", package="yeet-api"}
 clap = { version = "4.6", features = ["derive","string"] }
 tokio = { version = "1.49", features = ["full"] } # TODO: maybe switch to smoll?
+sha-crypt = { version = "0.6", features = ["getrandom"] }
 
 xdg = "3.0.0"
 shadow-rs = { version = "1.5", default-features = false }
