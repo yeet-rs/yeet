@@ -11,7 +11,7 @@ use owo_colors::OwoColorize as _;
 use crate::cli_args::{Commands, Config, Yeet};
 
 mod cli_args;
-
+mod hash;
 mod section;
 mod server_cli;
 mod sig {
