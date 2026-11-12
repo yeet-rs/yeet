@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO host_tasks (host_id, created_by, payload, creation_time, expires_at)\n        VALUES ($1, $2, $3, $4, $5)\n        RETURNING id AS \"id!: api::TaskID\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: api::TaskID",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5bbdfc83c4c8aa09dc5da46df9665d81347950d3529f5a3538a0b26ec523c3b7"
+}

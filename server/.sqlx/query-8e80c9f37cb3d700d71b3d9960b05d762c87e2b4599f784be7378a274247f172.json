@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT host_id AS \"host_id: api::HostID\" FROM host_tasks\n        WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "host_id: api::HostID",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "host_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8e80c9f37cb3d700d71b3d9960b05d762c87e2b4599f784be7378a274247f172"
+}

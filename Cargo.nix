@@ -29652,6 +29652,10 @@ rec {
             features = [ "derive" ];
           }
           {
+            name = "serde_json";
+            packageId = "serde_json";
+          }
+          {
             name = "sqlx";
             packageId = "sqlx";
             optional = true;

@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            t.host_id AS \"host_id: api::HostID\",\n            (SELECT h.state FROM host_task_history h\n             WHERE h.task_id = t.id\n             ORDER BY h.update_time DESC, h.id DESC\n             LIMIT 1) AS \"state!: api::TaskState\"\n        FROM host_tasks t\n        WHERE t.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "host_id: api::HostID",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "host_id"
+          }
+        }
+      },
+      {
+        "name": "state!: api::TaskState",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "host_task_history",
+            "name": "state"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "da5ab8dd6c982013647182116cb1e7eb12891c1aec77e3fc7562f7c3dfeff4a8"
+}

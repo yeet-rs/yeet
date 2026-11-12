@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            t.id AS \"id: api::TaskID\",\n            t.host_id AS \"host_id: api::HostID\",\n            t.creation_time AS \"creation_time: jiff_sqlx::Timestamp\",\n            t.expires_at AS \"expires_at: jiff_sqlx::Timestamp\",\n            h.state AS \"state: api::TaskState\",\n            h.message,\n            h.update_time AS \"update_time: jiff_sqlx::Timestamp\"\n        FROM host_tasks t\n        JOIN host_task_history h ON h.id = (\n            SELECT id FROM host_task_history\n            WHERE task_id = t.id\n            ORDER BY update_time DESC, id DESC\n            LIMIT 1\n        )\n        WHERE t.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id: api::TaskID",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "host_id: api::HostID",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "host_id"
+          }
+        }
+      },
+      {
+        "name": "creation_time: jiff_sqlx::Timestamp",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "creation_time"
+          }
+        }
+      },
+      {
+        "name": "expires_at: jiff_sqlx::Timestamp",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "host_tasks",
+            "name": "expires_at"
+          }
+        }
+      },
+      {
+        "name": "state: api::TaskState",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "host_task_history",
+            "name": "state"
+          }
+        }
+      },
+      {
+        "name": "message",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "host_task_history",
+            "name": "message"
+          }
+        }
+      },
+      {
+        "name": "update_time: jiff_sqlx::Timestamp",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "host_task_history",
+            "name": "update_time"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "e9506b59c1dfad55111708d15755087adef013b01469bf15df83f5e3ec178e31"
+}
